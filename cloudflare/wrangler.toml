@@ -17,3 +17,8 @@ new_sqlite_classes = ["GameServerDO"]
 type = "Text"
 globs = ["**/*.html"]
 fallthrough = true
+
+# Ωクライアント本体（public/index.html）を静的アセットとして配信する。
+# / はアセットの index.html が返り、それ以外（/ws の WebSocket、/test-client.html、/cards.js）は Worker が処理する。
+[assets]
+directory = "./public"
