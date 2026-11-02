@@ -164,7 +164,7 @@ export function createCore(options = {}) {
     const conn = room.seats[seat];
     return {
       seat,
-      name: (conn ? conn.name : room.seatNames[seat]) || "",
+      name: (conn && conn.name) || room.seatNames[seat] || "",
       summoner: pl.summoner,
       life: pl.life,
       mana: pl.mana,
