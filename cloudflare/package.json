@@ -1,0 +1,1 @@
+{"devDependencies":{"wrangler":"^4.0.0"},"name":"arcane-omega-server-cloudflare","private":true,"scripts":{"deploy":"wrangler deploy","dev":"wrangler dev","test":"node core.test.js"},"type":"module"}

@@ -1,0 +1,19 @@
+name = "arcane-omega-server"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# GameServerDO: 全ての部屋を持つ単一の Durable Object
+[[durable_objects.bindings]]
+name = "GAME_SERVER"
+class_name = "GameServerDO"
+
+# SQLite バックエンドの DO として新規作成（ストレージに部屋スナップショットを保存するため）
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameServerDO"]
+
+# 既存の test-client.html をテキストとして取り込むため
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
