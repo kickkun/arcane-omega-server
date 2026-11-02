@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: arcane-omega-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js

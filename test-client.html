@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>アーケインサモンΩ テストクライアント</title>
+<style>
+  body { font-family: sans-serif; margin: 12px; background: #14141c; color: #eee; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  .box { border: 1px solid #555; border-radius: 8px; padding: 8px; margin: 8px 0; }
+  button { padding: 6px 10px; margin: 2px; }
+  .unit { display: inline-block; border: 1px solid #888; border-radius: 6px; padding: 4px 8px; margin: 2px; background: #222; }
+  .card { display: inline-block; border: 1px solid #6a6; border-radius: 6px; padding: 4px 8px; margin: 2px; background: #1d2a1d; }
+  .acts button { display: block; width: 100%; text-align: left; }
+  #log { font-size: 12px; color: #aaa; white-space: pre-wrap; }
+  .turn { color: #ffd34d; font-weight: bold; }
+</style>
+</head>
+<body>
+<h2>アーケインサモンΩ テストクライアント</h2>
+
+<div class="box">
+  <div class="row">
+    名前: <input id="name" size="12" placeholder="任意">
+    <span id="conn">未接続</span>
+    <button id="btnConnect">接続</button>
+  </div>
+  <div class="row">
+    <button id="btnCreate">部屋を作る</button>
+    ルームコード: <input id="code" size="8" style="text-transform:uppercase">
+    <button id="btnJoin">参加する</button>
+    <span id="roomInfo"></span>
+  </div>
+  <div class="row">
+    デッキ:
+    <select id="deck">
+      <option value="shippu">疾風</option>
+      <option value="kyoto">巨塔</option>
+      <option value="shinen">深淵</option>
+      <option value="seiki">聖域</option>
+    </select>
+    召喚士:
+    <select id="summoner">
+      <option value="chloe">クロエ</option>
+      <option value="garen">ガレン</option>
+      <option value="blanc">ブラン</option>
+      <option value="mia">ミア</option>
+      <option value="olga">オルガ</option>
+    </select>
+    <button id="btnSubmit">準備完了（提出）</button>
+    <span id="submitInfo"></span>
+  </div>
+  <div class="row">
+    <button id="btnRematch" style="display:none">リマッチを希望する</button>
+    <span id="rematchInfo"></span>
+  </div>
+  <div id="err" style="color:#f88"></div>
+</div>
+
+<div id="game" style="display:none">
+  <div class="box" id="oppBox"></div>
+  <div class="box" id="meBox"></div>
+  <div class="box"><div>自分の手札</div><div id="hand"></div></div>
+  <div class="box"><div>できる行動</div><div class="acts" id="acts"></div></div>
+</div>
+
+<div id="log"></div>
+
+<script type="module">
+import { CARDS } from "/cards.js";
+const CARD = new Map(CARDS.map(c => [c.id, c]));
+const SUMMONER_NAME = { chloe: "クロエ", garen: "ガレン", blanc: "ブラン", mia: "ミア", olga: "オルガ" };
+const PRESETS = {
+  shippu: [46,46,46, 2,2,2, 23,23,23, 12,12, 13,13, 14,14, 11,11, 1,1, 15],
+  kyoto:  [41,41,41, 3,3, 4,4,4, 22,22, 5,5, 6,6, 7,7, 51,51,51, 16],
+  shinen: [48,48,48, 12,12, 13,13, 18,18,18, 20,20, 25,25, 4,4, 5,5, 26, 7],
+  seiki:  [39,39,39, 40,40,40, 41,41,41, 42,42,42, 43,43, 44,44, 3,3, 45, 16],
+};
+
+const $ = id => document.getElementById(id);
+let ws = null;
+let view = null;
+
+function log(s) { $("log").textContent += s + "\n"; }
+function cardLabel(id) { const c = CARD.get(id); return c ? `${c.name}(${c.cost})` : `?${id}`; }
+function unitLabel(u) {
+  if (!u) return "?";
+  if (u === "leader") return "召喚士";
+  return `${u.name} ${u.atk}/${u.hp}`;
+}
+function findUnit(uid) {
+  if (!view) return null;
+  return [...view.me.field, ...view.opponent.field].find(u => u.uid === uid) || null;
+}
+
+function connect() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${proto}//${location.host}`);
+  ws.onopen = () => {
+    $("conn").textContent = "接続済み";
+    const guestId = localStorage.getItem("arcaneOmega.guestId") || undefined;
+    $("name").value = localStorage.getItem("arcaneOmega.name") || "";
+    ws.send(JSON.stringify({ type: "hello", guestId, name: $("name").value }));
+  };
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.type === "welcome") {
+      localStorage.setItem("arcaneOmega.guestId", m.guestId);
+      log(`guestId: ${m.guestId}`);
+    } else if (m.type === "roomCreated") {
+      $("roomInfo").textContent = `部屋を作成: ${m.code}（seat ${m.seat}）`;
+      $("code").value = m.code;
+    } else if (m.type === "joined") {
+      $("roomInfo").textContent = `部屋に参加: ${m.code}（seat ${m.seat}）`;
+    } else if (m.type === "opponentJoined") {
+      log("相手が参加しました");
+    } else if (m.type === "opponentSubmitted") {
+      $("submitInfo").textContent = "相手が提出済み";
+    } else if (m.type === "opponentDisconnected") {
+      log("⚠ 相手が切断しました（再接続を待っています）");
+    } else if (m.type === "rejoined") {
+      $("roomInfo").textContent = `部屋に復帰: ${m.code}（seat ${m.seat}）`;
+      log("部屋に再接続しました");
+    } else if (m.type === "opponentReconnected") {
+      log("相手が再接続しました");
+    } else if (m.type === "opponentRematch") {
+      $("rematchInfo").textContent = "相手がリマッチを希望しています";
+      log("相手がリマッチを希望しています");
+    } else if (m.type === "rematchRequested") {
+      $("rematchInfo").textContent = m.waiting ? "リマッチ希望を送信（相手待ち）" : "リマッチ開始！";
+    } else if (m.type === "opponentLeft") {
+      log("相手が退出しました");
+    } else if (m.type === "error") {
+      $("err").textContent = m.message;
+    } else if (m.type === "view") {
+      view = m;
+      $("game").style.display = "block";
+      render();
+    }
+  };
+  ws.onclose = () => { $("conn").textContent = "切断"; };
+}
+$("btnConnect").onclick = connect;
+connect(); // ページ再読み込みでも guestId で自動的に席へ復帰する
+
+$("btnRematch").onclick = () => ws && ws.send(JSON.stringify({ type: "rematch" }));
+$("btnCreate").onclick = () => ws && ws.send(JSON.stringify({ type: "create" }));
+$("btnJoin").onclick = () => ws && ws.send(JSON.stringify({ type: "join", code: $("code").value.trim() }));
+$("btnSubmit").onclick = () => {
+  if (!ws) return;
+  localStorage.setItem("arcaneOmega.name", $("name").value);
+  ws.send(JSON.stringify({
+    type: "submit",
+    deck: PRESETS[$("deck").value],
+    summoner: $("summoner").value,
+    name: $("name").value,
+  }));
+  $("submitInfo").textContent = "提出済み。相手待ち…";
+};
+
+function sendAction(a) {
+  $("err").textContent = "";
+  ws.send(JSON.stringify({ type: "action", action: a }));
+}
+
+function render() {
+  const v = view;
+  $("btnRematch").style.display = v.winner != null ? "" : "none";
+  const pbox = (p, title, isMe) => {
+    const hand = isMe ? `手札${p.hand.length}枚` : `手札${p.handCount}枚`;
+    return `<div><b>${title}</b> ${p.name || "(名無し)"} / ${SUMMONER_NAME[p.summoner]} ` +
+      `ライフ <b>${p.life}</b> 魔力 ${p.mana}/${p.manaMax} ${hand} 山札${p.deckCount}枚` +
+      (p.coin ? " コイン有" : "") + `</div>` +
+      `<div>${p.field.map(u => `<span class="unit">${unitLabel(u)}${u.keywords.length ? " [" + u.keywords.join(",") + "]" : ""} 残攻撃${u.attacksLeft}</span>`).join("") || "（場は空）"}</div>`;
+  };
+  $("oppBox").innerHTML = pbox(v.opponent, "相手", false);
+  $("meBox").innerHTML = pbox(v.me, "自分", true) +
+    (v.winner != null
+      ? `<div class="turn">${v.winner === v.you ? "勝利！" : "敗北…"}</div>`
+      : v.pending
+        ? `<div class="turn">${v.pending.player === v.you ? "対象を選んでください" : "相手が対象選択中…"}</div>`
+        : `<div class="${v.turn === v.you ? "turn" : ""}">${v.turn === v.you ? "あなたのターン" : "相手のターン"}</div>`);
+  $("hand").innerHTML = v.me.hand.map(id => {
+    const c = CARD.get(id);
+    return `<span class="card">${cardLabel(id)}${c && c.type === "unit" ? ` ${c.atk}/${c.hp}` : ""}</span>`;
+  }).join("");
+  const acts = $("acts");
+  acts.innerHTML = "";
+  for (const a of v.legalActions) {
+    const b = document.createElement("button");
+    if (a.type === "playCard") b.textContent = `出す: ${cardLabel(v.me.hand[a.handIndex])}`;
+    else if (a.type === "attack") b.textContent = `攻撃: ${unitLabel(findUnit(a.attackerUid))} → ${a.targetUid === "leader" ? "召喚士" : unitLabel(findUnit(a.targetUid))}`;
+    else if (a.type === "chooseTarget") b.textContent = `対象に選ぶ: ${unitLabel(findUnit(a.uid))}`;
+    else if (a.type === "useCoin") b.textContent = "追い上げコインを使う";
+    else if (a.type === "endTurn") b.textContent = "ターン終了";
+    else if (a.type === "surrender") b.textContent = "投了";
+    else b.textContent = JSON.stringify(a);
+    b.onclick = () => sendAction(a);
+    acts.appendChild(b);
+  }
+  if (v.winner != null) log(`対戦終了 winner=${v.winner}（あなた=${v.you}）`);
+}
+</script>
+</body>
+</html>
