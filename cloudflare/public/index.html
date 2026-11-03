@@ -262,6 +262,16 @@
       .stat-chip b{font-size:16px;}
       .effect-box{background:#10151f; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:13.5px; line-height:1.65;}
       .flavor{margin-top:10px; font-size:12.5px; color:var(--ink-dim); font-style:italic; line-height:1.6;}
+      /* 形態カードへの導線（親→形態／形態→親）。詳細シート内のチップ型ボタン */
+      .form-link{
+        display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:12px;
+        padding:11px 14px; border-radius:11px; cursor:pointer;
+        background:linear-gradient(180deg,rgba(236,205,126,.16),rgba(201,162,75,.08));
+        border:1px solid var(--gold); color:var(--gold-bright);
+        font-size:14px; font-weight:800; letter-spacing:.03em;
+      }
+      .form-link:active{transform:translateY(1px);}
+      .form-link .form-link-sub{font-size:11px; font-weight:700; color:var(--ink-dim); letter-spacing:0;}
       .sheet-actions{display:flex; gap:8px; margin-top:16px;}
       .btn-play{
         flex:1; border:none; border-radius:11px; padding:14px; font-size:16px; font-weight:900;
@@ -869,6 +879,7 @@
           </div>
         </div>
         <div class="effect-box" id="dEffect" style="margin-top:14px;"></div>
+        <button class="form-link" id="dFormLink" type="button" style="display:none;"></button>
         <p class="flavor" id="dFlavor"></p>
         <p class="play-note" id="dNote"></p>
         <div class="sheet-actions">
@@ -1346,6 +1357,9 @@
     var CARD_BY_ID = {};
     CARDS.forEach(function(c){ CARD_BY_ID[c.id] = c; });
     FORM_CARDS.forEach(function(c){ CARD_BY_ID[c.id] = c; });
+    /* 親カードID → 形態カード（詳細画面の導線用。052→EX-キャリバー、053→黒のアギト） */
+    var FORM_FOR_PARENT = {};
+    FORM_CARDS.forEach(function(c){ FORM_FOR_PARENT[c.formOf] = c; });
     /* 神話カードかどうか（デッキには1種類のみ・同名3枚まで） */
     function isMythicCard(c){ return !!(c && c.mythic); }
     /* 場のユニットのコスト。トークンはカードIDを持たないため0コストとして扱う */
@@ -3502,10 +3516,10 @@
       if (detailOverlay.classList.contains('show')){ dNote.textContent = msg; }
       logMsg(msg); renderLog();
     }
-    function openDetail(cardId, source, uid){
+    function openDetail(cardId, source, uid, back){
       var card = CARD_BY_ID[cardId];
       if (!card) return;
-      S.detail = { cardId: cardId, source: source, uid: uid || null };
+      S.detail = { cardId: cardId, source: source, uid: uid || null, back: back || null };
       var dImg = document.getElementById('dImg');
       var dCoin = document.getElementById('dCoin');
       if (card.coin){
@@ -3548,10 +3562,27 @@
       }
       document.getElementById('dType').textContent = typeParts.join(' ・ ');
       document.getElementById('dStats').innerHTML = card.type === 'follower'
-        ? '<span class="stat-chip">攻撃 <b>' + card.atk + '</b></span><span class="stat-chip">体力 <b>' + card.hp + '</b></span><span class="stat-chip">コスト <b>' + card.cost + '</b></span>'
+        ? (card.id === '53ag'
+          /* 黒のアギトの攻撃力・体力は固定値ではなく、孵化時点の卵の数値を引き継ぐ */
+          ? '<span class="stat-chip">攻撃・体力 <b style="font-size:13px;">卵の成長を引き継ぐ</b></span><span class="stat-chip">コスト <b>' + card.cost + '</b></span>'
+          : '<span class="stat-chip">攻撃 <b>' + card.atk + '</b></span><span class="stat-chip">体力 <b>' + card.hp + '</b></span><span class="stat-chip">コスト <b>' + card.cost + '</b></span>')
         : '<span class="stat-chip">コスト <b>' + card.cost + '</b></span>';
       document.getElementById('dEffect').textContent = card.text;
       document.getElementById('dFlavor').textContent = card.flavor;
+      /* 形態カードへの導線：親カード（052／053）からは形態の詳細へ、
+         形態カードからは親カードの詳細へ戻れるようにする */
+      var formLink = document.getElementById('dFormLink');
+      if (card.form){
+        var parentCard = CARD_BY_ID[card.formOf];
+        formLink.innerHTML = '← 親カード「' + escapeHtml(parentCard ? parentCard.name : '') + '」に戻る';
+        formLink.style.display = '';
+      } else if (FORM_FOR_PARENT[card.id]){
+        var formCard = FORM_FOR_PARENT[card.id];
+        formLink.innerHTML = (card.id === 52 ? '合体形態' : '孵化形態') + '：「' + escapeHtml(formCard.name) + '」を見る <span class="form-link-sub">タップで詳細</span>';
+        formLink.style.display = '';
+      } else {
+        formLink.style.display = 'none';
+      }
       document.getElementById('dNote').textContent = '';
       var playBtn = document.getElementById('dPlay');
       if (source === 'hand'){
@@ -3570,6 +3601,21 @@
     function closeDetail(){ detailOverlay.classList.remove('show'); S.detail = null; }
     document.getElementById('dClose').addEventListener('click', closeDetail);
     detailOverlay.addEventListener('click', function(ev){ if (ev.target === detailOverlay) closeDetail(); });
+    /* 形態導線：親→形態は現在の詳細を「戻り先」として渡し、形態→親はそれを開き直す。
+       形態を直接開いた場合（対戦中の手札・場）は親カードの詳細をそのまま開く */
+    document.getElementById('dFormLink').addEventListener('click', function(){
+      if (!S.detail) return;
+      var cur = CARD_BY_ID[S.detail.cardId];
+      if (!cur) return;
+      if (cur.form){
+        var back = S.detail.back;
+        if (back) openDetail(back.cardId, back.source, back.uid);
+        else openDetail(cur.formOf, 'gallery', null);
+      } else {
+        var fc = FORM_FOR_PARENT[cur.id];
+        if (fc) openDetail(fc.id, 'form', null, { cardId: S.detail.cardId, source: S.detail.source, uid: S.detail.uid });
+      }
+    });
     document.getElementById('dPlay').addEventListener('click', function(){
       if (!S.detail || S.detail.source !== 'hand') return;
       var uid = S.detail.uid;
