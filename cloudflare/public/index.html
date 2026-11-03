@@ -689,6 +689,7 @@
         -webkit-mask-image:radial-gradient(circle,#000 0%,transparent 68%);
         mask-image:radial-gradient(circle,#000 0%,transparent 68%);
         animation:fxSpawnRays 1s ease-out forwards;
+        animation-delay:var(--fx-delay, 0s);
       }
       @keyframes fxSpawnRays{0%{opacity:0; transform:scale(.35) rotate(-6deg);}25%{opacity:.9;}100%{opacity:0; transform:scale(1.15) rotate(10deg);}}
       @keyframes fxLungeUp{0%{transform:translateY(0);}35%{transform:translateY(-16px);}100%{transform:translateY(0);}}
@@ -1676,6 +1677,42 @@
        再描画後に攻撃側へ付ける（再描画でクラスが消えないようにするため）。 */
     var fxCpuPrev = null;   /* CPU戦盤面の前回スナップショット {units:{'me-uid':hp}} */
     var fxLungeQueue = [];  /* CPU戦の突進キュー {sel, dir} */
+    /* ===== 召喚演出の継続記録 =====
+       盤面は render() のたびに innerHTML で作り直されるため、クラスを付けた
+       要素は次の render() で捨てられてアニメーションが消えてしまう（playCard は
+       場に出した直後と効果解決後で render() を2回呼ぶため、手札から出した
+       ユニットの召喚演出は1フレームも表示されなかった）。
+       そこで「いつ・どのユニットが出現したか」を時刻つきで記録しておき、
+       render() のたびに付け直す。animation-delay をマイナスにして経過時間ぶん
+       進んだ位相から再開させるので、付け直しで最初から再生されることもない。 */
+    var fxSpawnReg = {};    /* {key:{mythic,start,dur}} key: CPU戦='me-uid'等 / オンライン='ov|side|uid' */
+    function fxNow(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+    function fxRegSpawn(key, mythic){
+      if (!fxSpawnReg[key]) fxSpawnReg[key] = { mythic: !!mythic, start: fxNow(), dur: mythic ? 1000 : 650 };
+    }
+    function fxClearSpawnReg(scope){
+      Object.keys(fxSpawnReg).forEach(function(k){
+        var isOv = k.indexOf('ov|') === 0;
+        if ((scope === 'ov') === isOv) delete fxSpawnReg[k];
+      });
+    }
+    function fxSpawnSweep(scope, findEl){
+      var now = fxNow();
+      Object.keys(fxSpawnReg).forEach(function(key){
+        var isOv = key.indexOf('ov|') === 0;
+        if ((scope === 'ov') !== isOv) return;
+        var rec = fxSpawnReg[key];
+        var elapsed = now - rec.start;
+        if (elapsed >= rec.dur){ delete fxSpawnReg[key]; return; }
+        var el = findEl(key);
+        var cls = rec.mythic ? 'fx-spawn-mythic' : 'fx-spawn';
+        if (el && !el.classList.contains(cls)){
+          el.style.setProperty('--fx-delay', (-elapsed) + 'ms');
+          el.style.animationDelay = (-elapsed) + 'ms';
+          el.classList.add(cls);
+        }
+      });
+    }
     function fxGhost(el){
       if (!el || !el.getBoundingClientRect) return;
       var r = el.getBoundingClientRect();
@@ -1713,13 +1750,15 @@
        破壊されたユニットのゴーストはこの時点で切り取る。 */
     function fxPlanCpu(){
       var plan = { spawn: [], hit: [] };
-      if (!fxCpuPrev) return plan;
+      if (!fxCpuPrev){ fxClearSpawnReg('cpu'); return plan; }
       var now = fxSnapshotCpu().units;
       Object.keys(now).forEach(function(k){
         if (!(k in fxCpuPrev.units)){
           var parts = k.split('-');
           var f = findFollower(parts[0], Number(parts[1]));
-          plan.spawn.push({ key: k, mythic: !!(f && isMythicCard(CARD_BY_ID[f.cardId])) });
+          var mythic = !!(f && isMythicCard(CARD_BY_ID[f.cardId]));
+          plan.spawn.push({ key: k, mythic: mythic });
+          fxRegSpawn(k, mythic);
         } else if (now[k] < fxCpuPrev.units[k]){
           plan.hit.push(k);
         }
@@ -1747,6 +1786,8 @@
         if (el) el.classList.add(l.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
       });
       fxLungeQueue = [];
+      /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
+      fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       fxCpuPrev = fxSnapshotCpu();
     }
 
@@ -4586,8 +4627,8 @@
     function fxPlanOv(v){
       var plan = { spawn: [], hit: [], pops: [], leaderPops: [], lunge: null };
       var prev = fxOvPrev;
-      if (!prev) return plan;
-      if (prev.winner != null && v.winner == null) return plan; /* リマッチ開始はベースライン扱い */
+      if (!prev){ fxClearSpawnReg('ov'); return plan; }
+      if (prev.winner != null && v.winner == null){ fxClearSpawnReg('ov'); return plan; } /* リマッチ開始はベースライン扱い */
       var now = fxOvSnapshot(v).units;
       var damaged = { me: [], opp: [] };
       var alDropped = [];   /* 残り攻撃回数が減ったユニット（＝攻撃した個体） */
@@ -4599,7 +4640,9 @@
           var u = null;
           (list || []).forEach(function(x){ if (String(x.uid) === String(uid)) u = x; });
           var c = u ? CARD_BY_ID[u.cardId] : null;
-          plan.spawn.push({ side: side, uid: uid, mythic: !!(c && c.mythic) });
+          var ovMythic = !!(c && c.mythic);
+          plan.spawn.push({ side: side, uid: uid, mythic: ovMythic });
+          fxRegSpawn('ov|' + side + '|' + uid, ovMythic);
         } else {
           if (typeof now[k].al === 'number' && typeof prev.units[k].al === 'number' && now[k].al < prev.units[k].al){
             alDropped.push({ side: side, uid: uid });
@@ -4668,6 +4711,11 @@
         var el = fxOvUnitEl(plan.lunge.side, plan.lunge.uid);
         if (el) el.classList.add(plan.lunge.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
       }
+      /* 続けて届いた状態更新で盤面が作り直されても、召喚演出を付け直す */
+      fxSpawnSweep('ov', function(key){
+        var p = key.split('|');
+        return fxOvUnitEl(p[1], p.slice(2).join('|'));
+      });
       fxOvPrev = fxOvSnapshot(v);
     }
     function renderOvGame(){
