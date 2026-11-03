@@ -1,0 +1,16 @@
+name: Rename stage to space-8
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name "kickkun"
+          git config user.email "kickkun@users.noreply.github.com"
+          git mv cloudflare/public/stage.html cloudflare/public/space-8.html
+          git commit -m "Stage Omega client update (spawn effect fix) as space-8.html"
+          git push
