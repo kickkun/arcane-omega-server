@@ -1,6 +1,7 @@
-// アーケインサモン カードデータ（全51種）
+// アーケインサモン カードデータ（全54種＋形態2種）
 // 正のデータは ~/workspace/game-cards/cards.md。本ファイルはその構造化ミラー。
-// keywords: "haste"=速攻 "wall"=鉄壁 "armor"=装甲 "counter"=反撃
+// keywords: "haste"=速攻 "wall"=鉄壁 "armor"=装甲 "counter"=反撃 "rush"=突破 "shootdown"=撃墜
+// 形態カード（id 900/901）は form:true で、デッキには入れられない。
 
 export const CARDS = [
   {
@@ -574,6 +575,66 @@ export const CARDS = [
       { kind: "healLeader", amount: 5 },
     ],
     flavor: "右目で焼いて、左目で癒す。どっちがいい？",
+  },
+  {
+    id: 52,
+    name: "聖剣の欠片",
+    cost: 1,
+    type: "unit",
+    atk: 1, hp: 1,
+    keywords: ["wall"],
+    mythic: true,
+    onPlay: [],
+    flavor: "砕けてもなお、剣は剣。光はまだ死んでいない",
+  },
+  {
+    id: 53,
+    name: "黒竜の卵",
+    cost: 4,
+    type: "unit",
+    atk: 0, hp: 7,
+    keywords: [],
+    mythic: true,
+    egg: true,
+    onPlay: [],
+    flavor: "静かに眠れ。その眠りが、世界の猶予だ",
+  },
+  {
+    id: 54,
+    name: "絶槍ロンギヌス",
+    cost: 4,
+    type: "unit",
+    atk: 4, hp: 4,
+    keywords: ["rush", "shootdown"],
+    mythic: true,
+    onPlay: [],
+    passive: { reattackOnKill: true },
+    flavor: "神を貫いた槍の前では、壁など紙も同然",
+  },
+  // ---- 形態（デッキ投入不可） ----
+  {
+    id: 900,
+    name: "EX-キャリバー",
+    cost: 6,
+    type: "unit",
+    atk: 1, hp: 1,
+    keywords: [],
+    mythic: false,
+    form: true,
+    onPlay: [{ kind: "destroyAllAndHands" }],
+    flavor: "集いし光に、逃げ場はない",
+  },
+  {
+    id: 901,
+    name: "黒のアギト",
+    cost: 4,
+    type: "unit",
+    atk: 0, hp: 7, // 基礎値は卵と同値。実スタッツは孵化時のユニットが引き継ぐ
+    keywords: [],
+    mythic: false,
+    form: true,
+    onPlay: [],
+    flavor: "目覚めた顎は、世界を食らう",
   },
 ];
 
