@@ -144,6 +144,8 @@ export function createCore(options = {}) {
     const keywords = [...d.keywords];
     if (u.grantedWall && !keywords.includes("wall")) keywords.push("wall");
     if (u.grantedCounter && !keywords.includes("counter")) keywords.push("counter");
+    if (u.grantedHaste && !keywords.includes("haste")) keywords.push("haste");
+    if (u.grantedArmor && !keywords.includes("armor")) keywords.push("armor");
     return {
       uid: u.uid,
       cardId: u.cardId,
