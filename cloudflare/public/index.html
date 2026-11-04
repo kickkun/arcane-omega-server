@@ -3039,8 +3039,8 @@
     /* ===== 新神話のAI判断（合体／孵化／EXの出し時） =====
        合体：手札に欠片が3枚あれば自分のターンに合体する。
        孵化：合計21以上で即孵化。合計15以上なら速攻で有利な交換ができる時だけ孵化する。
-       EX：敵の場＋手札の合計 ≧ 自分の場＋手札（どちらもEX自身を除く）の時に出す。
-       それ以外は大幅に後回しにし、他に打つ手が無い時だけ出す（候補スコア側で処理）。 */
+       EX：合体で生まれたら通常の候補として扱い、魔力が足りるターンにすぐ出す。
+       欠片（カード52）は合体専用として常に手札に温存し、場に出す候補には入れない。 */
     function aiMaybeFuse(actorSide){
       if (S.mode !== 'idle') return false;
       return doFuse(actorSide);
@@ -3102,6 +3102,7 @@
         meSide.hand.forEach(function(h){
           var card = CARD_BY_ID[h.cardId];
           if (card.effect.kind === 'coinPP') return;
+          if (card.id === '52') return; /* 聖剣の欠片は合体専用：場に出さず手札に温存する */
           if (barrierBlocks(card)) return;
           if (card.cost > meSide.pp) return;
           if (card.type === 'follower' && meSide.board.length >= 5) return;
@@ -3119,8 +3120,7 @@
           if (c.effect.kind === 'healLeader' || c.effect.kind === 'drawHeal'){
             if (meSide.hp < meSide.maxHp) score += 200;
           }
-          /* EX-キャリバーは条件を満たす時だけ出す（満たさなければ他に手が無い時用に大幅に下げる） */
-          if (c.id === '52ex' && !aiExFavorable(actorSide)) score -= 100000;
+          /* EX-キャリバーは通常スコア（コスト×10）で扱い、合体したらすぐ出す */
           cand.score = score;
         });
         candidates.sort(function(a,b){ return (b.score - a.score) || (b.card.cost - a.card.cost); });
@@ -3205,6 +3205,7 @@
         S.cpu.hand.forEach(function(h){
           var card = CARD_BY_ID[h.cardId];
           if (card.effect.kind === 'coinPP') return;
+          if (card.id === '52') return; /* 聖剣の欠片は合体専用：場に出さず手札に温存する */
           if (barrierBlocks(card)) return;
           if (card.cost > S.cpu.pp) return;
           if (card.type === 'follower' && S.cpu.board.length >= 5) return;
@@ -3225,8 +3226,7 @@
           if (c.effect.kind === 'healLeader' || c.effect.kind === 'drawHeal'){
             if (S.cpu.hp < S.cpu.maxHp) score += 200;
           }
-          /* EX-キャリバーは条件を満たす時だけ出す（満たさなければ他に手が無い時用に大幅に下げる） */
-          if (c.id === '52ex' && !aiExFavorable('cpu')) score -= 100000;
+          /* EX-キャリバーは通常スコア（コスト×10）で扱い、合体したらすぐ出す */
           cand.score = score;
         });
         candidates.sort(function(a,b){ return (b.score - a.score) || (b.card.cost - a.card.cost); });
