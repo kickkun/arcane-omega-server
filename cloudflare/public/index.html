@@ -1478,9 +1478,9 @@
       /* タブ列（カード上端から下へ約10px）に重ならないよう、手札内の
          スペル／神話タグは一段下げてタブ列の下に逃がす */
       .hcard .spell-tag,.hcard .mythic-tag{top:12px;}
-      /* ===== 手札の扇形：「なぞると広がる」操作 =====
+      /* ===== 手札の扇形：「なぞると広がる」「長押しで広がる」操作 =====
          対象は自分の手札だけ（CPU戦 .hand／オンライン戦 .ov-hand）。
-         なぞり中（コンテナに .fan-spread が付いている間）は、JS の
+         なぞり中／長押し中（コンテナに .fan-spread が付いている間）は、JS の
          applyFanLayout が指の位置に応じてカード間隔・浮き上がり・
          傾きを inline style で連続的に書き換える。ここではその
          変化を滑らかに見せるための短いトランジションと、横なぞりを
@@ -1548,6 +1548,35 @@
       @media (prefers-reduced-motion: reduce){
         #titleBg{transition:none;}
         .title-emblem .emblem-rotor{animation:none;}
+      }
+      /* ===== 長押しでブラウザメニューが出る問題への対策 =====
+         ゲーム内のカード画像・カード要素（手札 .hcard／オンライン手札 .ov-hcard、
+         場 .follower／.ov-unit、図鑑 .gcard、詳細シート .detail-art／.detail-card、
+         デッキ編集のサムネイル .dthumb と行 .drow、山札 .pile-card、裏面 .ov-cardback、
+         召喚士アバター .leader-avatar）について、長押しコールアウト・テキスト選択・
+         画像ドラッグを無効化する。contextmenu の抑止は末尾スクリプト側で行う。
+         入力欄（input／textarea 等）はこのセレクタに含まれないため、
+         名前入力・ルームコード入力・デッキコード貼り付けの選択／コピーは妨げない。
+         手札の長押し（扇の広げ）の前提として必要な対策で、通常のタップ・
+         なぞり・スクロールには影響しない。 */
+      .hcard,.follower,.gcard,.ov-hcard,.ov-unit,
+      .detail-art,.detail-card,.dthumb,.drow,
+      .pile-card,.ov-cardback,.leader-avatar{
+        -webkit-touch-callout:none;
+        -webkit-user-select:none;
+        user-select:none;
+      }
+      .hcard *,.follower *,.gcard *,.ov-hcard *,.ov-unit *,
+      .detail-art *,.detail-card *,.dthumb *,.drow *,
+      .pile-card *,.ov-cardback *,.leader-avatar *{
+        -webkit-touch-callout:none;
+        -webkit-user-select:none;
+        user-select:none;
+      }
+      .hcard img,.follower img,.gcard img,.ov-hcard img,.ov-unit img,
+      .detail-art img,.dthumb img,.leader-avatar img{
+        -webkit-user-drag:none;
+        user-drag:none;
       }
     </style>
   </head>
@@ -4848,19 +4877,26 @@
       container._fanKey = key;
       container._fanNodes = cards;
     }
-    /* ===== 手札の扇形：「なぞると広がる」操作 =====
+    /* ===== 手札の扇形：「なぞると広がる」「長押しで広がる」操作 =====
        自分の手札（CPU戦 #hand／オンライン戦 #ovHand 共通）の上で
-       指／マウスを横になぞると、なぞっている位置の近くだけ間隔が
-       広がって浮き上がり、離すと元のコンパクトな扇に戻る。
-       ・しきい値（10px）未満の動きは従来通りのタップとして扱い、
-         カード詳細／選択を開く。以上動いたらドラッグ扱いにし、
-         離した時に発火する click を1回だけ抑止する
+       指／マウスを横になぞるか、カードに指を置いて少し押し続けると、
+       その位置の近くだけ間隔が広がって浮き上がり、離すと元の
+       コンパクトな扇に戻る。広がり方の計算はどちらも applyFanLayout
+       の _fanSpread 経路で共通。
+       ・しきい値（10px）未満の動きで、長押し成立前に離したら従来
+         通りのタップとして扱い、カード詳細／選択を開く。以上動いたら
+         ドラッグ扱いにし、離した時に発火する click を1回だけ抑止する
          （fanClickSuppressed を各 click ハンドラの冒頭で確認）。
+       ・長押しは pointerdown から FAN_LONG_PRESS_MS（200ms）押し
+         続けたら成立し、その位置を中心に広がり始める。成立後に指を
+         滑らせれば中心が指に追随し、離せば click を抑止して扇に戻る。
+         途中で大きく動けば従来のなぞり（ドラッグ）が優先される。
        ・広がりの状態は container._fanSpread にだけ置き、ポインター
          操作からのみ変更する。再描画はこの値を読み直すだけなので、
          相手の行動などでは手札は動かない（震え対策と両立）。
        ・縦方向のスクロールはブラウザに任せ（touch-action: pan-y）、
          横なぞりだけをここで扱う。 */
+    var FAN_LONG_PRESS_MS = 200;
     var fanGesture = null;
     function fanFocusFromX(container, clientX){
       var centers = container._fanBaseCenters;
@@ -4885,13 +4921,34 @@
       }
       return false;
     }
+    function fanClearLongPressTimer(g){
+      if (g && g.longPressTimer){ clearTimeout(g.longPressTimer); g.longPressTimer = null; }
+    }
+    function fanStartLongPress(g){
+      g.longPressTimer = null;
+      if (fanGesture !== g || g.dragging || g.longPressed) return;
+      g.longPressed = true;
+      g.container.classList.add('fan-spread');
+      g.container._fanSpread = { focus: fanFocusFromX(g.container, g.lastX) };
+      applyFanLayout(g.container);
+    }
     function fanGestureMove(ev){
       if (!fanGesture || ev.pointerId !== fanGesture.pointerId) return;
       var g = fanGesture;
+      g.lastX = ev.clientX; g.lastY = ev.clientY;
+      if (g.longPressed){
+        /* 長押し成立後は、わずかな滑りでも広がりの中心が指に追随する
+           （しきい値は再適用しない） */
+        if (ev.cancelable) ev.preventDefault();
+        g.container._fanSpread = { focus: fanFocusFromX(g.container, ev.clientX) };
+        applyFanLayout(g.container);
+        return;
+      }
       var dx = ev.clientX - g.startX, dy = ev.clientY - g.startY;
       if (!g.dragging){
         if (Math.sqrt(dx * dx + dy * dy) < 10) return;
         g.dragging = true;
+        fanClearLongPressTimer(g);
         g.container.classList.add('fan-spread');
       }
       if (ev.cancelable) ev.preventDefault();
@@ -4902,10 +4959,11 @@
       if (!fanGesture || (ev && ev.pointerId !== fanGesture.pointerId)) return;
       var g = fanGesture;
       fanGesture = null;
+      fanClearLongPressTimer(g);
       window.removeEventListener('pointermove', fanGestureMove);
       window.removeEventListener('pointerup', fanGestureEnd);
       window.removeEventListener('pointercancel', fanGestureEnd);
-      if (!g.dragging){
+      if (!g.dragging && !g.longPressed){
         /* 戻りアニメーション中の再タップでクラス保持を引き継いだ場合は、
            外すタイマーを張り直す（タップ自体は通常通り処理される） */
         if (g.heldClass){
@@ -4918,7 +4976,7 @@
         return;
       }
       var c = g.container;
-      /* ドラッグ後の click（詳細／選択）を1回だけ抑止する */
+      /* ドラッグ／長押し後の click（詳細／選択）を1回だけ抑止する */
       c._fanSuppressUntil = Date.now() + 350;
       c._fanSpread = null;
       applyFanLayout(c);
@@ -4939,13 +4997,21 @@
           container._fanSpreadTimer = null;
           heldClass = container.classList.contains('fan-spread');
         }
-        fanGesture = {
+        var g = {
           container: container,
           pointerId: ev.pointerId,
           startX: ev.clientX, startY: ev.clientY,
+          lastX: ev.clientX, lastY: ev.clientY,
           dragging: false,
+          longPressed: false,
+          longPressTimer: null,
           heldClass: heldClass
         };
+        fanGesture = g;
+        /* 長押し判定：押し続けて FAN_LONG_PRESS_MS 経ったら、その位置を
+           中心に広げ始める。成立前に離せば通常のタップ、途中で大きく
+           動けば従来のなぞり（ドラッグ）が優先されタイマーは破棄される */
+        g.longPressTimer = setTimeout(function(){ fanStartLongPress(g); }, FAN_LONG_PRESS_MS);
         window.addEventListener('pointermove', fanGestureMove, { passive: false });
         window.addEventListener('pointerup', fanGestureEnd);
         window.addEventListener('pointercancel', fanGestureEnd);
@@ -7275,6 +7341,29 @@
       });
       /* 万一 rAF が来ない環境でも5秒で必ず外す */
       setTimeout(function(){ if (lo.parentNode) lo.parentNode.removeChild(lo); }, 5000);
+    })();
+    /* 長押しでブラウザメニューが出る問題への対策（イベント側）：
+       カード要素の上での contextmenu（長押しメニュー／右クリックメニュー）と
+       画像のドラッグ開始を抑止する。手札の長押しで扇を広げる操作の前提で、
+       タップ・なぞり・スクロールは従来どおり動く。
+       入力欄（input／textarea／select／contenteditable）の中では抑止しないので、
+       名前・ルームコード・デッキコードの選択／コピーは妨げない。 */
+    (function suppressCardContextMenu(){
+      var CARD_SEL = '.hcard,.follower,.gcard,.ov-hcard,.ov-unit,.detail-art,.detail-card,.dthumb,.drow,.pile-card,.ov-cardback,.leader-avatar';
+      function inEditable(t){
+        return !!(t && t.closest && t.closest('input,textarea,select,[contenteditable="true"]'));
+      }
+      function inCard(t){
+        return !!(t && t.closest && t.closest(CARD_SEL));
+      }
+      document.addEventListener('contextmenu', function(e){
+        if (inEditable(e.target)) return;
+        if (inCard(e.target)) e.preventDefault();
+      });
+      document.addEventListener('dragstart', function(e){
+        if (inEditable(e.target)) return;
+        if (inCard(e.target)) e.preventDefault();
+      });
     })();
     </script>
   </body>
