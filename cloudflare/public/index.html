@@ -961,7 +961,10 @@
          固定配置の透明キャンバスを盤面の上に重ねる。タップは完全に透過させ、
          盤面・モーダルの操作には一切干渉しない。読み込み失敗時は要素自体が
          生成されないため、従来表示と完全に同じになる。 */
-      #pixiFxCanvas{position:fixed; inset:0; pointer-events:none; z-index:93;}
+      /* width/height:100% が必須：キャンバスの表示サイズを必ずビューポートに
+         一致させる。無いと描画バッファ（解像度倍率込み）のピクセル数で表示され、
+         DPR>1 の端末でエフェクト全体が倍率分ズレてしまう */
+      #pixiFxCanvas{position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:93;}
       /* ===== カード詳細：キーワード説明 =====
          効果文・種別行の中のキーワード名だけをタップ可能なリンクにする。
          通常テキストはボタン化しない。 */
@@ -2236,7 +2239,10 @@
       if (HEADLESS) return;
       if (typeof window.PIXI === 'undefined') return; /* 読み込み失敗：無効化して従来動作 */
       try {
-        var app = new PIXI.Application({ backgroundAlpha: 0, antialias: true, autoStart: true, resizeTo: window, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+        /* autoDensity:true が必須：キャンバスのCSSサイズを論理サイズ（画面サイズ）に
+           設定させる。これが無いとバッファサイズのまま表示され、DPR>1 の端末で
+           getBoundingClientRect 由来の座標と描画位置が解像度倍率分ズレる */
+        var app = new PIXI.Application({ backgroundAlpha: 0, antialias: true, autoDensity: true, autoStart: true, resizeTo: window, resolution: Math.min(window.devicePixelRatio || 1, 2) });
         app.view.id = 'pixiFxCanvas';
         document.body.appendChild(app.view);
         pixiFx.app = app;
