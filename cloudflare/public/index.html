@@ -1670,8 +1670,93 @@
       @keyframes fxCrackIn{0%{opacity:0; transform:scale(.94);}100%{opacity:1; transform:scale(1);}}
       .fx-hatch-shadow{
         position:fixed; z-index:92; pointer-events:none; border-radius:50%;
-        transform:translate(-50%,-50%); filter:blur(1px);
-        background:radial-gradient(ellipse at center, rgba(8,3,18,.97) 0%, rgba(24,10,48,.78) 45%, rgba(40,16,80,.28) 68%, transparent 76%);
+        transform:translate(-50%,-50%);
+        /* 黒いシルエットが暗い背景に沈まないよう、濃紫の縁光リングと
+           オーラ（外側のグロー＋内側の紫の滲み）で輪郭を読めるようにする */
+        background:radial-gradient(ellipse at center, rgba(10,4,22,.98) 0%, rgba(26,10,52,.92) 42%, rgba(88,32,160,.6) 63%, rgba(147,51,234,.3) 74%, transparent 82%);
+        border:1.5px solid rgba(196,141,255,.6);
+        box-shadow:0 0 18px rgba(147,51,234,.85), 0 0 46px rgba(88,28,135,.55), inset 0 0 16px rgba(168,85,247,.55);
+      }
+      /* 目元光：影の上部に2つの紫白の光点を置き、生き物の「顔」として読ませる */
+      .fx-hatch-shadow::before,.fx-hatch-shadow::after{
+        content:''; position:absolute; top:33%; width:10%; height:13%; border-radius:50%;
+        background:radial-gradient(circle, #ffffff 0%, #d8b4fe 45%, rgba(168,85,247,.9) 78%, transparent 100%);
+        box-shadow:0 0 10px 3px rgba(192,132,252,.9);
+      }
+      .fx-hatch-shadow::before{left:31%;}
+      .fx-hatch-shadow::after{right:31%;}
+      /* ===== 召喚台（中央ステージの常駐台座） =====
+         対戦中は中央ステージに常時表示する丸型の石／光の台座。
+         position:fixed でステージカード（z-index:90）の足元に敷く。
+         z-index:88 は魔法陣（89）より下。
+         神話は .mythic で光柱・金の縁・強いグローを足して豪華にする。
+         常駐台座（.persistent）は普段は控えめな明るさで置かれ、召喚時に
+         .active が付いて従来どおり光り、カードが場へスライドした後は
+         消えずに待機状態へ戻る。出現の小さな動きは JS の WAAPI が担当。
+         演出チェック画面では #fxStage 内の .fxcheck-ped が同じ見た目で常駐する。 */
+      .fx-pedestal{position:fixed; z-index:88; pointer-events:none; transform:translate(-50%,0);}
+      .fx-pedestal .ped-pillar{
+        position:absolute; left:50%; bottom:78%; transform:translateX(-50%);
+        width:58%; height:120px; display:none;
+        background:linear-gradient(180deg, transparent, rgba(177,140,255,.16) 62%, rgba(236,205,126,.34));
+        filter:blur(3px);
+      }
+      .fx-pedestal.mythic .ped-pillar{display:block;}
+      .fx-pedestal .ped-glow{
+        position:absolute; left:50%; top:-4px; transform:translateX(-50%);
+        width:122%; height:36px; border-radius:50%; filter:blur(2px);
+        background:radial-gradient(ellipse at center, rgba(236,205,126,.5), rgba(236,205,126,.13) 55%, transparent 72%);
+      }
+      .fx-pedestal.mythic .ped-glow{
+        background:radial-gradient(ellipse at center, rgba(255,233,168,.65), rgba(147,51,234,.28) 52%, transparent 74%);
+      }
+      .fx-pedestal .ped-top{
+        position:relative; height:16px; border-radius:50%;
+        background:radial-gradient(ellipse at 50% 38%, #4a5872, #232c3e 62%, #141a28);
+        border:1.5px solid rgba(236,205,126,.75);
+        box-shadow:inset 0 0 0 3px rgba(0,0,0,.35), inset 0 0 12px rgba(236,205,126,.35), 0 0 14px rgba(236,205,126,.35);
+      }
+      .fx-pedestal .ped-top::after{
+        content:''; position:absolute; inset:3px 13%; border-radius:50%;
+        border:1px solid rgba(236,205,126,.55);
+        box-shadow:inset 0 0 8px rgba(236,205,126,.3);
+      }
+      .fx-pedestal.mythic .ped-top{
+        border-color:#ffe9a8; height:18px;
+        background:radial-gradient(ellipse at 50% 38%, #5d4a86, #2c2145 62%, #171029);
+        box-shadow:inset 0 0 0 3px rgba(0,0,0,.35), inset 0 0 14px rgba(177,140,255,.55), 0 0 22px rgba(236,205,126,.6), 0 0 34px rgba(147,51,234,.4);
+      }
+      .fx-pedestal .ped-body{
+        margin:-8px auto 0; width:78%; height:20px;
+        clip-path:polygon(0 0, 100% 0, 87% 100%, 13% 100%);
+        background:linear-gradient(180deg, #2c3648, #171e2c 70%, #10151f);
+        box-shadow:inset 0 -6px 10px rgba(0,0,0,.5);
+      }
+      .fx-pedestal.mythic .ped-body{
+        height:30px;
+        background:linear-gradient(180deg, #4a3a75, #241a42 55%, #150e2a);
+      }
+      /* 常駐台座の待機／点灯状態：待機時は胴を低くして丸い天板だけが
+         目立つ形にし、明るさも落として背景の隠れを最小限に抑える。
+         召喚時に .active が付くと従来の明るさ・高さに戻って光る */
+      .fx-pedestal.persistent{
+        transition:opacity .38s ease, filter .38s ease, width .38s ease, left .38s ease, top .38s ease;
+        filter:brightness(.66) saturate(.72);
+        opacity:.58;
+      }
+      .fx-pedestal.persistent .ped-body{height:11px; opacity:.8; transition:height .38s ease, opacity .38s ease;}
+      .fx-pedestal.persistent.active{filter:none; opacity:1;}
+      .fx-pedestal.persistent.active .ped-body{height:20px; opacity:1;}
+      .fx-pedestal.persistent.mythic.active .ped-body{height:30px;}
+      .fx-pedestal.persistent.ped-hidden{opacity:0 !important; visibility:hidden;}
+      /* 演出チェック画面内の常駐台座（ステージ内の絶対配置で同じ見た目を保つ） */
+      .fx-pedestal.fxcheck-ped{
+        position:absolute; left:50%; top:179px; width:196px; z-index:1;
+        transform:translateX(-50%);
+      }
+      @media (prefers-reduced-motion: reduce){
+        .fx-pedestal.persistent{transition:none;}
+        .fx-pedestal.persistent .ped-body{transition:none;}
       }
       /* 小〜中規模の画面シェイク（ティアマトの咆哮／アギト孵化用。
          フィニッシュ専用の body.fx-impact とは別系統で、フラッシュは伴わない） */
@@ -2182,6 +2267,7 @@
         <p class="sim-note">召喚と神話カードの登場・孵化エフェクトを、対戦をしなくても実物のカードアートで再生できます。ボタンを押すたびに、上のステージでそのまま再生されます。</p>
         <div id="fxStage">
           <div class="fx-stage-veil"></div>
+          <div class="fx-pedestal persistent fxcheck-ped" aria-hidden="true"><div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-top"></div><div class="ped-body"></div></div>
           <p id="fxStageCaption">ボタンを押すと、ここで演出が再生されます</p>
           <div class="fx-field">
             <span class="fx-field-label">場</span>
@@ -3108,8 +3194,8 @@
       var r = el.getBoundingClientRect();
       if (!r.width) return;
       var cx = r.left + r.width / 2;
-      pixiBurst(cx, r.top + r.height * 0.62, { count: 20, rise: true, power: 1 });
-      pixiRing(cx, r.bottom - 3, { maxR: Math.max(46, r.width * 0.72), dur: 650 });
+      pixiBurst(cx, r.top + r.height * 0.62, { count: 28, rise: true, power: 1.2 });
+      pixiRing(cx, r.bottom - 3, { maxR: Math.max(52, r.width * 0.95), dur: 700 });
     }
     /* フィニッシュ着弾時：金と白の大きな粒子バースト＋白い輪 */
     function pixiFinishAt(el){
@@ -3168,9 +3254,9 @@
         var p = Math.min(1, t / 0.22);
         var a = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
         var L = len * (0.35 + 0.65 * p);
-        gfx.lineStyle(8, color, 0.30 * a);
+        gfx.lineStyle(12, color, 0.32 * a);
         gfx.moveTo(cx - dx * L / 2, cy - dy * L / 2); gfx.lineTo(cx + dx * L / 2, cy + dy * L / 2);
-        gfx.lineStyle(3.2, 0xffffff, 0.95 * a);
+        gfx.lineStyle(4.6, 0xffffff, 0.95 * a);
         gfx.moveTo(cx - dx * L / 2, cy - dy * L / 2); gfx.lineTo(cx + dx * L / 2, cy + dy * L / 2);
       });
     }
@@ -3194,65 +3280,108 @@
       });
     }
     /* 空から降る剣（EX-キャリバー）：白い刃＋金の鍔・柄を1枚の Graphics に描き、
-       前半で加速しながら突き立つ位置まで落とす */
+       前半で加速しながら突き立つ位置まで落とす。剣はカード並み〜カードより
+       大きく（ステージカードの高さ基準で約1.2倍）描く */
     function pixiSwordFx(cx, cy, h, dur){
-      var startY = cy - h * 1.6, endY = cy - h * 0.05;
+      var S = Math.max(1.6, Math.min(2.4, h / 76));
+      var startY = cy - h * 2.3, endY = cy - h * 0.05;
       pixiAnim(dur, function(gfx, t){
         var p = Math.min(1, t / 0.42); p = p * p;
         gfx.clear();
         gfx.position.set(cx, startY + (endY - startY) * p);
         gfx.alpha = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
-        gfx.beginFill(0xffffff, 0.95); gfx.lineStyle(1.5, 0xeccd7e, 0.9);
-        gfx.moveTo(-4.5, -42); gfx.lineTo(4.5, -42); gfx.lineTo(0, 34); gfx.closePath(); gfx.endFill();
-        gfx.beginFill(0xeccd7e, 1); gfx.drawRect(-14, -47, 28, 5.5); gfx.endFill();
-        gfx.beginFill(0xc9a24b, 1); gfx.drawRect(-2.6, -60, 5.2, 13); gfx.endFill();
-        gfx.beginFill(0xfff3c4, 1); gfx.drawCircle(0, -63, 3.6); gfx.endFill();
+        gfx.beginFill(0xffffff, 0.95); gfx.lineStyle(1.5 * S, 0xeccd7e, 0.9);
+        gfx.moveTo(-4.5 * S, -42 * S); gfx.lineTo(4.5 * S, -42 * S); gfx.lineTo(0, 34 * S); gfx.closePath(); gfx.endFill();
+        gfx.beginFill(0xeccd7e, 1); gfx.drawRect(-14 * S, -47 * S, 28 * S, 5.5 * S); gfx.endFill();
+        gfx.beginFill(0xc9a24b, 1); gfx.drawRect(-2.6 * S, -60 * S, 5.2 * S, 13 * S); gfx.endFill();
+        gfx.beginFill(0xfff3c4, 1); gfx.drawCircle(0, -63 * S, 3.6 * S); gfx.endFill();
       });
     }
-    /* 039 セレスティア：光柱＋足元の浄化の波紋（白〜金） */
+    /* 039 セレスティア：光柱＋足元の浄化の波紋（白〜金）。カード枠を大きくはみ出す規模 */
     function fxCelestiaFx(cx, cy, feet, w, h){
-      pixiBeamFx(cx, feet - h * 2.7, feet + 4, w * 0.52, [0xffeeb0, 0xfff6da], 980);
-      pixiRing(cx, feet, { maxR: w * 1.1, dur: 780, color: 0xffffff });
-      setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 0.85, dur: 700, color: 0xeccd7e }); }, 170);
-      pixiBurst(cx, feet - 8, { count: 24, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.15 });
+      pixiBeamFx(cx, feet - h * 3.4, feet + 4, w * 0.82, [0xffeeb0, 0xfff6da], 980);
+      pixiRing(cx, feet, { maxR: w * 1.75, dur: 820, color: 0xffffff });
+      setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.4, dur: 740, color: 0xeccd7e }); }, 170);
+      pixiBurst(cx, feet - 8, { count: 38, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 });
     }
-    /* 046 ミラージュ：赤い斬撃2対（交差×2回）。残像は DOM 側の mirageEcho が担当 */
+    /* 046 ミラージュ：赤い斬撃を大きく連続で走らせる（交差×3回）。残像は DOM 側の mirageEcho が担当 */
     function fxMirageFx(cx, cy, w, h){
-      var len = Math.max(w, h) * 1.9;
-      setTimeout(function(){ pixiSlashFx(cx, cy, -33, len, 0xff4a3c, 380); }, 40);
-      setTimeout(function(){ pixiSlashFx(cx, cy, 33, len, 0xff4a3c, 380); }, 170);
-      setTimeout(function(){ pixiSlashFx(cx, cy - 10, 33, len, 0xff6a4a, 380); }, 430);
-      setTimeout(function(){ pixiSlashFx(cx, cy + 8, -33, len, 0xff6a4a, 380); }, 560);
-      setTimeout(function(){ pixiBurst(cx, cy, { count: 14, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.1 }); }, 300);
+      var len = Math.max(w, h) * 2.9;
+      setTimeout(function(){ pixiSlashFx(cx, cy, -38, len, 0xff4a3c, 360); }, 30);
+      setTimeout(function(){ pixiSlashFx(cx, cy, 38, len, 0xff4a3c, 360); }, 140);
+      setTimeout(function(){ pixiSlashFx(cx, cy - 14, 24, len * 1.05, 0xff6a4a, 360); }, 280);
+      setTimeout(function(){ pixiSlashFx(cx, cy + 12, -24, len * 1.05, 0xff6a4a, 360); }, 400);
+      setTimeout(function(){ pixiSlashFx(cx, cy - 6, -38, len, 0xff8a5c, 360); }, 530);
+      setTimeout(function(){ pixiSlashFx(cx, cy + 6, 38, len, 0xff8a5c, 360); }, 640);
+      setTimeout(function(){ pixiBurst(cx, cy, { count: 22, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.5 }); }, 300);
     }
-    /* 048 ダーククイーン：紫の鎖が巻きつくように集まり、最後に紫の閃光 */
+    /* 048 ダーククイーン：紫の鎖が大きく巻きつくように集まり、最後に紫の閃光 */
     function fxDarkQueenFx(cx, cy, w, h){
-      pixiChainsFx(cx, cy, Math.max(w, h) * 0.95, 900);
+      pixiChainsFx(cx, cy, Math.max(w, h) * 1.5, 900);
       setTimeout(function(){
-        pixiBurst(cx, cy, { count: 18, colors: [0xc39bff, 0x8a5cff, 0xffffff], power: 1.15 });
-        pixiRing(cx, cy, { maxR: Math.max(w, h) * 0.8, dur: 520, color: 0xb18cff });
+        pixiBurst(cx, cy, { count: 28, colors: [0xc39bff, 0x8a5cff, 0xffffff], power: 1.5 });
+        pixiRing(cx, cy, { maxR: Math.max(w, h) * 1.2, dur: 560, color: 0xb18cff });
       }, 780);
     }
-    /* 051 ティアマト：咆哮の衝撃波リング（紅→蒼）＋粉塵＋画面の揺れ */
+    /* 051 ティアマト：咆哮の衝撃波リング（紅→蒼）＋粉塵＋画面の揺れ。一回り大きく */
     function fxTiamatFx(cx, cy, feet, w, h){
-      pixiRing(cx, feet, { maxR: w * 1.5, dur: 800, color: 0xff6a4a });
-      setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.25, dur: 750, color: 0x5aa2ff }); }, 150);
-      pixiBurst(cx, feet - 4, { count: 30, colors: [0xd8c6a5, 0xa08b6d, 0xefe4cc], power: 1.7, size: 1.2 });
+      pixiRing(cx, feet, { maxR: w * 2.3, dur: 840, color: 0xff6a4a });
+      setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.95, dur: 780, color: 0x5aa2ff }); }, 150);
+      pixiBurst(cx, feet - 4, { count: 42, colors: [0xd8c6a5, 0xa08b6d, 0xefe4cc], power: 2.1, size: 1.35 });
       fxQuake('fx-quake-md', 560);
     }
-    /* 52ex EX-キャリバー：空から剣の光が降り注ぎ、突き立つ光柱ときらめき */
+    /* 52ex EX-キャリバー：空から巨大な剣がドーンと落ち、着弾の衝撃波も大きく */
     function fxExcaliburFx(cx, cy, feet, w, h){
-      pixiBeamFx(cx, feet - h * 2.7, feet + 4, w * 0.3, [0xeccd7e, 0xfff6da], 900);
+      pixiBeamFx(cx, feet - h * 3.2, feet + 4, w * 0.52, [0xeccd7e, 0xfff6da], 900);
       pixiSwordFx(cx, cy, h, 950);
       setTimeout(function(){
-        pixiBurst(cx, feet - h * 0.2, { count: 22, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 1.35 });
-        pixiRing(cx, feet, { maxR: w * 0.95, dur: 650, color: 0xffd76a });
+        pixiBurst(cx, feet - h * 0.2, { count: 34, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 1.8 });
+        pixiRing(cx, feet, { maxR: w * 1.65, dur: 720, color: 0xffd76a });
+        pixiRing(cx, feet, { maxR: w * 1.15, dur: 600, color: 0xffffff });
+        fxQuake('fx-quake-sm', 480);
       }, 400);
     }
-    /* 054 ロンギヌス：槍の一閃。鋭い光のラインが斜めに一筋走る */
+    /* 光の槍：カードの周りをぐるっと一周する。円形の軌跡（尾を引く弧）と
+       槍の残像を残しながら、槍本体が接線方向を向いて周回する */
+    function pixiOrbitSpearFx(cx, cy, R, dur){
+      pixiAnim(dur, function(gfx, t){
+        gfx.clear();
+        var fade = t > 0.78 ? Math.max(0, 1 - (t - 0.78) / 0.22) : 1;
+        var ang = -Math.PI / 2 + t * Math.PI * 2;
+        function spearAt(a, alpha, sc){
+          var hx = cx + Math.cos(a) * R, hy = cy + Math.sin(a) * R * 0.92;
+          var tx = -Math.sin(a), ty = Math.cos(a) * 0.92;
+          var tl = Math.sqrt(tx * tx + ty * ty); tx /= tl; ty /= tl;
+          var px = -ty, py = tx;
+          gfx.lineStyle(3.2 * sc, 0xf2e7bd, alpha);
+          gfx.moveTo(hx - tx * 24 * sc, hy - ty * 24 * sc);
+          gfx.lineTo(hx + tx * 9 * sc, hy + ty * 9 * sc);
+          gfx.beginFill(0xffffff, alpha); gfx.lineStyle(1, 0xeccd7e, alpha);
+          gfx.moveTo(hx + tx * 27 * sc, hy + ty * 27 * sc);
+          gfx.lineTo(hx + tx * 8 * sc + px * 5 * sc, hy + ty * 8 * sc + py * 5 * sc);
+          gfx.lineTo(hx + tx * 8 * sc - px * 5 * sc, hy + ty * 8 * sc - py * 5 * sc);
+          gfx.closePath(); gfx.endFill();
+        }
+        /* 軌跡：頭の後ろに尾を引く弧を、細くなる多段ラインで描く */
+        for (var i = 0; i < 30; i++){
+          var f = i / 30;
+          var a2 = ang - f * 2.1;
+          var a3 = a2 - 0.075;
+          gfx.lineStyle(1.5 + 5.5 * (1 - f), 0xf2e7bd, (1 - f) * 0.6 * fade);
+          gfx.moveTo(cx + Math.cos(a2) * R, cy + Math.sin(a2) * R * 0.92);
+          gfx.lineTo(cx + Math.cos(a3) * R, cy + Math.sin(a3) * R * 0.92);
+        }
+        /* 残像（少し遅れた位置に淡く）→ 本体の順に描く */
+        spearAt(ang - 0.95, 0.18 * fade, 1);
+        spearAt(ang - 0.5, 0.34 * fade, 1);
+        spearAt(ang, 0.98 * fade, 1.18);
+      });
+    }
+    /* 054 ロンギヌス：光の槍がカードの周りをぐるっと一周し、頂点で閃光 */
     function fxLonginusFx(cx, cy, w, h){
-      pixiSlashFx(cx, cy, -38, Math.max(w, h) * 2.1, 0xf2e7bd, 480);
-      setTimeout(function(){ pixiBurst(cx, cy, { count: 10, colors: [0xffffff, 0xf2e7bd], power: 0.9 }); }, 120);
+      var R = Math.max(w, h) * 1.02;
+      pixiOrbitSpearFx(cx, cy, R, 840);
+      setTimeout(function(){ pixiBurst(cx, cy - R * 0.92, { count: 16, colors: [0xffffff, 0xf2e7bd, 0xeccd7e], power: 1.2 }); }, 800);
     }
     /* ===== 常駐オーラ（鉄壁の盾膜／速攻の風） ===== */
     function pixiDrawGuard(a, w, h){
@@ -3555,7 +3684,7 @@
       var r = stageEl.getBoundingClientRect();
       if (!r.width) return;
       var reduced = stageReducedMotion;
-      var size = Math.max(r.width, r.height) * (mythic ? 1.9 : 1.5);
+      var size = Math.max(r.width, r.height) * (mythic ? 2.6 : 1.72);
       var dur = reduced ? 300 : (mythic ? 1150 : 680);
       var wrap = document.createElement('div');
       wrap.className = 'fx-magic-circle';
@@ -3588,7 +3717,7 @@
         g.removeAttribute('data-fol'); g.removeAttribute('data-ov-unit'); g.removeAttribute('data-ov-side');
         g.classList.remove('fx-spawn', 'fx-spawn-mythic');
         g.classList.add('fx-mirage-echo');
-        g.style.left = (r.left + sgn * 15) + 'px';
+        g.style.left = (r.left + sgn * 26) + 'px';
         g.style.top = r.top + 'px';
         g.style.width = r.width + 'px';
         g.style.height = r.height + 'px';
@@ -3602,6 +3731,182 @@
         setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 1050 + i * 130);
       });
     }
+    /* ===== 召喚台（一時表示版：演出チェック画面の再生用） =====
+       ステージカードの足元に石／光の台座を敷く。魔法陣と同じタイミングで
+       フワッと現れ、指定時間で退場する。実戦の台座は下の常駐版
+       （stagePedActivate）が担い、こちらは演出チェック画面で
+       「待機中の常駐台座の上に光る台座を重ねる」ために残してある。
+       神話は .mythic で光柱付きの豪華版になる。
+       戻り値は台座要素（_dismiss(ms) で退場）。 */
+    function summonPedestal(cx, feetY, w, mythic){
+      if (HEADLESS) return null;
+      var ped = document.createElement('div');
+      ped.className = 'fx-pedestal' + (mythic ? ' mythic' : '');
+      ped.style.left = cx + 'px';
+      ped.style.top = (feetY - 7) + 'px';
+      ped.style.width = Math.round(w * (mythic ? 2.05 : 1.65)) + 'px';
+      ped.innerHTML = '<div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-top"></div><div class="ped-body"></div>';
+      document.body.appendChild(ped);
+      try {
+        ped.animate([
+          { opacity: 0, transform: 'translate(-50%,12px) scale(.7)' },
+          { opacity: 1, transform: 'translate(-50%,0) scale(1)' }
+        ], { duration: stageReducedMotion ? 120 : 300, easing: 'ease-out', fill: 'forwards' });
+      } catch (e) { ped.style.opacity = '1'; }
+      var gone = false;
+      ped._dismiss = function(ms){
+        if (gone) return;
+        gone = true;
+        var d = ms || 320;
+        try {
+          ped.animate([
+            { opacity: 1, transform: 'translate(-50%,0) scale(1)' },
+            { opacity: 0, transform: 'translate(-50%,8px) scale(.86)' }
+          ], { duration: d, easing: 'ease-in', fill: 'forwards' });
+        } catch (e) {}
+        setTimeout(function(){ if (ped.parentNode) ped.parentNode.removeChild(ped); }, d + 60);
+      };
+      ped._removeNow = function(){ gone = true; if (ped.parentNode) ped.parentNode.removeChild(ped); };
+      return ped;
+    }
+    /* ===== 召喚台の常駐化（対戦中は置きっぱなし） =====
+       scope（cpu／ov）ごとに台座を1つだけ生成し、対戦画面が見えている
+       間は中央ステージの定位置に控えめな明るさで置き続ける。位置と幅は
+       盤面の実測から決め、再描画・リサイズ・スクロールに追随させる。
+       召喚時は stageProcess が stagePedActivate で台座を点灯させ
+       （神話は .mythic の光柱付き豪華版）、カードが場へスライドし始める
+       タイミングで stagePedDeactivate が待機状態へ戻す（台は消えない）。
+       表示可否はオーバーレイの開閉を MutationObserver で拾って追随する。
+       HEADLESS（テストプレイ）では生成も表示もしない。 */
+    var stagePeds = { cpu: null, ov: null };
+    var stagePedObserverReady = false;
+    var STAGE_PED_HIDE_OVERLAYS = ['startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay'];
+    function stagePedEnsure(scope){
+      if (HEADLESS) return null;
+      var ped = stagePeds[scope];
+      if (ped) return ped;
+      ped = document.createElement('div');
+      ped.className = 'fx-pedestal persistent ped-hidden';
+      ped.setAttribute('aria-hidden', 'true');
+      ped.innerHTML = '<div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-top"></div><div class="ped-body"></div>';
+      document.body.appendChild(ped);
+      stagePeds[scope] = ped;
+      return ped;
+    }
+    /* 台座の基準寸法：ステージカード（通常倍率1.3）の足元位置と待機時の幅。
+       オンラインのユニットは実物があればその実測、無ければ標準サイズで代用 */
+    function stagePedMetrics(scope){
+      var center = stageCenterFor(scope);
+      var cardW, cardH;
+      if (scope === 'ov'){
+        var u = document.querySelector('#ovMyField .ov-unit') || document.querySelector('#ovOppField .ov-unit');
+        if (u){ var ur = u.getBoundingClientRect(); cardW = ur.width; cardH = ur.height; }
+        else { cardW = 64; cardH = 98; }
+      } else {
+        var b = document.getElementById('myBoard') || document.getElementById('cpuBoard');
+        var br = b ? b.getBoundingClientRect() : { width: 0, height: 0 };
+        cardW = br.width ? (br.width - 24) / 5 : 84;
+        cardH = br.height || 110;
+      }
+      return { x: center.x, feetY: center.y + cardH * 1.3 / 2, idleW: Math.round(cardW * 2.0) };
+    }
+    function stagePedLayout(scope){
+      var ped = stagePeds[scope];
+      if (!ped) return;
+      var m = stagePedMetrics(scope);
+      var cx = (ped._active && ped._cx != null) ? ped._cx : m.x;
+      var feetY = (ped._active && ped._feetY != null) ? ped._feetY : m.feetY;
+      ped.style.left = cx + 'px';
+      ped.style.top = (feetY - 7) + 'px';
+      if (!ped._active) ped.style.width = m.idleW + 'px';
+    }
+    /* 対戦画面が見えている時だけ台座を出す。タイトル・結果・各種モーダル
+       表示中は隠す（カード詳細シートは台座より前面に出るため対象外） */
+    function stagePedScopeVisible(scope){
+      if (HEADLESS) return false;
+      var onlineShown = document.getElementById('onlineOverlay').classList.contains('show');
+      if (scope === 'ov'){
+        if (!onlineShown) return false;
+        var g = document.getElementById('ovGame');
+        return !!(g && g.style.display !== 'none');
+      }
+      if (onlineShown) return false;
+      for (var i = 0; i < STAGE_PED_HIDE_OVERLAYS.length; i++){
+        var o = document.getElementById(STAGE_PED_HIDE_OVERLAYS[i]);
+        if (o && o.classList.contains('show')) return false;
+      }
+      return (typeof S !== 'undefined' && !!S && !!S.me);
+    }
+    function stagePedSync(){
+      if (HEADLESS) return;
+      stagePedInitObserver();
+      ['cpu','ov'].forEach(function(scope){
+        if (!stagePedScopeVisible(scope)){
+          var p0 = stagePeds[scope];
+          if (p0) p0.classList.add('ped-hidden');
+          return;
+        }
+        var ped = stagePedEnsure(scope);
+        if (!ped) return;
+        stagePedLayout(scope);
+        ped.classList.remove('ped-hidden');
+      });
+    }
+    function stagePedInitObserver(){
+      if (stagePedObserverReady || !window.MutationObserver) return;
+      stagePedObserverReady = true;
+      var obs = new MutationObserver(function(){ stagePedSync(); });
+      STAGE_PED_HIDE_OVERLAYS.concat(['onlineOverlay']).forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+      });
+      var ovGameEl = document.getElementById('ovGame');
+      if (ovGameEl) obs.observe(ovGameEl, { attributes: true, attributeFilter: ['style'] });
+    }
+    /* 召喚時の点灯：常駐台座をステージカードの足元に合わせて光らせる。
+       従来の一時台座と同じ _dismiss／_removeNow を持たせてあり、呼び出し側の
+       後始末は「要素を消す」ではなく「待機状態へ戻す」動作になる */
+    function stagePedActivate(scope, cx, feetY, w, mythic){
+      var ped = stagePedEnsure(scope);
+      if (!ped) return null;
+      ped._active = true; ped._cx = cx; ped._feetY = feetY;
+      ped.classList.toggle('mythic', !!mythic);
+      ped.style.left = cx + 'px';
+      ped.style.top = (feetY - 7) + 'px';
+      ped.style.width = Math.round(w * (mythic ? 2.05 : 1.65)) + 'px';
+      ped.classList.remove('ped-hidden');
+      ped.classList.add('active');
+      if (!stageReducedMotion){
+        try {
+          ped.animate([
+            { transform: 'translate(-50%,10px) scale(.86)' },
+            { transform: 'translate(-50%,0) scale(1)' }
+          ], { duration: 300, easing: 'ease-out' });
+        } catch (e) {}
+      }
+      ped._dismiss = function(){ stagePedDeactivate(scope); };
+      ped._removeNow = function(){ stagePedDeactivate(scope); };
+      return ped;
+    }
+    function stagePedDeactivate(scope){
+      var ped = stagePeds[scope];
+      if (!ped) return;
+      ped._active = false; ped._cx = null; ped._feetY = null;
+      ped.classList.remove('active');
+      ped.classList.remove('mythic');
+      stagePedLayout(scope);
+      stagePedSync();
+    }
+    window.addEventListener('resize', function(){ stagePedSync(); });
+    ['app','onlineOverlay'].forEach(function(id){
+      var sc = document.getElementById(id);
+      if (sc) sc.addEventListener('scroll', function(){
+        ['cpu','ov'].forEach(function(s){
+          var p = stagePeds[s];
+          if (p && !p.classList.contains('ped-hidden')) stagePedLayout(s);
+        });
+      }, { passive: true });
+    });
     /* ステージ出現時の演出フック。全カード共通で魔法陣をカードの背後に敷き、
        神話カードはカードID別の専用エフェクトを中央ステージ上で大きく出す。
        個別エフェクトを持つ神話はステージ滞在を少し延ばす（stageProcess 側）。
@@ -3693,7 +3998,7 @@
       var target = el.getBoundingClientRect();
       if (!target.width){ done(); return; }
       var center = stageCenterFor(item.scope);
-      var scale = item.mythic ? 1.38 : 1.24; /* ステージでは通常より少し大きめ（神話はさらに大きく） */
+      var scale = item.mythic ? 1.55 : 1.3; /* ステージでは通常より大きめ（神話は枠を大きくはみ出す規模） */
       var w = target.width * scale, h = target.height * scale;
       var clone = el.cloneNode(true);
       clone.removeAttribute('id');
@@ -3707,6 +4012,9 @@
       clone.style.height = h + 'px';
       clone.style.visibility = 'visible';
       document.body.appendChild(clone);
+      /* 召喚台：常駐台座をカードの足元に合わせて点灯させる
+         （スライド開始時に待機状態へ戻し、台自体は消えない） */
+      var ped = stagePedActivate(item.scope, center.x, center.y + h / 2, w, item.mythic);
       /* Pixi召喚エフェクトはステージ出現のタイミングで発火させる */
       stageSummonFx(item.cardId, clone, item.mythic);
       /* 滞在：通常カードは0.3秒前後、神話は少し長め。個別専用エフェクトを持つ
@@ -3715,8 +4023,9 @@
       var dwell = item.mythic ? (STAGE_FX_IDS[String(item.cardId)] ? 800 : 620) : 300;
       if (stageQueue.length >= 2) dwell = Math.min(dwell, 140);
       setTimeout(function(){
+        if (ped) ped._dismiss(360); /* 台は消えず、待機状態（控えめな明るさ）へ戻る */
         var el2 = stageFindEl(item.key);
-        if (!el2){ if (clone.parentNode) clone.parentNode.removeChild(clone); done(); return; }
+        if (!el2){ if (clone.parentNode) clone.parentNode.removeChild(clone); if (ped) ped._removeNow(); done(); return; }
         el2.style.visibility = 'hidden';
         var t2 = el2.getBoundingClientRect();
         var dx = (t2.left + t2.width / 2) - center.x;
@@ -3820,8 +4129,8 @@
         shadow.className = 'fx-hatch-shadow';
         shadow.style.left = fx.cx + 'px';
         shadow.style.top = fx.cy + 'px';
-        shadow.style.width = (fx.w * 0.62) + 'px';
-        shadow.style.height = (fx.h * 0.4) + 'px';
+        shadow.style.width = (fx.w * 0.82) + 'px';
+        shadow.style.height = (fx.h * 0.52) + 'px';
         document.body.appendChild(shadow);
         try {
           shadow.animate([
@@ -3868,9 +4177,9 @@
         setTimeout(function(){ el.classList.remove('fx-spawn-mythic'); }, 1050);
       }
       if (pixiFx.enabled && !pixiReducedMotion){
-        pixiRing(fx.cx, fx.feet, { maxR: fx.w * 1.15, dur: 700, color: 0xb18cff });
-        pixiRing(fx.cx, fx.feet, { maxR: fx.w * 0.8, dur: 550, color: 0xeccd7e });
-        pixiBurst(fx.cx, fx.cy, { count: 26, colors: [0xb18cff, 0x8a5cff, 0xffffff], power: 1.4 });
+        pixiRing(fx.cx, fx.feet, { maxR: fx.w * 1.7, dur: 760, color: 0xb18cff });
+        pixiRing(fx.cx, fx.feet, { maxR: fx.w * 1.25, dur: 600, color: 0xeccd7e });
+        pixiBurst(fx.cx, fx.cy, { count: 38, colors: [0xb18cff, 0x8a5cff, 0xffffff], power: 1.8 });
       }
       fxQuake('fx-quake-md', 560);
       sePlay('summonMythic');
@@ -4001,6 +4310,7 @@
       fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       stageRehide('cpu'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
       hatchRehide('cpu'); /* 孵化演出中の実要素も同様に隠し直す */
+      stagePedSync(); /* 召喚台（常駐）：対戦中は中央ステージに表示し続け、位置を盤面に合わせる */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxCpuPrev = fxSnapshotCpu();
       fxCpuPrevCid = fxCpuCidMap();
@@ -7169,7 +7479,7 @@
       { key:'m48',    cardId:48,     mythic:true,  label:'ダーククイーン（048）',   desc:'登場エフェクト：奪う紫の鎖' },
       { key:'m51',    cardId:51,     mythic:true,  label:'ティアマト（051）',       desc:'登場エフェクト：咆哮と衝撃波' },
       { key:'m52ex',  cardId:'52ex', mythic:true,  label:'EX-キャリバー（52ex）',   desc:'登場エフェクト：合体の剣光が降る' },
-      { key:'m54',    cardId:54,     mythic:true,  label:'ロンギヌス（054）',       desc:'登場エフェクト：槍の一閃' },
+      { key:'m54',    cardId:54,     mythic:true,  label:'ロンギヌス（054）',       desc:'登場エフェクト：光の槍がカードの周りを一周する' },
       { key:'hatch',  cardId:53,     mythic:true,  label:'黒竜の卵（053）の孵化',   desc:'孵化エフェクト：割れて黒い影が飛び出し、衝撃と共にアギトが着地' }
     ];
     /* 盤面の followerHtml と同じ見た目のダミーカード要素を作る（実物アート使用）。
@@ -7201,6 +7511,10 @@
     function fxCheckClearStageCard(){
       if (fxStageCard && fxStageCard.parentNode) fxStageCard.parentNode.removeChild(fxStageCard);
       fxStageCard = null;
+      /* 一時表示の台座だけを掃除する（常駐台座 .persistent は残す） */
+      document.querySelectorAll('.fx-pedestal:not(.persistent)').forEach(function(el){
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
     }
     /* 孵化の残骸（卵クローン／黒い影）が body 直下に残っていたら掃除する */
     function fxCheckClearHatchFx(){
@@ -7250,6 +7564,12 @@
       fxCheckCaption(item.label + ' のエフェクト再生中');
       fxStageEl.scrollIntoView({ block: 'start' });
       fxCheckPlaceCard();
+      /* 召喚台も実戦と同じものを足元に敷く（最終配置の後に置いて位置を合わせる） */
+      var pr = el.getBoundingClientRect();
+      if (pr.width){
+        var ped = summonPedestal(pr.left + pr.width / 2, pr.bottom, pr.width, item.mythic);
+        if (ped) setTimeout(function(){ ped._dismiss(420); }, item.mythic ? 1080 : 720);
+      }
     }
     function fxCheckPlayHatch(){
       if (fxHatchBusy) return;
@@ -7994,6 +8314,7 @@
       });
       stageRehide('ov'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
       hatchRehide('ov'); /* 孵化演出中の実要素も同様に隠し直す */
+      stagePedSync(); /* 召喚台（常駐）：オンライン対戦でも中央ステージに表示し続け、位置を盤面に合わせる */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxOvPrev = fxOvSnapshot(v);
     }
