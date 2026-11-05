@@ -1212,6 +1212,109 @@
       }
       .detail-name::before{left:8px;}
       .detail-name::after{right:8px;}
+      /* ===== 戦闘画面ファンタジー化 第2弾：レイアウト再編＋背景 =====
+         見た目のみの改修。ゲームルール・カードデータ・通信・演出ロジックには触らない。
+         場の5枠・手札のタップ判定は要素の矩形から動的に測る既存実装のままなので、
+         盤面の横にデッキの束を置いても Pixi オーラ等の基準は壊れない。 */
+      /* --- 対戦背景レイヤー（対戦画面の背面に敷く固定レイヤー） ---
+         対戦開始ごとに JS がランダムで選んだ画像（bg-*.jpg、本体と同一
+         ディレクトリの相対パス）を #battleBgImg に差す。読み込めない環境では
+         img が表示されず、下地の無地の暗背景（--bg）がそのまま残るため、
+         レイアウト・動作には一切影響しない。タイトル等では .on を外す。 */
+      #battleBg{position:fixed; inset:0; z-index:0; background:var(--bg); opacity:0; pointer-events:none; transition:opacity .5s ease;}
+      #battleBg.on{opacity:1;}
+      #battleBg img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; display:block;}
+      #battleBg .veil{position:absolute; inset:0; background:linear-gradient(180deg, rgba(7,9,15,.60) 0%, rgba(7,9,15,.68) 45%, rgba(7,9,15,.82) 100%);}
+      .app{position:relative; z-index:1;}
+      @media (prefers-reduced-motion: reduce){ #battleBg{transition:none;} }
+      /* --- 召喚士情報：細い銘板への圧縮 ---
+         メダリオン風の肖像（金の二重リング）＋名前＋ライフ数字＋魔力ピップ。
+         能力テキストは小さい文字で銘板内に残し、ライフバー（割合表示）も維持。
+         背景画像の上でも読めるよう半透明の暗色プレートにする。 */
+      .leader{
+        padding:4px 8px; gap:8px; border-radius:10px;
+        background:linear-gradient(180deg, rgba(30,37,53,.93), rgba(17,22,33,.94));
+        box-shadow:inset 0 1px 0 rgba(238,224,186,.14), 0 2px 8px rgba(0,0,0,.35);
+      }
+      .leader-avatar{
+        width:38px; height:38px; border-width:2px;
+        box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 3.5px rgba(201,162,75,.55), inset 0 0 7px rgba(0,0,0,.65);
+      }
+      .leader.enemy .leader-avatar{box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 3.5px rgba(176,83,77,.55), inset 0 0 7px rgba(0,0,0,.65);}
+      .leader-name{font-size:13.5px;}
+      .leader-ability{font-size:10px; line-height:1.3; margin-top:1px;}
+      .leader-nums{margin-top:1px;}
+      /* --- 盤面：場の横にデッキの束を置く2カラム構成 ---
+         .zone-main（見出し＋5枠）は従来どおり伸縮し、右端の細い列に
+         カード裏面の束＋残り枚数バッジを置く。相手側は手札枚数の小チップも併記。 */
+      .board-zone{flex-direction:row; align-items:stretch; gap:6px;}
+      .zone-main{flex:1 1 auto; min-width:0; display:flex; flex-direction:column;}
+      .board-zone.enemy-zone{background:linear-gradient(180deg, rgba(37,26,32,.94), rgba(23,18,25,.95));}
+      .board-zone.mine-zone{background:linear-gradient(180deg, rgba(24,42,61,.94), rgba(16,26,40,.95));}
+      .deck-pile{flex:0 0 38px; width:38px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;}
+      .pile-stack{position:relative; width:31px; height:43px; margin-right:5px;}
+      .pile-card{
+        position:absolute; inset:0; border-radius:5px; border:1px solid rgba(201,162,75,.85);
+        background:linear-gradient(150deg,#251b3d,#171029 58%,#0e0819);
+        box-shadow:inset 0 0 0 2px rgba(9,5,18,.7), inset 0 0 0 3px rgba(201,162,75,.35), 0 1px 3px rgba(0,0,0,.5);
+      }
+      .pile-card::after{
+        content:''; position:absolute; left:50%; top:50%; width:11px; height:11px;
+        transform:translate(-50%,-50%) rotate(45deg);
+        border:1.5px solid rgba(236,205,126,.92);
+        background:radial-gradient(circle at 40% 35%, rgba(236,205,126,.55), rgba(120,90,30,.22));
+        box-shadow:0 0 6px rgba(236,205,126,.35);
+      }
+      .pile-card.c1{transform:translate(-3px,-2.5px) rotate(-4deg);}
+      .pile-card.c2{transform:translate(-1.5px,-1px) rotate(-1.5deg);}
+      .pile-count{
+        position:absolute; right:-8px; bottom:-7px; z-index:2; min-width:20px; height:20px; padding:0 4px;
+        border-radius:99px; border:1px solid #7d6220;
+        background:linear-gradient(180deg,#eccd7e,#c9a24b); color:#241a05;
+        font-family:var(--font-num); font-size:12px; font-weight:700; line-height:1;
+        display:flex; align-items:center; justify-content:center;
+        box-shadow:0 1px 4px rgba(0,0,0,.6);
+      }
+      .pile-hand{
+        font-size:9.5px; font-weight:700; color:var(--ink-dim); white-space:nowrap;
+        background:rgba(9,12,19,.78); border:1px solid var(--line); border-radius:99px; padding:1px 6px;
+      }
+      /* --- 場の見出し：小さな飾り付き見出しに圧縮 --- */
+      .board-label{letter-spacing:.1em;}
+      .board-label>span:first-child::before{content:'◆'; font-size:7.5px; color:var(--gold); margin-right:5px; vertical-align:2px; opacity:.9;}
+      /* --- ログ：帯を細く（2行表示＋タップ拡大は従来どおり） --- */
+      .log{height:40px; padding:4px 9px; background:rgba(23,30,42,.93);}
+      /* --- 手札ゾーン：半透明プレート＋枚数バッジ --- */
+      .hand-zone{background:rgba(23,30,42,.93);}
+      #handCount{
+        background:rgba(201,162,75,.16); border:1px solid rgba(201,162,75,.55); color:var(--gold-bright);
+        border-radius:99px; padding:0 8px; font-size:11px; line-height:1.75;
+      }
+      /* --- ターン終了ボタン：金の銘板の質感（位置・大きさは従来どおり） --- */
+      .btn-end{
+        background:linear-gradient(180deg,#f6e19c 0%,#eccd7e 30%,#cfa64e 62%,#a37f2e 100%);
+        box-shadow:0 3px 0 #6d5216, 0 6px 14px rgba(0,0,0,.45),
+          inset 0 1px 0 rgba(255,250,220,.95), inset 0 -3px 5px rgba(94,68,12,.5), inset 0 0 0 1px rgba(122,94,30,.55);
+        text-shadow:0 1px 0 rgba(255,246,214,.6);
+      }
+      .btn-end:disabled{box-shadow:none; text-shadow:none;}
+      /* --- カード名の帯を撤去した分、絵を全面に見せる ---
+         場・手札カードの下部グラデーション（旧・名前帯の土台）を弱め、
+         バッジの可読性だけを残す。図鑑（.gcard）は名前表示を残すため対象外。 */
+      .follower .shade{background:linear-gradient(180deg, rgba(0,0,0,.03) 34%, rgba(0,0,0,.40) 82%, rgba(0,0,0,.64) 100%);}
+      .hcard .shade{background:linear-gradient(180deg, rgba(0,0,0,.02) 34%, rgba(0,0,0,.40) 82%, rgba(0,0,0,.64) 100%);}
+      /* --- オンライン対戦：山札枚数をカード裏面風チップに圧縮 --- */
+      .ov-deck-chip{
+        display:inline-block; border:1px solid rgba(201,162,75,.8); border-radius:6px; padding:0 7px;
+        background:linear-gradient(150deg,#251b3d,#120b22); color:var(--ink-dim); font-size:12px;
+        box-shadow:inset 0 0 0 1.5px rgba(201,162,75,.3);
+      }
+      .ov-deck-chip b{color:var(--gold-bright); font-family:var(--font-num); font-size:13.5px; margin-left:2px;}
+      .ov-player{background:rgba(31,40,55,.94);}
+      @media (max-height:640px){
+        .log{height:34px;}
+        .pile-stack{width:28px; height:39px;}
+      }
     </style>
   </head>
   <body>
@@ -1221,11 +1324,18 @@
       <div class="loading-spin" aria-hidden="true"></div>
       <p class="loading-text">読み込み中…</p>
     </div>
+    <div id="battleBg" aria-hidden="true"><img id="battleBgImg" alt="" /><div class="veil"></div></div>
     <div class="app" id="app">
       <div class="leader enemy" id="cpuLeader"></div>
       <div class="board-zone enemy-zone">
-        <p class="board-label"><span>相手の場（CPU）</span><span id="cpuBoardCount"></span></p>
-        <div class="board" id="cpuBoard"></div>
+        <div class="zone-main">
+          <p class="board-label"><span>相手の場（CPU）</span><span id="cpuBoardCount"></span></p>
+          <div class="board" id="cpuBoard"></div>
+        </div>
+        <div class="deck-pile">
+          <div class="pile-stack"><span class="pile-card c1"></span><span class="pile-card c2"></span><span class="pile-card c3"></span><span class="pile-count" id="cpuDeckCount"></span></div>
+          <span class="pile-hand" id="cpuHandCount"></span>
+        </div>
       </div>
       <div class="banner" id="banner"><span class="grow" id="bannerText"></span><button id="bannerCancel" type="button">やめる</button></div>
       <div class="log-wrap" id="logWrap">
@@ -1236,8 +1346,13 @@
       </div>
       <div class="log-backdrop" id="logBackdrop" style="display:none;"></div>
       <div class="board-zone mine-zone">
-        <p class="board-label"><span>あなたの場<span class="mine-pill">自分</span></span><span id="myBoardCount"></span></p>
-        <div class="board" id="myBoard"></div>
+        <div class="zone-main">
+          <p class="board-label"><span>あなたの場<span class="mine-pill">自分</span></span><span id="myBoardCount"></span></p>
+          <div class="board" id="myBoard"></div>
+        </div>
+        <div class="deck-pile">
+          <div class="pile-stack"><span class="pile-card c1"></span><span class="pile-card c2"></span><span class="pile-card c3"></span><span class="pile-count" id="myDeckCount"></span></div>
+        </div>
       </div>
       <div class="leader me" id="myLeader"></div>
       <div class="controls">
@@ -2067,6 +2182,31 @@
       for (var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
       return a;
     }
+    /* ===== 対戦背景（第2弾）：対戦ごとにランダムで1枚選ぶ =====
+       画像は本体HTMLと同一ディレクトリの別ファイル（相対パス）を参照し、
+       本体には埋め込まない。オンライン対戦では同期せず各クライアントが
+       独立に選ぶ（見た目のみの要素）。読み込めない環境では img が出ず、
+       下地の無地の暗背景にフォールバックする（レイアウト・動作は不変）。 */
+    var BATTLE_BG_FILES = ['bg-ice.jpg', 'bg-abyss.jpg', 'bg-forest.jpg', 'bg-lava.jpg'];
+    function setBattleBg(file){
+      var layer = document.getElementById('battleBg');
+      var img = document.getElementById('battleBgImg');
+      if (!layer || !img) return;
+      if (!file){
+        layer.classList.remove('on');
+        img.removeAttribute('src');
+        return;
+      }
+      img.onerror = function(){ img.style.display = 'none'; };
+      img.onload = function(){ img.style.display = ''; };
+      img.style.display = '';
+      img.src = file;
+      layer.classList.add('on');
+    }
+    function pickBattleBg(){
+      if (HEADLESS) return;
+      setBattleBg(BATTLE_BG_FILES[Math.floor(Math.random() * BATTLE_BG_FILES.length)]);
+    }
     function newGame(opts){
       opts = opts || {};
       uidSeq = 1;
@@ -2120,6 +2260,7 @@
       startTurn(S.first, true);
       toInstanceHand(S.me); toInstanceHand(S.cpu);
       render();
+      pickBattleBg(); /* 対戦背景：対戦ごとにランダム（HEADLESS時は無動作） */
       /* CPUが先攻の対面対戦では、CPUの初ターンを自動で進める
          （タイトル画面が表示されている間は始めない） */
       if (!HEADLESS && !opts.first && S.first === 'cpu' && !S.over){
@@ -4273,7 +4414,6 @@
             (isMe
               ? '<span class="pp-wrap">' + ppDots + '<span class="pp-text">魔力 ' + side.pp + '/' + side.maxPp + '</span></span>'
               : '<span>魔力 ' + side.pp + '/' + side.maxPp + '</span>') +
-            '<span class="deck-info">手札 ' + side.hand.length + '枚 ・ デッキ残り ' + side.deck.length + '枚</span>' +
           '</div>' +
         '</div>' +
         (isMe
@@ -4333,7 +4473,7 @@
       return '<div class="' + classes.join(' ') + '" data-fol="' + sideKey + '-' + f.uid + '" data-side="' + sideKey + '" data-uid="' + f.uid + '">' +
         '<img src="' + f.img + '" alt="' + escapeHtml(f.name) + '" />' +
         '<div class="shade"></div>' + (tags ? '<div class="kw-tags">' + tags + '</div>' : '') +
-        '<div class="fname">' + escapeHtml(f.name) + '</div>' + hatchBtn +
+        hatchBtn +
         '<span class="badge-atk">' + f.atk + '</span>' +
         '<span class="badge-hp' + (f.hp < f.maxHp ? ' hurt' : '') + '">' + f.hp + '</span>' +
       '</div>';
@@ -4363,6 +4503,10 @@
       document.getElementById('myBoard').innerHTML = boardHtml('me');
       document.getElementById('cpuBoardCount').textContent = S.cpu.board.length + ' / 5';
       document.getElementById('myBoardCount').textContent = S.me.board.length + ' / 5';
+      /* デッキの束＋バッジ（場の横）の残り枚数と、相手の手札枚数チップ */
+      document.getElementById('cpuDeckCount').textContent = S.cpu.deck.length;
+      document.getElementById('myDeckCount').textContent = S.me.deck.length;
+      document.getElementById('cpuHandCount').textContent = '手札 ' + S.cpu.hand.length;
       var handEl = document.getElementById('hand');
       if (!S.me.hand.length){
         handEl.innerHTML = '<div class="hand-empty">手札がありません</div>';
@@ -4394,7 +4538,7 @@
           return '<div class="' + cls + '" data-hand-uid="' + h.uid + '">' +
             art +
             '<div class="shade"></div><span class="cost">' + card.cost + '</span>' + spellTag + mythicTag + kwHtml +
-            '<div class="hname">' + escapeHtml(card.name) + '</div>' + stats + '</div>';
+            stats + '</div>';
         }).join('');
       }
       document.getElementById('handCount').textContent = S.me.hand.length + '枚';
@@ -4831,6 +4975,7 @@
     });
     function showStart(){
       closeAllOverlays();
+      setBattleBg(null); /* 背景は対戦画面のみ：タイトルでは外す */
       renderSummonerGrid();
       refreshStartInfo();
       startOverlay.classList.add('show');
@@ -5758,6 +5903,7 @@
         ovEl('ovLobby').style.display = 'none';
         ovEl('ovGame').style.display = '';
         renderOvGame();
+        pickBattleBg(); /* オンライン対戦の背景も各クライアントが独立に選ぶ */
       } else {
         ovEl('ovGame').style.display = 'none';
         ovEl('ovLobby').style.display = '';
@@ -5888,6 +6034,7 @@
     });
     function ovResetRoom(){
       ov.code = null; ov.seat = null; ov.inRoom = false; ov.submitted = false; ov.view = null;
+      setBattleBg(null); /* 部屋を抜けたら対戦背景も外す */
       fxOvPrev = null; fxOvLunge = null; /* 演出の差分ベースラインを張り直す */
       ov.selHand = -1; ov.selAttacker = null; ov.surrenderArm = false; ov.notice = null; ov.noticeSticky = false;
       ovEl('ovCodeDisplay').style.display = 'none';
@@ -5965,6 +6112,7 @@
           ovShowError(m.message);
           break;
         case 'view':
+          var prevOvView = ov.view;
           ov.view = m;
           ov.inRoom = true;
           ov.selHand = -1; ov.selAttacker = null; ov.surrenderArm = false;
@@ -5972,6 +6120,8 @@
           ovEl('ovLobby').style.display = 'none';
           ovEl('ovGame').style.display = '';
           renderOvGame();
+          /* 対戦の開始／リマッチ開始の時だけ背景を引き直す（毎回の状態更新では変えない） */
+          if (!prevOvView || (prevOvView.winner != null && m.winner == null)) pickBattleBg();
           break;
       }
     }
@@ -6018,10 +6168,13 @@
       var kws = (u.keywords || []).map(function(k){ return OV_KW_LABEL[k] || k; }).join('・');
       var img = ovUnitImg(u);
       var hpTxt = u.hp + (u.hp < u.maxHp ? '/' + u.maxHp : '');
+      /* カード名の帯は撤去（名前はカード詳細で確認できる）。キーワードと
+         残り攻撃回数はゲーム情報なので、名前なしの小さな情報行として残す */
+      var infoTxt = (kws || '') + (u.attacksLeft > 1 ? (kws ? ' ・ ' : '') + '残攻撃' + u.attacksLeft : '');
       return '<button type="button" class="' + cls + '" data-ov-unit="' + u.uid + '" data-ov-side="' + side + '">' +
         (img ? '<img src="' + img + '" alt="" />' : '') +
         '<span class="ov-ustats"><span class="ov-b-atk">' + u.atk + '</span><span class="ov-b-hp">' + hpTxt + '</span></span>' +
-        '<span class="ov-uname">' + escapeHtml(u.name) + (kws ? '（' + kws + '）' : '') + (u.attacksLeft > 1 ? ' 残攻撃' + u.attacksLeft : '') + '</span></button>';
+        (infoTxt ? '<span class="ov-uname">' + escapeHtml(infoTxt) + '</span>' : '') + '</button>';
     }
     function ovPlayerHtml(p, isMe){
       var s = SUMMONER_BY_ID[p.summoner];
@@ -6029,7 +6182,7 @@
       return '<span><b>' + escapeHtml(p.name || '(名無し)') + '</b>（' + escapeHtml(s ? s.name : p.summoner) + '）</span>' +
         '<span>ライフ <span class="ov-life' + (p.life <= 5 ? ' crit' : (p.life <= 10 ? ' warn' : '')) + '">' + p.life + '</span></span>' +
         '<span>魔力 ' + p.mana + '/' + p.manaMax + '</span>' +
-        '<span>' + handTxt + '</span><span>山札' + p.deckCount + '枚</span>' +
+        '<span>' + handTxt + '</span><span class="ov-deck-chip">山札<b>' + p.deckCount + '</b></span>' +
         (p.coin ? '<span>追い上げコイン有</span>' : '');
     }
     /* ===== オンライン対戦の演出（見た目のみ） =====
@@ -6259,8 +6412,7 @@
         var stats = cd.type === 'follower' ? ('<span class="ov-b-atk">' + cd.atk + '</span><span class="ov-b-hp">' + cd.hp + '</span>') : '<span>スペル</span><span></span>';
         return '<button type="button" class="ov-hcard' + (playable ? ' playable' : '') + (ov.selHand === i ? ' selected' : '') + (cd.mythic && cd.id !== '53ag' ? ' mythic' : '') + (cd.id === '52ex' ? ' rainbow' : '') + (cd.id === '53ag' ? ' agito' : '') + '" data-ov-hand="' + i + '"' + (playable ? '' : ' disabled') + '>' +
           '<img src="' + cd.img + '" alt="" />' +
-          '<span class="ov-ustats"><span class="ov-b-cost">' + cd.cost + '</span>' + stats + '</span>' +
-          '<span class="ov-uname">' + escapeHtml(cd.name) + '</span></button>';
+          '<span class="ov-ustats"><span class="ov-b-cost">' + cd.cost + '</span>' + stats + '</span></button>';
       }).join('');
       /* アクションバー */
       var bar = [];
