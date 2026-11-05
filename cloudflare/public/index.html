@@ -1381,6 +1381,67 @@
       .ov-field.enemy-zone{background:linear-gradient(180deg, rgba(37,26,32,.55), rgba(23,18,25,.62));}
       .ov-field.mine-zone{background:linear-gradient(180deg, rgba(24,42,61,.55), rgba(16,26,40,.62));}
       .ov-log{background:rgba(23,30,42,.72);}
+      /* ===== 追加改修：手札の扇形（ファン）＋召喚士アイコンタップ =====
+         見た目と表示操作のみ。カードの大きさは変えず、重なり量と扇の
+         広がりで枚数を吸収する。扇の配置（回転・落差・重なり・重なり順）は
+         JS の applyFanLayout がカードごとに inline style で付ける。
+         transform-origin をカード下端に置くことで、回転中心が画面下側に
+         ある「手に持った扇」の見え方になる。場のカードには一切触らない。 */
+      .hand{overflow:visible; justify-content:center; align-items:flex-start; scrollbar-width:none; gap:0;}
+      .hand::-webkit-scrollbar{display:none;}
+      .hcard{transform-origin:50% 100%;}
+      .ov-hand{flex-wrap:nowrap; justify-content:center; align-items:flex-start; overflow:visible; padding-top:8px; gap:0;}
+      .ov-hcard{transform-origin:50% 100%; flex:0 0 auto;}
+      /* --- 召喚士アイコン：タップ可能の示唆（縁の淡い脈動グロー＋詳細バッジ） ---
+         アイコン本体は .summoner-face が担い、将来はこの中身を
+         <img class="summoner-face-img"> に差し替えるだけで顔アイコン化できる。 */
+      .leader-avatar{cursor:pointer; overflow:visible; padding:0; background:#10151f;}
+      .summoner-avatar{animation:sumGlow 2.6s ease-in-out infinite;}
+      .summoner-avatar::after{
+        content:'i'; position:absolute; right:-3px; bottom:-3px; z-index:3;
+        width:15px; height:15px; border-radius:50%; line-height:15px; text-align:center;
+        font-size:10px; font-weight:900; font-style:italic; font-family:Georgia,serif;
+        background:linear-gradient(180deg,#eccd7e,#c9a24b); color:#241a05;
+        border:1px solid #7d6220; box-shadow:0 1px 3px rgba(0,0,0,.55);
+      }
+      .summoner-face{display:flex; align-items:center; justify-content:center; width:100%; height:100%; border-radius:50%; overflow:hidden;}
+      .summoner-face img,.summoner-face-img{width:100%; height:100%; object-fit:cover; object-position:top center; display:block;}
+      @keyframes sumGlow{
+        0%,100%{box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 3.5px rgba(201,162,75,.55), 0 0 6px rgba(236,205,126,.25), inset 0 0 7px rgba(0,0,0,.65);}
+        50%{box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 3.5px rgba(236,205,126,.85), 0 0 13px rgba(236,205,126,.6), inset 0 0 7px rgba(0,0,0,.65);}
+      }
+      .leader.enemy .summoner-avatar{animation-name:sumGlowEnemy;}
+      @keyframes sumGlowEnemy{
+        0%,100%{box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 3.5px rgba(176,83,77,.55), 0 0 6px rgba(240,164,156,.22), inset 0 0 7px rgba(0,0,0,.65);}
+        50%{box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 3.5px rgba(240,164,156,.85), 0 0 13px rgba(240,164,156,.55), inset 0 0 7px rgba(0,0,0,.65);}
+      }
+      .ov-summoner-avatar{
+        position:relative; flex:0 0 auto; width:38px; height:38px; border-radius:50%; padding:0;
+        border:2px solid var(--gold); background:#10151f; cursor:pointer; overflow:visible;
+        animation:sumGlow 2.6s ease-in-out infinite;
+      }
+      .ov-summoner-avatar::after{
+        content:'i'; position:absolute; right:-3px; bottom:-3px; z-index:3;
+        width:14px; height:14px; border-radius:50%; line-height:14px; text-align:center;
+        font-size:9px; font-weight:900; font-style:italic; font-family:Georgia,serif;
+        background:linear-gradient(180deg,#eccd7e,#c9a24b); color:#241a05;
+        border:1px solid #7d6220; box-shadow:0 1px 3px rgba(0,0,0,.55);
+      }
+      /* --- 召喚士詳細シート（カード詳細シートと同系統） --- */
+      #summonerOverlay{z-index:92;}
+      .summoner-detail-head{display:flex; gap:14px; align-items:center;}
+      .summoner-avatar-lg{
+        flex:0 0 auto; width:76px; height:76px; border-radius:50%; overflow:visible; position:relative;
+        border:2.5px solid var(--gold); background:#10151f;
+        box-shadow:0 0 0 2px rgba(9,7,3,.92), 0 0 0 4px rgba(201,162,75,.4), 0 0 14px rgba(236,205,126,.35);
+        display:flex; align-items:center; justify-content:center;
+      }
+      .summoner-avatar-lg .summoner-face{border-radius:50%;}
+      .summoner-avatar-lg .sum-badge{width:58px; height:58px; font-size:29px;}
+      .summoner-side{font-size:11px; color:var(--ink-faint); font-weight:700; letter-spacing:.15em;}
+      @media (prefers-reduced-motion: reduce){
+        .summoner-avatar,.leader.enemy .summoner-avatar,.ov-summoner-avatar{animation:none;}
+      }
     </style>
   </head>
   <body>
@@ -1478,6 +1539,23 @@
         <div class="sheet-actions">
           <button class="btn-play" id="dPlay" type="button">出す</button>
           <button class="btn-close" id="dClose" type="button">閉じる</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="summonerOverlay">
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="召喚士詳細">
+        <div class="summoner-detail-head">
+          <div class="summoner-avatar-lg" id="sumAvatar"><span class="summoner-face" id="sumAvatarFace"></span></div>
+          <div style="flex:1; min-width:0;">
+            <div class="summoner-side" id="sumSideLabel"></div>
+            <div class="detail-name" id="sumName" style="text-align:left; margin-top:4px;"></div>
+          </div>
+        </div>
+        <div class="hpbar" style="margin-top:12px;"><i id="sumHpBar" style="display:block; height:100%; background:linear-gradient(180deg,#7ed492,#3d9e57); transition:width .35s ease;"></i></div>
+        <div class="detail-stats" id="sumStats" style="margin-top:10px;"></div>
+        <div class="effect-box" style="margin-top:4px;"><b style="color:var(--gold-bright);">能力</b><p id="sumAbility" style="margin:6px 0 0; line-height:1.7;"></p></div>
+        <div class="sheet-actions">
+          <button class="btn-close" id="sumClose" type="button" style="flex:1;">閉じる</button>
         </div>
       </div>
     </div>
@@ -4479,10 +4557,11 @@
         if (!side.maxPp) ppDots = '<span style="font-size:11px;">-</span>';
       }
       return '' +
-        '<div class="leader-avatar" style="display:flex; align-items:center; justify-content:center; background:#10151f;">' + summonerBadge(side.summonerId, true) + '</div>' +
+        /* アイコンはボタン化し、タップで召喚士詳細シートを開く。
+           顔アイコンへの差し替えは .summoner-face の中身を img に変えるだけ。 */
+        '<button type="button" class="leader-avatar summoner-avatar" data-summoner-avatar="' + sideKey + '" aria-label="召喚士の能力を見る"><span class="summoner-face">' + summonerBadge(side.summonerId, true) + '</span></button>' +
         '<div class="leader-main">' +
-          '<div class="leader-name">' + summonerBadge(side.summonerId) + escapeHtml(sumDef.name) + ' <span class="side-tag">' + (isMe ? 'PLAYER' : 'CPU') + '</span></div>' +
-          '<div class="leader-ability"><b>能力</b>：' + escapeHtml(sumDef.ability) + '</div>' +
+          '<div class="leader-name">' + escapeHtml(sumDef.name) + ' <span class="side-tag">' + (isMe ? 'PLAYER' : 'CPU') + '</span></div>' +
           '<div class="hpbar"><i style="width:' + hpPct + '%"></i></div>' +
           '<div class="leader-nums">' +
             '<span class="hp-label">召喚士ライフ</span>' +
@@ -4495,6 +4574,104 @@
         (isMe
           ? '<div class="turn-chip">ターン<b>' + S.turn + '</b></div>'
           : '<div class="turn-chip">' + (S.active === 'cpu' ? '行動中' : '待機中') + '<b>CPU</b></div>');
+    }
+    /* ===== 手札の扇形（ファン）レイアウト =====
+       自分の手札（CPU戦 #hand／オンライン戦 #ovHand 共通）を円弧状に並べる。
+       カードの大きさは変えず、枚数に応じて重なり量と扇の広がりを調整する。
+       ・4〜6枚：重なりは約2割（ステップ＝カード幅の80%）。回転で上下が
+         開くため、コスト／攻撃／体力バッジが隣に隠れにくい。
+       ・7枚以上：コンテナ幅に収まるようステップを詰める（横スクロールなし）。
+       重なり順は中央が最前面、両端ほど背面。重なった部分をタップすると
+       見えている側（中央寄り）のカードが自然に優先される。
+       高さは「カード高＋扇の最大落差＋余白」に抑え、盤面を圧迫しない。 */
+    function applyFanLayout(container){
+      if (!container) return;
+      var cards = Array.prototype.slice.call(container.children).filter(function(el){
+        return el.classList && (el.classList.contains('hcard') || el.classList.contains('ov-hcard'));
+      });
+      if (!cards.length){ container.style.height = ''; return; }
+      var n = cards.length;
+      var cardW = cards[0].offsetWidth || 70;
+      var cardH = cards[0].offsetHeight || 86;
+      var avail = container.clientWidth || 340;
+      var step = cardW * 0.80;
+      if (n > 1){
+        var fitStep = (avail - cardW - 6) / (n - 1);
+        if (fitStep < step) step = fitStep;
+        if (step < cardW * 0.30) step = cardW * 0.30;
+      }
+      var centre = (n - 1) / 2;
+      var angleStep = n <= 1 ? 0 : Math.min(4.8, 36 / Math.max(1, n - 1));
+      var maxDrop = n <= 2 ? 3 : (n <= 6 ? 10 : 13);
+      cards.forEach(function(el, i){
+        var off = i - centre;
+        var rot = off * angleStep;
+        var ratio = centre > 0 ? Math.abs(off) / centre : 0;
+        var drop = Math.round(Math.pow(ratio, 1.4) * maxDrop);
+        el.style.position = 'relative';
+        el.style.zIndex = String(100 - Math.round(Math.abs(off) * 10) - (off > 0 ? 2 : 0));
+        el.style.marginLeft = i === 0 ? '0px' : (-(cardW - step)).toFixed(1) + 'px';
+        el.style.transform = 'translateY(' + drop + 'px) rotate(' + rot.toFixed(2) + 'deg)';
+        el.style.transformOrigin = '50% 100%';
+      });
+      container.style.height = (cardH + maxDrop + 10) + 'px';
+    }
+    if (typeof window !== 'undefined' && window.addEventListener){
+      window.addEventListener('resize', function(){
+        applyFanLayout(document.getElementById('hand'));
+        var ovHandEl = document.getElementById('ovHand');
+        if (ovHandEl && ovHandEl.children.length) applyFanLayout(ovHandEl);
+      });
+    }
+    /* ===== 召喚士詳細シート =====
+       両召喚士のアイコンタップで開く。内容はアイコン・名前・能力全文と
+       現在のライフ／魔力／手札／山札／場の状態。シート表示中は
+       オーバーレイが画面を覆うため、対戦操作には干渉しない。 */
+    function openSummonerSheet(data){
+      var ovsheet = document.getElementById('summonerOverlay');
+      if (!ovsheet) return;
+      /* 顔アイコンへの差し替えは #sumAvatarFace の中身を img に変えるだけ */
+      document.getElementById('sumAvatarFace').innerHTML = summonerBadge(data.summonerId, true);
+      document.getElementById('sumSideLabel').textContent = data.sideLabel || '';
+      document.getElementById('sumName').textContent = data.name || '';
+      document.getElementById('sumAbility').textContent = data.ability || '';
+      var pct = data.maxHp > 0 ? Math.max(0, data.hp) / data.maxHp * 100 : 0;
+      document.getElementById('sumHpBar').style.width = pct + '%';
+      var chips = '<span class="stat-chip">ライフ <b>' + Math.max(0, data.hp) + '</b><small> / ' + data.maxHp + '</small></span>' +
+        '<span class="stat-chip">魔力 <b>' + data.pp + '</b><small> / ' + data.maxPp + '</small></span>';
+      if (data.hand != null) chips += '<span class="stat-chip">手札 <b>' + data.hand + '</b><small> 枚</small></span>';
+      if (data.deck != null) chips += '<span class="stat-chip">山札 <b>' + data.deck + '</b><small> 枚</small></span>';
+      if (data.board != null) chips += '<span class="stat-chip">場 <b>' + data.board + '</b><small> / 5</small></span>';
+      document.getElementById('sumStats').innerHTML = chips;
+      ovsheet.classList.add('show');
+    }
+    function closeSummonerSheet(){
+      var ovsheet = document.getElementById('summonerOverlay');
+      if (ovsheet) ovsheet.classList.remove('show');
+    }
+    function openSummonerDetail(sideKey){
+      var side = sideObj(sideKey);
+      var def = SUMMONER_BY_ID[side.summonerId] || SUMMONERS[0];
+      openSummonerSheet({
+        summonerId: side.summonerId, name: def.name, ability: def.ability,
+        sideLabel: sideKey === 'me' ? '自分 ― PLAYER' : '相手 ― CPU',
+        hp: side.hp, maxHp: side.maxHp, pp: side.pp, maxPp: side.maxPp,
+        hand: side.hand.length, deck: side.deck.length, board: side.board.length
+      });
+    }
+    function openOvSummonerDetail(which){
+      if (typeof ov === 'undefined' || !ov || !ov.view) return;
+      var v = ov.view;
+      var p = which === 'me' ? v.me : v.opponent;
+      if (!p) return;
+      var def = SUMMONER_BY_ID[p.summoner] || SUMMONERS[0];
+      openSummonerSheet({
+        summonerId: p.summoner, name: def.name, ability: def.ability,
+        sideLabel: which === 'me' ? '自分 ― ' + (p.name || '') : '相手 ― ' + (p.name || ''),
+        hp: p.life, maxHp: 20, pp: p.mana, maxPp: p.manaMax,
+        hand: which === 'me' ? (p.hand ? p.hand.length : null) : (p.handCount != null ? p.handCount : null),
+        deck: p.deckCount, board: (which === 'me' ? v.me.field : v.opponent.field).length
+      });
     }
     /* EX-キャリバー専用の虹枠（他の神話の金枠とは別の特別演出） */
     function isRainbowCard(c){ return !!c && c.id === '52ex'; }
@@ -4617,6 +4794,7 @@
             stats + '</div>';
         }).join('');
       }
+      applyFanLayout(handEl);
       document.getElementById('handCount').textContent = S.me.hand.length + '枚';
       /* 合体バー：自分のターン中、手札に聖剣の欠片が3枚あれば出す */
       var fuseBarEl = document.getElementById('fuseBar');
@@ -4821,6 +4999,17 @@
     }
     function closeDetail(){ detailOverlay.classList.remove('show'); S.detail = null; }
     document.getElementById('dClose').addEventListener('click', closeDetail);
+    var summonerOverlayEl = document.getElementById('summonerOverlay');
+    if (summonerOverlayEl){
+      document.getElementById('sumClose').addEventListener('click', closeSummonerSheet);
+      summonerOverlayEl.addEventListener('click', function(ev){ if (ev.target === summonerOverlayEl) closeSummonerSheet(); });
+    }
+    var myLeaderElForSummoner = document.getElementById('myLeader');
+    if (myLeaderElForSummoner){
+      myLeaderElForSummoner.addEventListener('click', function(ev){
+        if (ev.target.closest('[data-summoner-avatar]')) openSummonerDetail('me');
+      });
+    }
     document.getElementById('dKwClose').addEventListener('click', hideKwHelp);
     detailOverlay.addEventListener('click', function(ev){
       var kwBtn = ev.target.closest('[data-kw]');
@@ -4955,7 +5144,8 @@
       var el = ev.target.closest('[data-fol]');
       if (el) onBoardTap('cpu', Number(el.getAttribute('data-uid')));
     });
-    document.getElementById('cpuLeader').addEventListener('click', function(){
+    document.getElementById('cpuLeader').addEventListener('click', function(ev){
+      if (ev && ev.target && ev.target.closest && ev.target.closest('[data-summoner-avatar]')){ openSummonerDetail('cpu'); return; }
       if (S.over || S.busy || S.active !== 'me' || S.mode !== 'idle') return;
       if (S.selectedAttacker){
         if (doAttack('me', S.selectedAttacker, 'cpu', 'LEADER')) S.selectedAttacker = null;
@@ -4968,7 +5158,7 @@
        スクロール不具合対策：画面遷移のたびに、開いているモーダルを
        すべて確実に閉じてから次の画面を1つだけ開く。
        閉じ忘れたモーダルが残ると、見えないままタッチとスクロールを奪う。 */
-    var ALL_OVERLAY_IDS = ['detailOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','onlineOverlay'];
+    var ALL_OVERLAY_IDS = ['detailOverlay','summonerOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','onlineOverlay'];
     function closeAllOverlays(){
       ALL_OVERLAY_IDS.forEach(function(id){
         var el = document.getElementById(id);
@@ -6277,7 +6467,8 @@
     function ovPlayerHtml(p, isMe){
       var s = SUMMONER_BY_ID[p.summoner];
       var handTxt = isMe ? ('手札' + (p.hand ? p.hand.length : 0) + '枚') : ('手札' + p.handCount + '枚');
-      return '<span><b>' + escapeHtml(p.name || '(名無し)') + '</b>（' + escapeHtml(s ? s.name : p.summoner) + '）</span>' +
+      return '<button type="button" class="ov-summoner-avatar summoner-avatar" data-ov-summoner="' + (isMe ? 'me' : 'opp') + '" aria-label="召喚士の能力を見る"><span class="summoner-face">' + summonerBadge(p.summoner, true) + '</span></button>' +
+        '<span><b>' + escapeHtml(p.name || '(名無し)') + '</b>（' + escapeHtml(s ? s.name : p.summoner) + '）</span>' +
         '<span>ライフ <span class="ov-life' + (p.life <= 5 ? ' crit' : (p.life <= 10 ? ' warn' : '')) + '">' + p.life + '</span></span>' +
         '<span>魔力 ' + p.mana + '/' + p.manaMax + '</span>' +
         '<span>' + handTxt + '</span><span class="ov-deck-chip">山札<b>' + p.deckCount + '</b></span>' +
@@ -6512,6 +6703,7 @@
           '<img src="' + cd.img + '" alt="" />' +
           '<span class="ov-ustats"><span class="ov-b-cost">' + cd.cost + '</span>' + stats + '</span></button>';
       }).join('');
+      applyFanLayout(ovEl('ovHand'));
       /* アクションバー */
       var bar = [];
       if (!ov.ws){
@@ -6604,6 +6796,8 @@
     ovEl('ovGame').addEventListener('click', function(ev){
       var v = ov.view;
       if (!v) return;
+      var ovSumBtn = ev.target.closest('[data-ov-summoner]');
+      if (ovSumBtn){ openOvSummonerDetail(ovSumBtn.getAttribute('data-ov-summoner')); return; }
       if (ev.target.closest('[data-ov-reconnect]')){ ovConnect(); return; }
       if (ev.target.closest('[data-ov-fuse]')){ ov.selHand = -1; ov.selAttacker = null; ovSend({ type: 'fuse' }); return; }
       var ovHatchBtn = ev.target.closest('[data-ov-hatch]');
