@@ -465,7 +465,7 @@ function beginTurn(state, p, opts = {}) {
   }
 
   // 攻撃回数の回復と成長（場に出たターンを除く）
-  // ミラージュ：攻撃+1。黒竜の卵：+2/+2（孵化で止まる。def の egg が外れるため）。
+  // ミラージュ：攻撃+1。黒竜の卵：攻撃+3／体力+1（カードデータの growth。孵化で止まる。def の egg が外れるため）。
   for (const u of pl.field) {
     u.bonusAttackUsed = false; // ロンギヌスの追加攻撃は、そのユニットのターン毎に1回まで
     if (u.enteredSeq < state.turnSeq) {
@@ -473,8 +473,8 @@ function beginTurn(state, p, opts = {}) {
       const d = defOf(u);
       if (d.passive && d.passive.growthAtk) u.atkMod += d.passive.growthAtk;
       if (d.egg) {
-        u.atkMod += 2;
-        u.hpMod += 2;
+        u.atkMod += d.growth.atk;
+        u.hpMod += d.growth.hp;
       }
     } else {
       u.attacksLeft = 0;
@@ -632,14 +632,22 @@ function doAttack(state, p, attackerUid, target) {
     destroyUnit(state, def.uid);
     killed = !findUnit(state, def.uid);
   } else {
-    // 攻撃側 → 守備側（反撃は dealUnitDamage 内で処理される）
-    dealUnitDamage(state, def.uid, effAtk(atk), { sourceUid: atk.uid });
+    // 貫通用：守備側の被攻撃前体力を控え、実際に与えたダメージ（装甲軽減後）を得る
+    const defHpBefore = effHp(def);
+    const dealt = dealUnitDamage(state, def.uid, effAtk(atk), { sourceUid: atk.uid });
     // 守備側 → 攻撃側の戦闘ダメージ（倒れても与える）。ミラージュは自分の攻撃では受けない
     if (!(ad.passive && ad.passive.noDamageOnAttack)) {
       dealUnitDamage(state, atk.uid, effAtk(def), { sourceUid: def.uid });
     }
     cleanupDeaths(state);
     killed = !findUnit(state, def.uid);
+    // 貫通（攻撃した側のみ）：ユニットへのダメージと死亡処理が終わった後、
+    // 実ダメージが守備側の体力を超えた分を敵召喚士に与える。召喚士へのダメージは
+    // ユニットへのダメージではないので、反撃などの対象にはならない。
+    if (hasKw(atk, "pierce")) {
+      const excess = Math.max(0, dealt - defHpBefore);
+      if (excess > 0) damageLeader(state, 1 - p, excess);
+    }
   }
   // ロンギヌスの再攻撃：この攻撃で敵ユニットを破壊し、自分が生き残っていれば追加で1回だけ
   if (

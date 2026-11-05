@@ -143,7 +143,7 @@ test("卵は攻撃できず、攻撃・単体効果・全体効果ダメージ�
   applyAction(g, 1, { type: "playCard", handIndex: 0 });
   assert.strictEqual(effHp(egg), 7, "卵は全体ダメージを受けない");
 });
-test("卵はターン開始時に+2/+2成長し、孵化でアギトになりスタッツを引き継ぐ", () => {
+test("卵はターン開始時に攻撃+3/体力+1成長し、孵化でアギトになりスタッツを引き継ぐ", () => {
   const g = rich(game());
   g.players[0].hand = [53];
   applyAction(g, 0, { type: "playCard", handIndex: 0 });
@@ -152,16 +152,17 @@ test("卵はターン開始時に+2/+2成長し、孵化でアギトになりス
   assert.strictEqual(effMaxHp(egg), 7);
   applyAction(g, 0, { type: "endTurn" });
   applyAction(g, 1, { type: "endTurn" }); // 自ターン開始 → 成長
-  assert.strictEqual(effAtk(egg), 2);
-  assert.strictEqual(effMaxHp(egg), 9);
+  assert.strictEqual(effAtk(egg), 3);
+  assert.strictEqual(effMaxHp(egg), 8);
   // 合計11 < 15：能力なしで孵化。前ターンに出ているので攻撃はできる
   assert.strictEqual(legalActions(g, 0).some((a) => a.type === "hatch" && a.uid === egg.uid), true);
   applyAction(g, 0, { type: "hatch", uid: egg.uid });
   assert.strictEqual(egg.cardId, 901);
   assert.strictEqual(defOf(egg).name, "黒のアギト");
   assert.strictEqual(hasKw(egg, "haste"), false);
+  assert.strictEqual(hasKw(egg, "pierce"), true, "アギトは貫通を常時持つ");
   applyAction(g, 0, { type: "attack", attackerUid: egg.uid, targetUid: "leader" });
-  assert.strictEqual(g.players[1].life, 18, "アギトの攻撃2点が入る");
+  assert.strictEqual(g.players[1].life, 17, "アギトの攻撃3点が入る");
 });
 test("孵化時の合計27以上で速攻・装甲・反撃をすべて得る。出たターンの孵化でも速攻で攻撃できる", () => {
   const g = rich(game());
@@ -297,8 +298,40 @@ test("卵はダーククイーンに奪取でき、奪った側のターン開�
   assert.ok(g.players[0].field.some((u) => u.uid === egg.uid), "卵が自分の場へ移った");
   applyAction(g, 0, { type: "endTurn" });
   applyAction(g, 1, { type: "endTurn" }); // 自ターン開始 → 成長は現在のコントローラー側で進む
-  assert.strictEqual(effAtk(egg), 2);
-  assert.strictEqual(effMaxHp(egg), 9);
+  assert.strictEqual(effAtk(egg), 3);
+  assert.strictEqual(effMaxHp(egg), 8);
+});
+
+console.log("[黒のアギト：貫通]");
+test("貫通：小さいユニットを攻撃すると、体力を超えた分が敵召喚士に入る", () => {
+  const g = rich(game());
+  // アギト 6/9（基礎0/7に補正で再現）を前ターンから場に置く
+  const agito = place(g, 0, 901, { atkMod: 6, hpMod: 2, enteredSeq: g.turnSeq - 1, attacksLeft: 1 });
+  const foe = place(g, 1, 19); // シャハラ 3/3
+  applyAction(g, 0, { type: "attack", attackerUid: agito.uid, targetUid: foe.uid });
+  assert.strictEqual(findUnit(g, foe.uid), null, "対象は倒れる");
+  // 実ダメージ6 − 対象の体力3 = 超過3点が召喚士へ
+  assert.strictEqual(g.players[1].life, 17, "超過分3点が召喚士に入る");
+  assert.strictEqual(effHp(agito), 6, "守備側の戦闘ダメージ3は通常どおり受ける");
+});
+test("貫通：装甲持ちを攻撃した場合は、軽減後の実ダメージで超過を計算する", () => {
+  const g = rich(game());
+  const agito = place(g, 0, 901, { atkMod: 8, hpMod: 2, enteredSeq: g.turnSeq - 1, attacksLeft: 1 }); // 8/9
+  const gracia = place(g, 1, 9); // グラシア 5/5・装甲
+  applyAction(g, 0, { type: "attack", attackerUid: agito.uid, targetUid: gracia.uid });
+  assert.strictEqual(findUnit(g, gracia.uid), null, "グラシアは倒れる");
+  // 実ダメージは装甲で8→7。超過 = 7 − 体力5 = 2点（軽減前なら3点になる）
+  assert.strictEqual(g.players[1].life, 18, "軽減後の実ダメージで超過2点が入る");
+});
+test("貫通：アギトが攻撃された側では発動しない（守備時の戦闘ダメージは超過しない）", () => {
+  const g = rich(game({ first: 1 }));
+  const agito = place(g, 0, 901, { atkMod: 9, hpMod: 2, enteredSeq: g.turnSeq - 1 }); // 9/9（守備側）
+  const misha = place(g, 1, 2, { enteredSeq: g.turnSeq - 1, attacksLeft: 1 }); // ミーシャ 3/2
+  applyAction(g, 1, { type: "attack", attackerUid: misha.uid, targetUid: agito.uid });
+  assert.strictEqual(findUnit(g, misha.uid), null, "ミーシャはアギトの戦闘ダメージ9で倒れる");
+  // 守備側のアギトのダメージ9がミーシャの体力2を超えても、貫通は発動しない
+  assert.strictEqual(g.players[1].life, 20, "攻撃側（ミーシャ側）の召喚士に超過分は入らない");
+  assert.strictEqual(effHp(agito), 6, "アギトはミーシャの戦闘ダメージ3を受ける");
 });
 
 console.log("");

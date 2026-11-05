@@ -1,6 +1,6 @@
 // アーケインサモン カードデータ（全54種＋形態2種）
 // 正のデータは ~/workspace/game-cards/cards.md。本ファイルはその構造化ミラー。
-// keywords: "haste"=速攻 "wall"=鉄壁 "armor"=装甲 "counter"=反撃 "rush"=突破 "shootdown"=撃墜
+// keywords: "haste"=速攻 "wall"=鉄壁 "armor"=装甲 "counter"=反撃 "rush"=突破 "shootdown"=撃墜 "pierce"=貫通
 // 形態カード（id 900/901）は form:true で、デッキには入れられない。
 
 export const CARDS = [
@@ -596,6 +596,7 @@ export const CARDS = [
     keywords: [],
     mythic: true,
     egg: true,
+    growth: { atk: 3, hp: 1 }, // 自分のターン開始時の成長（攻撃+3／体力+1）
     onPlay: [],
     flavor: "静かに眠れ。その眠りが、世界の猶予だ",
   },
@@ -630,7 +631,8 @@ export const CARDS = [
     cost: 4,
     type: "unit",
     atk: 0, hp: 7, // 基礎値は卵と同値。実スタッツは孵化時のユニットが引き継ぐ
-    keywords: [],
+    // 貫通（常時）：ユニットを攻撃した時、実ダメージが対象の体力を超えた分を相手の召喚士に与える
+    keywords: ["pierce"],
     mythic: false,
     form: true,
     onPlay: [],
