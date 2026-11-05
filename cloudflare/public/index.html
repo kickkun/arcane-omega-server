@@ -881,34 +881,81 @@
         box-shadow:0 2px 0 #7d6220, 0 0 8px rgba(236,205,126,.45);
       }
       .cost-chip:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
-      /* ===== 演出強化 第1弾：ヒットストップ／フィニッシュ演出（見た目のみ） =====
+      /* ===== 演出強化：ヒットストップ／フィニッシュ演出（見た目のみ） =====
          ヒットストップ：body.fx-hitstop の間（約80ms）だけ盤面アニメーションを止める。
-         フィニッシュ：body.fx-slowmo の間、突進とダメージ数字をゆっくりにし、
-         画面の縁を暗くして「とどめ」の一拍を作る。ダメージ数字は .finish で特大表示。 */
+         フィニッシュ（アクション演出版）：攻撃ユニットが
+           1) タメ：相手から離れる方向へ大きく下がり、少し大きくなって光る（約0.35秒）
+           2) 突進：通常の攻撃モーションより速く・大きく相手へ突っ込み、着弾の
+              瞬間に画面の手前側へ一瞬大きく拡大する。合わせて画面全体が揺れ
+              （body.fx-impact）、フラッシュが入り、ダメージ数字が特大で出る
+           3) 余韻：body.fx-finish-dim で画面の縁を暗くし、一拍置いて勝敗画面へ
+         攻撃ユニットの動きは .fx-finish-up（自分側の攻撃＝上方向）／
+         .fx-finish-down（相手側の攻撃＝下方向）の1本のキーフレームに
+         タメ→突進→拡大を畳み込んである（合計約0.95秒、着弾は約0.5秒地点）。
+         ダメージ数字 .finish は animation-delay で着弾タイミングに合わせる。 */
       body.fx-hitstop #app *, body.fx-hitstop #onlineOverlay *{animation-play-state:paused !important;}
-      body.fx-slowmo .fx-lunge-up, body.fx-slowmo .fx-lunge-down{animation-duration:1.15s !important;}
-      body.fx-slowmo .dmg-pop{animation-duration:1.55s;}
-      body.fx-slowmo::after{
+      .fx-finish-up{animation:fxFinishUp .95s cubic-bezier(.22,.61,.36,1) both; position:relative; z-index:30;}
+      .fx-finish-down{animation:fxFinishDown .95s cubic-bezier(.22,.61,.36,1) both; position:relative; z-index:30;}
+      @keyframes fxFinishUp{
+        0%{transform:translateY(0) scale(1); filter:brightness(1);}
+        26%{transform:translateY(22px) scale(1.12); filter:brightness(1.4) drop-shadow(0 0 12px rgba(255,214,106,.9));}
+        33%{transform:translateY(25px) scale(1.16); filter:brightness(1.6) drop-shadow(0 0 18px rgba(255,224,150,1));}
+        38%{transform:translateY(23px) scale(1.15); filter:brightness(1.55) drop-shadow(0 0 16px rgba(255,224,150,1));}
+        52%{transform:translateY(-44px) scale(1.3); filter:brightness(1.75) drop-shadow(0 0 20px rgba(255,255,255,.95));}
+        64%{transform:translateY(-36px) scale(1.95); filter:brightness(2) drop-shadow(0 0 28px rgba(255,220,130,1));}
+        80%{transform:translateY(-14px) scale(1.3); filter:brightness(1.3);}
+        100%{transform:translateY(0) scale(1); filter:brightness(1);}
+      }
+      @keyframes fxFinishDown{
+        0%{transform:translateY(0) scale(1); filter:brightness(1);}
+        26%{transform:translateY(-22px) scale(1.12); filter:brightness(1.4) drop-shadow(0 0 12px rgba(255,214,106,.9));}
+        33%{transform:translateY(-25px) scale(1.16); filter:brightness(1.6) drop-shadow(0 0 18px rgba(255,224,150,1));}
+        38%{transform:translateY(-23px) scale(1.15); filter:brightness(1.55) drop-shadow(0 0 16px rgba(255,224,150,1));}
+        52%{transform:translateY(44px) scale(1.3); filter:brightness(1.75) drop-shadow(0 0 20px rgba(255,255,255,.95));}
+        64%{transform:translateY(36px) scale(1.95); filter:brightness(2) drop-shadow(0 0 28px rgba(255,220,130,1));}
+        80%{transform:translateY(14px) scale(1.3); filter:brightness(1.3);}
+        100%{transform:translateY(0) scale(1); filter:brightness(1);}
+      }
+      body.fx-impact #app, body.fx-impact #onlineOverlay .online-box{animation:fxScreenShake .38s linear;}
+      @keyframes fxScreenShake{
+        0%,100%{transform:translate(0,0);}
+        15%{transform:translate(-6px,3px) rotate(-.4deg);}
+        30%{transform:translate(6px,-3px) rotate(.4deg);}
+        45%{transform:translate(-5px,-2px);}
+        60%{transform:translate(4px,2px);}
+        75%{transform:translate(-2px,1px);}
+      }
+      body.fx-impact::before{
+        content:''; position:fixed; inset:0; z-index:96; pointer-events:none;
+        background:radial-gradient(ellipse at center, rgba(255,246,220,.95) 0%, rgba(255,205,110,.55) 45%, transparent 78%);
+        animation:fxImpactFlash .34s ease-out forwards;
+      }
+      @keyframes fxImpactFlash{0%{opacity:0;}18%{opacity:1;}100%{opacity:0;}}
+      body.fx-finish-dim::after{
         content:''; position:fixed; inset:0; z-index:95; pointer-events:none;
         background:radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,.62) 100%);
+        animation:fxFinishDim .5s ease forwards;
       }
+      @keyframes fxFinishDim{from{opacity:0;}to{opacity:1;}}
       .dmg-pop.finish{
-        font-size:44px; color:#ffd76a;
+        font-size:46px; color:#ffd76a;
         text-shadow:0 3px 0 #6b3405, 0 0 18px rgba(255,160,40,.9), 0 0 10px rgba(0,0,0,.85);
-        animation:popUpFinish 1.5s ease-out forwards;
+        animation:popUpFinish 1.5s ease-out .5s both;
       }
-      .leader .dmg-pop.finish{font-size:52px;}
-      .dmg-pop.fx-fixed.finish{animation:popUpFinish 1.5s ease-out forwards;}
+      .leader .dmg-pop.finish{font-size:54px;}
+      .dmg-pop.fx-fixed.finish{animation:popUpFinish 1.5s ease-out .5s both;}
       @keyframes popUpFinish{
         0%{opacity:0; transform:translate(-50%,-20%) scale(.5);}
-        16%{opacity:1; transform:translate(-50%,-55%) scale(1.35);}
-        30%{transform:translate(-50%,-62%) scale(1.12);}
+        16%{opacity:1; transform:translate(-50%,-55%) scale(1.5);}
+        30%{transform:translate(-50%,-62%) scale(1.2);}
         100%{opacity:0; transform:translate(-50%,-165%) scale(1.05);}
       }
       @media (prefers-reduced-motion: reduce){
-        .dmg-pop.finish{animation-duration:.5s;}
-        body.fx-slowmo::after{display:none;}
-        body.fx-slowmo .fx-lunge-up, body.fx-slowmo .fx-lunge-down{animation-duration:.01s !important;}
+        .fx-finish-up,.fx-finish-down{animation-duration:.01s;}
+        body.fx-impact #app, body.fx-impact #onlineOverlay .online-box{animation:none;}
+        body.fx-impact::before{display:none;}
+        body.fx-finish-dim::after{display:none;}
+        .dmg-pop.finish{animation-duration:.5s; animation-delay:0s;}
       }
     </style>
   </head>
@@ -1922,6 +1969,11 @@
       pendingPops.forEach(function(p){
         var el = document.querySelector(p.sel);
         if (!el) return;
+        /* フィニッシュの特大数字は固定位置ポップで出す：召喚士表示は
+           render のたびに innerHTML で作り直されるため、子要素として
+           付けると続く再描画で着弾前に消えてしまう。表示タイミングは
+           CSS側の animation-delay が着弾（約0.5秒）に合わせてある。 */
+        if ((' ' + (p.cls || '') + ' ').indexOf(' finish ') >= 0){ fxPopFixed(el, p.text, p.cls); return; }
         var span = document.createElement('span');
         span.className = 'dmg-pop ' + p.cls;
         span.textContent = p.text;
@@ -2071,28 +2123,69 @@
         fxHitstopTimer = null;
       }, 80);
     }
-    /* フィニッシュ演出（とどめの一撃専用）：スローモーション＋暗転。
-       fxFinishActive は finishGame が勝敗表示を遅らせる判定に使う。
+    /* フィニッシュ演出（とどめの一撃専用）：タメ→突進→インパクト→余韻の
+       アクション演出。攻撃ユニットの動き自体は fxFinishReg に登録しておき、
+       fxApplyCpu／fxApplyOv が再描画のたびに付け直す（CSS側の
+       .fx-finish-up／.fx-finish-down、着弾は開始から約0.5秒地点）。
+       ここでは着弾タイミングの画面シェイク＋フラッシュと、余韻の暗転、
+       全体の後片付けだけをタイマーで管理する。
+       fxFinishActive は finishGame が勝敗表示を遅らせる判定に使う（従来通り）。
+       fxFinishSeq は演出進行中フラグで、fxApplyCpu が突進をフィニッシュ用に
+       切り替える判定に使う（finishGame が fxFinishActive を消費した後も残る）。
        fxLeaderPopFinish は、その直後の damageLeader の数字ポップだけを
        特大表示にするためのワンショットフラグ（doAttack 側で立てて落とす）。 */
     var fxFinishActive = false;
+    var fxFinishSeq = false;
     var fxLeaderPopFinish = false;
-    var fxSlowmoTimer = null;
+    var fxFinishTimers = [];
+    var fxFinishReg = {}; /* {key:{dir,start}} key: CPU戦='me-uid'等 / オンライン='ov|side|uid' */
+    function fxFinishLater(fn, ms){ fxFinishTimers.push(setTimeout(fn, ms)); }
     function fxTriggerFinish(){
       if (HEADLESS) return;
       fxFinishActive = true;
-      document.body.classList.add('fx-slowmo');
-      if (fxSlowmoTimer) clearTimeout(fxSlowmoTimer);
-      fxSlowmoTimer = setTimeout(function(){
-        document.body.classList.remove('fx-slowmo');
-        fxSlowmoTimer = null;
-      }, 1250);
+      fxFinishSeq = true;
+      fxFinishTimers.forEach(clearTimeout); fxFinishTimers = [];
+      document.body.classList.remove('fx-impact','fx-finish-dim');
+      /* 着弾（約0.5秒地点）：画面全体のシェイク＋フラッシュ */
+      fxFinishLater(function(){
+        document.body.classList.add('fx-impact');
+        fxFinishLater(function(){ document.body.classList.remove('fx-impact'); }, 420);
+      }, 490);
+      /* 余韻（約0.85秒〜）：暗転して一拍置き、勝敗表示へつなぐ */
+      fxFinishLater(function(){ document.body.classList.add('fx-finish-dim'); }, 850);
+      fxFinishLater(function(){
+        document.body.classList.remove('fx-finish-dim');
+        fxFinishSeq = false;
+        fxFinishReg = {};
+      }, 1750);
     }
     function fxResetFinish(){
       fxFinishActive = false;
+      fxFinishSeq = false;
       fxLeaderPopFinish = false;
-      document.body.classList.remove('fx-slowmo');
-      if (fxSlowmoTimer){ clearTimeout(fxSlowmoTimer); fxSlowmoTimer = null; }
+      fxFinishReg = {};
+      fxFinishTimers.forEach(clearTimeout); fxFinishTimers = [];
+      document.body.classList.remove('fx-impact','fx-finish-dim');
+    }
+    /* フィニッシュ中の攻撃ユニットへ、再描画のたびに演出クラスを付け直す。
+       animation-delay をマイナスにして経過時間ぶん進んだ位相から再開させる
+       （召喚演出の fxSpawnSweep と同じ仕組み。盤面は render のたびに
+       作り直されるため、付けっぱなしでは最初の再描画で消えてしまう）。 */
+    function fxFinishSweep(scope, findEl){
+      var now = fxNow();
+      Object.keys(fxFinishReg).forEach(function(key){
+        var isOv = key.indexOf('ov|') === 0;
+        if ((scope === 'ov') !== isOv) return;
+        var rec = fxFinishReg[key];
+        var elapsed = now - rec.start;
+        if (elapsed >= 1000){ delete fxFinishReg[key]; return; }
+        var el = findEl(key);
+        var cls = rec.dir === 'down' ? 'fx-finish-down' : 'fx-finish-up';
+        if (el && !el.classList.contains(cls)){
+          el.style.animationDelay = (-elapsed) + 'ms';
+          el.classList.add(cls);
+        }
+      });
     }
 
     /* ===== 対戦演出の共通基盤（見た目のみ） =====
@@ -2147,7 +2240,7 @@
       var g = el.cloneNode(true);
       g.removeAttribute('id');
       g.removeAttribute('data-fol'); g.removeAttribute('data-ov-unit'); g.removeAttribute('data-ov-side');
-      g.classList.remove('fx-spawn','fx-spawn-mythic','fx-hit','fx-lunge-up','fx-lunge-down','can-attack','targetable','buffable','selected-attacker','selected');
+      g.classList.remove('fx-spawn','fx-spawn-mythic','fx-hit','fx-lunge-up','fx-lunge-down','fx-finish-up','fx-finish-down','can-attack','targetable','buffable','selected-attacker','selected');
       g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
       g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
       g.classList.add('fx-ghost');
@@ -2164,7 +2257,9 @@
       span.style.left = (r.left + r.width / 2) + 'px';
       span.style.top = (r.top + r.height * 0.4) + 'px';
       document.body.appendChild(span);
-      setTimeout(function(){ if (span.parentNode) span.parentNode.removeChild(span); }, 900);
+      /* フィニッシュの特大数字は着弾までの遅延＋長い表示ぶん、長く残す */
+      var lifeMs = (' ' + (cls || '') + ' ').indexOf(' finish ') >= 0 ? 2150 : 900;
+      setTimeout(function(){ if (span.parentNode) span.parentNode.removeChild(span); }, lifeMs);
     }
     function fxSnapshotCpu(){
       var units = {};
@@ -2212,9 +2307,19 @@
       });
       fxLungeQueue.forEach(function(l){
         var el = document.querySelector(l.sel);
-        if (el) el.classList.add(l.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
+        if (!el) return;
+        if (fxFinishSeq){
+          /* フィニッシュ時は通常の突進ではなく、タメ→突進→拡大の専用演出にする。
+             登録しておき、この後の fxFinishSweep で実要素へ付ける */
+          var fm = /\[data-fol="([^"]+)"\]/.exec(l.sel);
+          if (fm && !fxFinishReg[fm[1]]) fxFinishReg[fm[1]] = { dir: l.dir, start: fxNow() };
+        } else {
+          el.classList.add(l.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
+        }
       });
       fxLungeQueue = [];
+      /* フィニッシュ演出を実要素へ付け直す（再描画で消えても位相を保って復元する） */
+      fxFinishSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
       fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       fxCpuPrev = fxSnapshotCpu();
@@ -5515,7 +5620,14 @@
       });
       if (plan.lunge){
         var el = fxOvUnitEl(plan.lunge.side, plan.lunge.uid);
-        if (el) el.classList.add(plan.lunge.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
+        if (plan.finish){
+          /* フィニッシュ時は通常の突進ではなく、タメ→突進→拡大の専用演出にする。
+             登録しておき、この後の fxFinishSweep で実要素へ付ける */
+          var fkey = 'ov|' + plan.lunge.side + '|' + plan.lunge.uid;
+          if (!fxFinishReg[fkey]) fxFinishReg[fkey] = { dir: plan.lunge.dir, start: fxNow() };
+        } else if (el){
+          el.classList.add(plan.lunge.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
+        }
       }
       /* 演出強化 第1弾：SE／ヒットストップ／フィニッシュ（見た目のみ。
          ヒットストップは突進＝ユニット同士の戦闘でダメージが入った時だけ） */
@@ -5528,6 +5640,11 @@
       if (plan.finish){ fxTriggerFinish(); sePlay(v.winner === v.you ? 'win' : 'lose'); }
       /* 続けて届いた状態更新で盤面が作り直されても、召喚演出を付け直す */
       fxSpawnSweep('ov', function(key){
+        var p = key.split('|');
+        return fxOvUnitEl(p[1], p.slice(2).join('|'));
+      });
+      /* フィニッシュ演出も同様に付け直す（位相は経過時間ぶん進める） */
+      fxFinishSweep('ov', function(key){
         var p = key.split('|');
         return fxOvUnitEl(p[1], p.slice(2).join('|'));
       });
