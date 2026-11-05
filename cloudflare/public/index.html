@@ -881,6 +881,35 @@
         box-shadow:0 2px 0 #7d6220, 0 0 8px rgba(236,205,126,.45);
       }
       .cost-chip:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
+      /* ===== 演出強化 第1弾：ヒットストップ／フィニッシュ演出（見た目のみ） =====
+         ヒットストップ：body.fx-hitstop の間（約80ms）だけ盤面アニメーションを止める。
+         フィニッシュ：body.fx-slowmo の間、突進とダメージ数字をゆっくりにし、
+         画面の縁を暗くして「とどめ」の一拍を作る。ダメージ数字は .finish で特大表示。 */
+      body.fx-hitstop #app *, body.fx-hitstop #onlineOverlay *{animation-play-state:paused !important;}
+      body.fx-slowmo .fx-lunge-up, body.fx-slowmo .fx-lunge-down{animation-duration:1.15s !important;}
+      body.fx-slowmo .dmg-pop{animation-duration:1.55s;}
+      body.fx-slowmo::after{
+        content:''; position:fixed; inset:0; z-index:95; pointer-events:none;
+        background:radial-gradient(ellipse at center, transparent 42%, rgba(0,0,0,.62) 100%);
+      }
+      .dmg-pop.finish{
+        font-size:44px; color:#ffd76a;
+        text-shadow:0 3px 0 #6b3405, 0 0 18px rgba(255,160,40,.9), 0 0 10px rgba(0,0,0,.85);
+        animation:popUpFinish 1.5s ease-out forwards;
+      }
+      .leader .dmg-pop.finish{font-size:52px;}
+      .dmg-pop.fx-fixed.finish{animation:popUpFinish 1.5s ease-out forwards;}
+      @keyframes popUpFinish{
+        0%{opacity:0; transform:translate(-50%,-20%) scale(.5);}
+        16%{opacity:1; transform:translate(-50%,-55%) scale(1.35);}
+        30%{transform:translate(-50%,-62%) scale(1.12);}
+        100%{opacity:0; transform:translate(-50%,-165%) scale(1.05);}
+      }
+      @media (prefers-reduced-motion: reduce){
+        .dmg-pop.finish{animation-duration:.5s;}
+        body.fx-slowmo::after{display:none;}
+        body.fx-slowmo .fx-lunge-up, body.fx-slowmo .fx-lunge-down{animation-duration:.01s !important;}
+      }
     </style>
   </head>
   <body>
@@ -981,6 +1010,11 @@
             <button class="seg-btn" type="button" data-game-mode="online">オンライン対戦</button>
           </div>
           <p class="seg-note" id="modeSegNote">CPUと対戦します。デッキ・召喚士は下で選べます。</p>
+        </div>
+        <div class="first-choice" style="margin-top:4px;">
+          <p class="first-choice-label">効果音（SE）</p>
+          <button class="btn-sub" id="seToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700;" aria-pressed="true">効果音：ON</button>
+          <p class="seg-note">召喚・攻撃・破壊・回復などの効果音です。設定はこの端末に保存されます。</p>
         </div>
         <p class="over-sub" id="startDeckInfo"></p>
         <div class="first-choice" style="margin-top:4px;">
@@ -1730,6 +1764,7 @@
       opts = opts || {};
       uidSeq = 1;
       fxCpuPrev = null; fxLungeQueue = []; /* 演出の差分ベースラインを張り直す */
+      fxResetFinish(); /* フィニッシュ演出の状態も張り直す */
       /* 先攻の決定：シミュレーション等で明示された場合はそれを使い、
          そうでなければタイトル画面の手番選択（先行／後攻／ランダム）に従う */
       var firstSide;
@@ -1904,6 +1939,162 @@
     }
     function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
 
+    /* ===== 演出強化 第1弾：SE（WebAudio合成音）／ヒットストップ／フィニッシュ演出 =====
+       いずれも演出層だけの追加で、カードデータ・ルール・勝敗判定には触れない。
+       HEADLESS（テストプレイのシミュレーション）中は完全に無効：音は鳴らさず、
+       遅延も入れない（フィニッシュ時の勝敗表示の遅延は finishGame の
+       HEADLESS 早期リターンの内側でのみ発生する）。
+       AudioContext はモバイルの自動再生制限に合わせ、ユーザーのタップ等の
+       操作（pointerdown／click／keydown）を起点に生成・再開する。
+       生成前や suspended の間は sePlay は無音で何もしない。 */
+    var SE_KEY = 'cardbattle.se.v1';
+    var seEnabled = true;
+    try { if (localStorage.getItem(SE_KEY) === 'off') seEnabled = false; } catch (e) {}
+    var seCtx = null;
+    var seLastPlay = {};
+    function seSave(){
+      try { localStorage.setItem(SE_KEY, seEnabled ? 'on' : 'off'); } catch (e) {}
+    }
+    function seUnlock(){
+      if (!seEnabled) return;
+      try {
+        if (!seCtx){
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          seCtx = new AC();
+        }
+        if (seCtx.state === 'suspended') seCtx.resume();
+      } catch (e) {}
+    }
+    document.addEventListener('pointerdown', seUnlock, true);
+    document.addEventListener('click', seUnlock, true);
+    document.addEventListener('keydown', seUnlock, true);
+    /* 1音分の短い電子音：周波数を from→to へ滑らせ、指数減衰のエンベロープを付ける */
+    function seTone(freqFrom, freqTo, dur, type, vol, delay){
+      var t0 = seCtx.currentTime + (delay || 0);
+      var osc = seCtx.createOscillator();
+      var gain = seCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.setValueAtTime(freqFrom, t0);
+      if (freqTo && freqTo !== freqFrom) osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqTo), t0 + dur);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.08, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain); gain.connect(seCtx.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.05);
+    }
+    /* 打撃用の短いノイズ（攻撃ヒット／破壊の質感付け） */
+    function seNoise(dur, vol, delay, freq){
+      var t0 = seCtx.currentTime + (delay || 0);
+      var len = Math.max(1, Math.floor(seCtx.sampleRate * dur));
+      var buf = seCtx.createBuffer(1, len, seCtx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = seCtx.createBufferSource(); src.buffer = buf;
+      var filter = seCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = freq || 1200;
+      var gain = seCtx.createGain(); gain.gain.value = vol || 0.1;
+      src.connect(filter); filter.connect(gain); gain.connect(seCtx.destination);
+      src.start(t0);
+    }
+    /* 場面ごとのSE。同じ音の連打は70ms未満の間隔では間引く（全体効果での多重発音防止） */
+    function sePlay(name){
+      if (HEADLESS || !seEnabled || !seCtx || seCtx.state !== 'running') return;
+      var nowMs = fxNow();
+      if (seLastPlay[name] && nowMs - seLastPlay[name] < 70) return;
+      seLastPlay[name] = nowMs;
+      try {
+        switch (name){
+          case 'summon': /* 召喚：2音の上昇ブラップ */
+            seTone(520, 780, 0.09, 'square', 0.055);
+            seTone(780, 1180, 0.11, 'square', 0.05, 0.055);
+            break;
+          case 'summonMythic': /* 神話の召喚：4音アルペジオ＋きらめき */
+            seTone(523, 523, 0.1, 'triangle', 0.085);
+            seTone(659, 659, 0.1, 'triangle', 0.085, 0.07);
+            seTone(784, 784, 0.12, 'triangle', 0.085, 0.14);
+            seTone(1047, 1568, 0.24, 'triangle', 0.08, 0.21);
+            seTone(2093, 2093, 0.18, 'sine', 0.035, 0.21);
+            break;
+          case 'hit': /* 攻撃ヒット：低い打撃＋ノイズ */
+            seTone(190, 55, 0.13, 'sine', 0.14);
+            seNoise(0.07, 0.07, 0, 1600);
+            break;
+          case 'destroy': /* 破壊：下降スイープ＋崩れノイズ */
+            seTone(420, 60, 0.28, 'sawtooth', 0.07);
+            seNoise(0.22, 0.09, 0.02, 800);
+            break;
+          case 'heal': /* 回復：柔らかい上昇2音 */
+            seTone(659, 659, 0.11, 'sine', 0.075);
+            seTone(988, 1319, 0.17, 'sine', 0.07, 0.08);
+            break;
+          case 'turn': /* 自分のターン開始：控えめな2音チャイム */
+            seTone(440, 440, 0.08, 'triangle', 0.06);
+            seTone(659, 659, 0.13, 'triangle', 0.06, 0.07);
+            break;
+          case 'win': /* 勝利：上昇ファンファーレ */
+            seTone(523, 523, 0.11, 'square', 0.06);
+            seTone(659, 659, 0.11, 'square', 0.06, 0.09);
+            seTone(784, 784, 0.11, 'square', 0.06, 0.18);
+            seTone(1047, 1047, 0.3, 'square', 0.065, 0.27);
+            seTone(1319, 1319, 0.3, 'triangle', 0.05, 0.27);
+            break;
+          case 'lose': /* 敗北：下降する短いフレーズ */
+            seTone(392, 392, 0.16, 'triangle', 0.075);
+            seTone(330, 330, 0.16, 'triangle', 0.075, 0.14);
+            seTone(262, 196, 0.36, 'triangle', 0.075, 0.28);
+            break;
+        }
+      } catch (e) {}
+    }
+    function renderSeToggle(){
+      var btn = document.getElementById('seToggleBtn');
+      if (!btn) return;
+      btn.textContent = seEnabled ? '効果音：ON' : '効果音：OFF';
+      btn.setAttribute('aria-pressed', seEnabled ? 'true' : 'false');
+    }
+    document.getElementById('seToggleBtn').addEventListener('click', function(){
+      seEnabled = !seEnabled;
+      seSave();
+      renderSeToggle();
+      if (seEnabled){ seUnlock(); sePlay('summon'); }
+    });
+    renderSeToggle();
+    /* ヒットストップ：ユニット同士の戦闘でダメージが入った瞬間だけ、
+       盤面アニメーションを約80ms止める（JS側の進行は止めない） */
+    var fxHitstopTimer = null;
+    function fxHitstop(){
+      if (HEADLESS) return;
+      document.body.classList.add('fx-hitstop');
+      if (fxHitstopTimer) clearTimeout(fxHitstopTimer);
+      fxHitstopTimer = setTimeout(function(){
+        document.body.classList.remove('fx-hitstop');
+        fxHitstopTimer = null;
+      }, 80);
+    }
+    /* フィニッシュ演出（とどめの一撃専用）：スローモーション＋暗転。
+       fxFinishActive は finishGame が勝敗表示を遅らせる判定に使う。
+       fxLeaderPopFinish は、その直後の damageLeader の数字ポップだけを
+       特大表示にするためのワンショットフラグ（doAttack 側で立てて落とす）。 */
+    var fxFinishActive = false;
+    var fxLeaderPopFinish = false;
+    var fxSlowmoTimer = null;
+    function fxTriggerFinish(){
+      if (HEADLESS) return;
+      fxFinishActive = true;
+      document.body.classList.add('fx-slowmo');
+      if (fxSlowmoTimer) clearTimeout(fxSlowmoTimer);
+      fxSlowmoTimer = setTimeout(function(){
+        document.body.classList.remove('fx-slowmo');
+        fxSlowmoTimer = null;
+      }, 1250);
+    }
+    function fxResetFinish(){
+      fxFinishActive = false;
+      fxLeaderPopFinish = false;
+      document.body.classList.remove('fx-slowmo');
+      if (fxSlowmoTimer){ clearTimeout(fxSlowmoTimer); fxSlowmoTimer = null; }
+    }
+
     /* ===== 対戦演出の共通基盤（見た目のみ） =====
        盤面の前回スナップショットと現在の状態を見比べ、出現（スポーン）／
        被弾（揺れ＋赤フラッシュ）／破壊（ゴーストのフェードアウト）を付ける。
@@ -2013,6 +2204,8 @@
         var el = document.querySelector('[data-fol="' + s.key + '"]');
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
       });
+      /* 演出：召喚音（神話は豪華な専用音。同時出現でも1回だけ鳴らす） */
+      if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
       plan.hit.forEach(function(k){
         var el = document.querySelector('[data-fol="' + k + '"]');
         if (el) el.classList.add('fx-hit');
@@ -2046,7 +2239,8 @@
     function damageLeader(sideKey, n, why){
       var side = sideObj(sideKey);
       side.hp -= n;
-      popOn(sideKey==='me' ? '#myLeader' : '#cpuLeader', '-' + n, '');
+      /* フィニッシュ時（doAttack が立てた時）だけ数字を特大表示にする */
+      popOn(sideKey==='me' ? '#myLeader' : '#cpuLeader', '-' + n, fxLeaderPopFinish ? 'finish' : '');
       if (why) logMsg(side.label + 'の召喚士は ' + why + ' で ' + n + 'ダメージ（残り体力' + Math.max(0,side.hp) + '）', 'dmg');
       checkGameOver();
     }
@@ -2054,7 +2248,7 @@
       var side = sideObj(sideKey);
       var real = Math.min(n, side.maxHp - side.hp);
       side.hp += real;
-      if (real > 0) popOn(sideKey==='me' ? '#myLeader' : '#cpuLeader', '+' + real, 'heal');
+      if (real > 0){ popOn(sideKey==='me' ? '#myLeader' : '#cpuLeader', '+' + real, 'heal'); sePlay('heal'); }
       return real;
     }
     function findFollower(sideKey, uid){
@@ -2121,6 +2315,7 @@
       if (idx < 0) return;
       side.board.splice(idx, 1);
       logMsg(f.name + ' は倒れた。');
+      sePlay('destroy'); /* 演出：破壊音（HEADLESS時は sePlay 側で無効） */
       if (f.effectKind === 'lastwordDraw' && !S.over){
         logMsg(f.name + ' の効果：' + side.label + 'はカードを1枚引く。', 'sys');
         drawCards(sideKey, 1);
@@ -2141,10 +2336,14 @@
       S.over = true; S.mode='idle'; S.pending=null; S.selectedAttacker=null;
       S.winnerSide = S.cpu.hp <= 0 && S.me.hp > 0 ? 'me' : (S.me.hp <= 0 && S.cpu.hp > 0 ? 'cpu' : null);
       if (HEADLESS) return;
+      sePlay(win ? 'win' : 'lose'); /* 演出：勝敗音 */
       document.getElementById('overTitle').textContent = win ? '勝利！' : '敗北…';
       document.getElementById('overTitle').className = 'over-title ' + (win ? 'win' : 'lose');
       document.getElementById('overSub').textContent = sub;
       render();
+      /* フィニッシュ演出が発動した決着では、勝敗画面の前に一拍置く */
+      var overDelay = fxFinishActive ? 1750 : 650;
+      fxFinishActive = false;
       setTimeout(function(){
         /* 対戦終了直後にタイトルへ戻っていたら、遅れて勝敗モーダルを被せない
            （被さるとタイトル側のスクロール／タッチを奪う） */
@@ -2152,7 +2351,7 @@
         if (document.getElementById('startOverlay').classList.contains('show')) return;
         if (document.getElementById('deckOverlay').classList.contains('show')) return;
         document.getElementById('overOverlay').classList.add('show');
-      }, 650);
+      }, overDelay);
     }
 
     function startTurn(sideKey, isFirst){
@@ -2178,6 +2377,10 @@
         logMsg('― ' + side.label + 'のターン', 'sys');
       }
       if (!S.over) applySummonerStartEffects(sideKey);
+      /* 演出：自分のターン開始音。対戦画面が開いている時だけ鳴らす
+         （起動直後の newGame→startTurn ではタイトル表示中なので鳴らさない。
+         HEADLESS時は sePlay 側で無効） */
+      if (sideKey === 'me' && !document.getElementById('startOverlay').classList.contains('show')) sePlay('turn');
     }
     /* リーリャの変身（守護の儀）：自分のターン開始時に startTurn から呼ばれる自動処理（強制発動）。
        場に出たターンでない（sick でない）リーリャが場にいれば、1体ずつ順番に処理する：
@@ -2912,7 +3115,13 @@
         if (leaderBlockedFor(atkSide, atk)){ logMsg(atk.name + ' の突破：場に出たターンは召喚士を攻撃できない（ユニットのみ攻撃できる）。'); return false; }
         consumeAttack(atk);
         logMsg(atk.name + ' が ' + sideObj(defSide).label + 'の召喚士に攻撃！ ' + atk.atk + 'ダメージ。', 'dmg');
+        /* 演出：とどめの一撃（この攻撃で敵召喚士のライフが0以下）だけ
+           フィニッシュ演出を発動する。召喚士への攻撃ではヒットストップは入れない */
+        var lethalLeader = atk.atk > 0 && (sideObj(defSide).hp - atk.atk) <= 0;
+        if (lethalLeader){ fxTriggerFinish(); fxLeaderPopFinish = true; }
+        if (atk.atk > 0) sePlay('hit');
         damageLeader(defSide, atk.atk);
+        fxLeaderPopFinish = false;
       } else {
         var def = findFollower(defSide, targetUid);
         if (!def) return false;
@@ -2962,8 +3171,13 @@
         /* 貫通の解決：余剰分を相手の召喚士へ与える（防御側が倒れる場合も与える） */
         if (penExcess > 0){
           logMsg(atk.name + ' の貫通：余った ' + penExcess + ' ダメージが ' + sideObj(defSide).label + 'の召喚士を貫いた！', 'dmg');
+          /* 演出：貫通でとどめになる場合もフィニッシュ演出（ユニットの攻撃が起点のため） */
+          if ((sideObj(defSide).hp - penExcess) <= 0){ fxTriggerFinish(); fxLeaderPopFinish = true; }
           damageLeader(defSide, penExcess);
+          fxLeaderPopFinish = false;
         }
+        /* 演出：ユニット同士の戦闘でダメージが入った瞬間のヒット音＋ヒットストップ */
+        if (defDmg > 0 || atkDmg > 0){ sePlay('hit'); fxHitstop(); }
         /* 反撃：実際に1以上の戦闘ダメージを受けた反撃持ちは、相手ユニットへ1ダメージ返す。
            素ダメージで倒れた側の反撃も発動する（破壊は反撃の解決後）。
            反撃ダメージでは新たな反撃は発動しない（applyCounterHit は体力だけを減らす）。 */
@@ -5208,7 +5422,7 @@
     }
     /* renderOvGame の冒頭（DOMがまだ前回表示のうち）に呼ぶ */
     function fxPlanOv(v){
-      var plan = { spawn: [], hit: [], pops: [], leaderPops: [], lunge: null };
+      var plan = { spawn: [], hit: [], pops: [], leaderPops: [], lunge: null, destroyed: 0, finish: false, myTurnStart: false };
       var prev = fxOvPrev;
       if (!prev){ fxClearSpawnReg('ov'); return plan; }
       if (prev.winner != null && v.winner == null){ fxClearSpawnReg('ov'); return plan; } /* リマッチ開始はベースライン扱い */
@@ -5241,6 +5455,7 @@
       });
       Object.keys(prev.units).forEach(function(k){
         if (!(k in now)){
+          plan.destroyed++;
           var parts = k.split('-');
           var el = fxOvUnitEl(parts[0], parts.slice(1).join('-'));
           if (el) fxGhost(el);
@@ -5248,6 +5463,14 @@
       });
       if (v.me.life !== prev.meLife) plan.leaderPops.push({ id: 'ovMyPanel', text: (v.me.life - prev.meLife > 0 ? '+' : '') + (v.me.life - prev.meLife), cls: v.me.life > prev.meLife ? 'heal' : '' });
       if (v.opponent.life !== prev.oppLife) plan.leaderPops.push({ id: 'ovOppPanel', text: (v.opponent.life - prev.oppLife > 0 ? '+' : '') + (v.opponent.life - prev.oppLife), cls: v.opponent.life > prev.oppLife ? 'heal' : '' });
+      /* 演出強化 第1弾：決着が付いた更新（＝とどめの一撃）では、召喚士への
+         ダメージポップを特大表示にする。自分のターン開始もここで検出する */
+      plan.finish = prev.winner == null && v.winner != null;
+      if (plan.finish){
+        plan.leaderPops.forEach(function(p){ if (p.cls !== 'heal') p.cls = 'finish'; });
+      } else if (prev.turn != null && v.turn === v.you && prev.turn !== prev.you){
+        plan.myTurnStart = true;
+      }
       /* 突進：自分の攻撃は送信時に記録された予約を最優先。次に、対戦ログの
          攻撃記録から特定できた攻撃側。次に、残り攻撃回数が減ったユニット
          （攻撃した個体は必ず減る。手番側で一意な時だけ採用）。最後に従来の
@@ -5294,6 +5517,15 @@
         var el = fxOvUnitEl(plan.lunge.side, plan.lunge.uid);
         if (el) el.classList.add(plan.lunge.dir === 'down' ? 'fx-lunge-down' : 'fx-lunge-up');
       }
+      /* 演出強化 第1弾：SE／ヒットストップ／フィニッシュ（見た目のみ。
+         ヒットストップは突進＝ユニット同士の戦闘でダメージが入った時だけ） */
+      if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
+      if (plan.hit.length) sePlay('hit');
+      if (plan.destroyed > 0) sePlay('destroy');
+      if (plan.pops.some(function(p){ return p.cls === 'heal'; }) || plan.leaderPops.some(function(p){ return p.cls === 'heal'; })) sePlay('heal');
+      if (plan.lunge && plan.hit.length) fxHitstop();
+      if (plan.myTurnStart) sePlay('turn');
+      if (plan.finish){ fxTriggerFinish(); sePlay(v.winner === v.you ? 'win' : 'lose'); }
       /* 続けて届いた状態更新で盤面が作り直されても、召喚演出を付け直す */
       fxSpawnSweep('ov', function(key){
         var p = key.split('|');
