@@ -1596,6 +1596,49 @@
         transform-origin:center center; cursor:default;
         box-shadow:0 16px 38px rgba(0,0,0,.6), 0 0 26px rgba(236,205,126,.35);
       }
+      /* ===== 召喚エフェクト強化：魔法陣／神話個別エフェクト／アギト孵化 =====
+         魔法陣はタイトル画面の魔法陣エンブレムと同系統の紋様（Ωオリジナル：
+         二重円＋点線リング＋二重のひし形＋四方のダイヤ）を SVG で描き、
+         ステージカード（z-index:90）の背後（89）に敷く。広がりとフェードは
+         JS の WAAPI が担当し、外側の紋様だけが CSS でゆっくり回る。
+         神話の個別エフェクト本体は Pixi レイヤー（キャンバス z-index:93）側。
+         ミラージュの残像はステージカードのクローンを赤く染めてずらす。 */
+      .fx-magic-circle{
+        position:fixed; z-index:89; pointer-events:none;
+        transform:translate(-50%,-50%);
+        filter:drop-shadow(0 0 6px rgba(236,205,126,.35));
+      }
+      .fx-magic-circle svg{display:block; width:100%; height:100%; overflow:visible;}
+      .fx-magic-circle .mc-rotor{transform-box:view-box; transform-origin:60px 60px; animation:mcSpin 7s linear infinite;}
+      @keyframes mcSpin{to{transform:rotate(360deg);}}
+      .fx-mirage-echo{
+        position:fixed !important; z-index:89 !important; margin:0 !important; pointer-events:none;
+        opacity:.45;
+        filter:brightness(1.55) sepia(1) hue-rotate(-48deg) saturate(3.4);
+      }
+      /* 孵化：卵クローンはステージカードより手前（91）、黒い影はさらに手前（92）。
+         ヒビは卵クローンの内側に重ねる SVG オーバーレイで表現する。 */
+      .fx-hatch-egg{position:fixed; z-index:91; pointer-events:none; margin:0;}
+      .fx-cracks{position:absolute; inset:0; z-index:6; pointer-events:none; animation:fxCrackIn .45s ease-out both;}
+      .fx-cracks svg{display:block; width:100%; height:100%;}
+      @keyframes fxCrackIn{0%{opacity:0; transform:scale(.94);}100%{opacity:1; transform:scale(1);}}
+      .fx-hatch-shadow{
+        position:fixed; z-index:92; pointer-events:none; border-radius:50%;
+        transform:translate(-50%,-50%); filter:blur(1px);
+        background:radial-gradient(ellipse at center, rgba(8,3,18,.97) 0%, rgba(24,10,48,.78) 45%, rgba(40,16,80,.28) 68%, transparent 76%);
+      }
+      /* 小〜中規模の画面シェイク（ティアマトの咆哮／アギト孵化用。
+         フィニッシュ専用の body.fx-impact とは別系統で、フラッシュは伴わない） */
+      body.fx-quake-sm #app, body.fx-quake-sm #onlineOverlay .online-box{animation:fxQuakeSm .45s linear;}
+      @keyframes fxQuakeSm{0%,100%{transform:translate(0,0);}25%{transform:translate(1.5px,-1px);}50%{transform:translate(-2px,1px);}75%{transform:translate(1px,1px);}}
+      body.fx-quake-md #app, body.fx-quake-md #onlineOverlay .online-box{animation:fxQuakeMd .55s linear;}
+      @keyframes fxQuakeMd{0%,100%{transform:translate(0,0);}15%{transform:translate(-4px,2px);}30%{transform:translate(4px,-2px);}45%{transform:translate(-3px,-1px);}60%{transform:translate(3px,1px);}75%{transform:translate(-1.5px,0);}}
+      @media (prefers-reduced-motion: reduce){
+        .fx-magic-circle .mc-rotor{animation:none;}
+        .fx-cracks{animation:none;}
+        body.fx-quake-sm #app, body.fx-quake-sm #onlineOverlay .online-box,
+        body.fx-quake-md #app, body.fx-quake-md #onlineOverlay .online-box{animation:none;}
+      }
     </style>
   </head>
   <body>
@@ -2547,7 +2590,7 @@
     function newGame(opts){
       opts = opts || {};
       uidSeq = 1;
-      fxCpuPrev = null; fxLungeQueue = []; /* 演出の差分ベースラインを張り直す */
+      fxCpuPrev = null; fxCpuPrevCid = null; fxLungeQueue = []; /* 演出の差分ベースラインを張り直す */
       fxResetFinish(); /* フィニッシュ演出の状態も張り直す */
       /* 先攻の決定：シミュレーション等で明示された場合はそれを使い、
          そうでなければタイトル画面の手番選択（先行／後攻／ランダム）に従う */
@@ -2935,7 +2978,7 @@
        テストプレイ（HEADLESS）では初期化せず、演出も発生させない。
        オーラは補助表現であり、無効化されても盤面の情報は従来通り
        キーワードアイコンとカード詳細で確認できる。 */
-    var pixiFx = { app: null, enabled: false, tex: null, auraLayer: null, fxLayer: null, bursts: [], rings: [], auras: {}, lastVisCheck: 0 };
+    var pixiFx = { app: null, enabled: false, tex: null, auraLayer: null, fxLayer: null, bursts: [], rings: [], anims: [], auras: {}, lastVisCheck: 0 };
     var pixiReducedMotion = false;
     try { pixiReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
     /* 詳細シートやタイトル等の全面画面が開いている間はキャンバスを隠す
@@ -3022,6 +3065,131 @@
         if (!pixiFx.enabled || HEADLESS) return;
         pixiFinishAt(document.getElementById(sideKey === 'me' ? 'myLeader' : 'cpuLeader'));
       }, 490);
+    }
+    /* ===== 神話個別エフェクト用の汎用アニメ基盤 =====
+       1つの Graphics を fxLayer に載せ、寿命の間 update(gfx, t, lifeMs) で
+       毎フレーム描き直す。pixiTick が進行と後片付けを担当する。
+       モーション低減時は個別エフェクトを一切出さない（魔法陣の淡い表示のみ）。 */
+    function pixiAnim(dur, update){
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return null;
+      var gfx = new PIXI.Graphics();
+      pixiFx.fxLayer.addChild(gfx);
+      var rec = { gfx: gfx, life: 0, max: dur, update: update };
+      pixiFx.anims.push(rec);
+      return rec;
+    }
+    /* 光柱：上から降り注ぐ柱（外側のグロー／中間／白い芯の3層＋落下する光条）。
+       colors は [外側, 中間] の色。芯は常に白。 */
+    function pixiBeamFx(cx, topY, botY, halfW, colors, dur){
+      pixiAnim(dur, function(gfx, t, life){
+        gfx.clear();
+        var env = Math.min(1, t / 0.14) * (t > 0.62 ? Math.max(0, 1 - (t - 0.62) / 0.38) : 1);
+        var a = env * (0.86 + 0.14 * Math.sin(life * 0.045));
+        gfx.beginFill(colors[0], 0.13 * a); gfx.drawRect(cx - halfW, topY, halfW * 2, botY - topY); gfx.endFill();
+        gfx.beginFill(colors[1], 0.22 * a); gfx.drawRect(cx - halfW * 0.52, topY, halfW * 1.04, botY - topY); gfx.endFill();
+        gfx.beginFill(0xffffff, 0.5 * a); gfx.drawRect(cx - halfW * 0.18, topY, halfW * 0.36, botY - topY); gfx.endFill();
+        gfx.lineStyle(2, colors[1], 0.5 * a);
+        for (var i = 0; i < 5; i++){
+          var seed = Math.sin(i * 78.233) * 43758.5453;
+          var sx = cx + ((seed - Math.floor(seed)) - 0.5) * halfW * 1.6;
+          var sy = topY + ((life / 340 + i * 0.37) % 1) * (botY - topY);
+          gfx.moveTo(sx, sy); gfx.lineTo(sx, sy + 16);
+        }
+      });
+    }
+    /* 斬撃／一閃：中心を通る鋭い光のライン。太い色帯の上に白い芯を重ねる */
+    function pixiSlashFx(cx, cy, deg, len, color, dur){
+      var rad = deg * Math.PI / 180, dx = Math.cos(rad), dy = Math.sin(rad);
+      pixiAnim(dur || 420, function(gfx, t){
+        gfx.clear();
+        var p = Math.min(1, t / 0.22);
+        var a = t < 0.55 ? 1 : 1 - (t - 0.55) / 0.45;
+        var L = len * (0.35 + 0.65 * p);
+        gfx.lineStyle(8, color, 0.30 * a);
+        gfx.moveTo(cx - dx * L / 2, cy - dy * L / 2); gfx.lineTo(cx + dx * L / 2, cy + dy * L / 2);
+        gfx.lineStyle(3.2, 0xffffff, 0.95 * a);
+        gfx.moveTo(cx - dx * L / 2, cy - dy * L / 2); gfx.lineTo(cx + dx * L / 2, cy + dy * L / 2);
+      });
+    }
+    /* 紫の鎖：周囲8方向から鎖の輪（小円）が渦を巻きながらカードへ集まる */
+    function pixiChainsFx(cx, cy, R, dur){
+      pixiAnim(dur, function(gfx, t){
+        gfx.clear();
+        var a = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+        for (var i = 0; i < 8; i++){
+          var base = (i / 8) * Math.PI * 2 + t * 0.9;
+          var rOut = R * (1 - 0.72 * t);
+          for (var j = 0; j <= 5; j++){
+            var f = j / 5;
+            var ang = base + f * 0.55 * (1 - t * 0.5);
+            var rad = rOut * (1 - f * 0.62);
+            gfx.beginFill(j % 2 ? 0x8a5cff : 0xd6bcff, 0.85 * a);
+            gfx.drawCircle(cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad * 0.92, j % 2 ? 2.4 : 3.2);
+            gfx.endFill();
+          }
+        }
+      });
+    }
+    /* 空から降る剣（EX-キャリバー）：白い刃＋金の鍔・柄を1枚の Graphics に描き、
+       前半で加速しながら突き立つ位置まで落とす */
+    function pixiSwordFx(cx, cy, h, dur){
+      var startY = cy - h * 1.6, endY = cy - h * 0.05;
+      pixiAnim(dur, function(gfx, t){
+        var p = Math.min(1, t / 0.42); p = p * p;
+        gfx.clear();
+        gfx.position.set(cx, startY + (endY - startY) * p);
+        gfx.alpha = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
+        gfx.beginFill(0xffffff, 0.95); gfx.lineStyle(1.5, 0xeccd7e, 0.9);
+        gfx.moveTo(-4.5, -42); gfx.lineTo(4.5, -42); gfx.lineTo(0, 34); gfx.closePath(); gfx.endFill();
+        gfx.beginFill(0xeccd7e, 1); gfx.drawRect(-14, -47, 28, 5.5); gfx.endFill();
+        gfx.beginFill(0xc9a24b, 1); gfx.drawRect(-2.6, -60, 5.2, 13); gfx.endFill();
+        gfx.beginFill(0xfff3c4, 1); gfx.drawCircle(0, -63, 3.6); gfx.endFill();
+      });
+    }
+    /* 039 セレスティア：光柱＋足元の浄化の波紋（白〜金） */
+    function fxCelestiaFx(cx, cy, feet, w, h){
+      pixiBeamFx(cx, feet - h * 2.7, feet + 4, w * 0.52, [0xffeeb0, 0xfff6da], 980);
+      pixiRing(cx, feet, { maxR: w * 1.1, dur: 780, color: 0xffffff });
+      setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 0.85, dur: 700, color: 0xeccd7e }); }, 170);
+      pixiBurst(cx, feet - 8, { count: 24, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.15 });
+    }
+    /* 046 ミラージュ：赤い斬撃2対（交差×2回）。残像は DOM 側の mirageEcho が担当 */
+    function fxMirageFx(cx, cy, w, h){
+      var len = Math.max(w, h) * 1.9;
+      setTimeout(function(){ pixiSlashFx(cx, cy, -33, len, 0xff4a3c, 380); }, 40);
+      setTimeout(function(){ pixiSlashFx(cx, cy, 33, len, 0xff4a3c, 380); }, 170);
+      setTimeout(function(){ pixiSlashFx(cx, cy - 10, 33, len, 0xff6a4a, 380); }, 430);
+      setTimeout(function(){ pixiSlashFx(cx, cy + 8, -33, len, 0xff6a4a, 380); }, 560);
+      setTimeout(function(){ pixiBurst(cx, cy, { count: 14, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.1 }); }, 300);
+    }
+    /* 048 ダーククイーン：紫の鎖が巻きつくように集まり、最後に紫の閃光 */
+    function fxDarkQueenFx(cx, cy, w, h){
+      pixiChainsFx(cx, cy, Math.max(w, h) * 0.95, 900);
+      setTimeout(function(){
+        pixiBurst(cx, cy, { count: 18, colors: [0xc39bff, 0x8a5cff, 0xffffff], power: 1.15 });
+        pixiRing(cx, cy, { maxR: Math.max(w, h) * 0.8, dur: 520, color: 0xb18cff });
+      }, 780);
+    }
+    /* 051 ティアマト：咆哮の衝撃波リング（紅→蒼）＋粉塵＋画面の揺れ */
+    function fxTiamatFx(cx, cy, feet, w, h){
+      pixiRing(cx, feet, { maxR: w * 1.5, dur: 800, color: 0xff6a4a });
+      setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.25, dur: 750, color: 0x5aa2ff }); }, 150);
+      pixiBurst(cx, feet - 4, { count: 30, colors: [0xd8c6a5, 0xa08b6d, 0xefe4cc], power: 1.7, size: 1.2 });
+      fxQuake('fx-quake-md', 560);
+    }
+    /* 52ex EX-キャリバー：空から剣の光が降り注ぎ、突き立つ光柱ときらめき */
+    function fxExcaliburFx(cx, cy, feet, w, h){
+      pixiBeamFx(cx, feet - h * 2.7, feet + 4, w * 0.3, [0xeccd7e, 0xfff6da], 900);
+      pixiSwordFx(cx, cy, h, 950);
+      setTimeout(function(){
+        pixiBurst(cx, feet - h * 0.2, { count: 22, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 1.35 });
+        pixiRing(cx, feet, { maxR: w * 0.95, dur: 650, color: 0xffd76a });
+      }, 400);
+    }
+    /* 054 ロンギヌス：槍の一閃。鋭い光のラインが斜めに一筋走る */
+    function fxLonginusFx(cx, cy, w, h){
+      pixiSlashFx(cx, cy, -38, Math.max(w, h) * 2.1, 0xf2e7bd, 480);
+      setTimeout(function(){ pixiBurst(cx, cy, { count: 10, colors: [0xffffff, 0xf2e7bd], power: 0.9 }); }, 120);
     }
     /* ===== 常駐オーラ（鉄壁の盾膜／速攻の風） ===== */
     function pixiDrawGuard(a, w, h){
@@ -3157,6 +3325,14 @@
         rg.gfx.lineStyle(2.5 * (1 - rt) + 0.5, rg.color, 0.85 * (1 - rt));
         rg.gfx.drawEllipse(rg.x, rg.y, rad, rad * 0.32);
       }
+      /* 汎用アニメ（光柱・斬撃・鎖・剣など、毎フレーム描き直す系） */
+      for (var ai = pixiFx.anims.length - 1; ai >= 0; ai--){
+        var an = pixiFx.anims[ai];
+        an.life += dt;
+        var at = an.life / an.max;
+        if (at >= 1){ if (an.gfx.parent) an.gfx.parent.removeChild(an.gfx); an.gfx.destroy(); pixiFx.anims.splice(ai, 1); continue; }
+        an.update(an.gfx, at, an.life);
+      }
       Object.keys(pixiFx.auras).forEach(function(k){
         var a = pixiFx.auras[k];
         var el = a.getEl ? a.getEl() : null;
@@ -3194,6 +3370,7 @@
        攻撃の突進は doAttack／オンラインの送信アクションからキューへ積み、
        再描画後に攻撃側へ付ける（再描画でクラスが消えないようにするため）。 */
     var fxCpuPrev = null;   /* CPU戦盤面の前回スナップショット {units:{'me-uid':hp}} */
+    var fxCpuPrevCid = null; /* 同・カードIDマップ {'me-uid':'53'}（孵化＝ID変化の検出用） */
     var fxLungeQueue = [];  /* CPU戦の突進キュー {sel, dir} */
     /* ===== 召喚演出の継続記録 =====
        盤面は render() のたびに innerHTML で作り直されるため、クラスを付けた
@@ -3221,7 +3398,7 @@
         if ((scope === 'ov') !== isOv) return;
         /* 中央ステージ演出中のユニットは実要素へ召喚クラスを付け直さない
            （ステージのクローン側で演出する。実要素は滞在中ずっと隠す） */
-        if (stageInFlight[key]) return;
+        if (stageInFlight[key] || hatchInFlight[key]) return;
         var rec = fxSpawnReg[key];
         var elapsed = now - rec.start;
         if (elapsed >= rec.dur){ delete fxSpawnReg[key]; return; }
@@ -3250,6 +3427,7 @@
     var stageQueue = [];        /* 処理待ちのステージ出現 {scope,key,cardId,mythic} */
     var stageBusy = false;      /* ステージに滞在・スライド中のクローンがあるか */
     var stageInFlight = {};     /* ステージ演出中（実要素を隠し続ける）キーの集合 */
+    var hatchInFlight = {};     /* 孵化演出中（実要素を隠し続ける）キーの集合 */
     function stageFindEl(key){
       if (key.indexOf('ov|') === 0){
         var p = key.split('|');
@@ -3276,13 +3454,112 @@
       }
       return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     }
-    /* ステージ出現時の演出フック。次工程「神話カードの個別専用エフェクト」は
-       ここでカードIDごとに分岐して差し込む（例：switch (String(cardId))）。
-       今回は全カード共通で、既存の召喚エフェクト（神話は神話用）を
-       ステージ出現のタイミングに合わせて発火させる。 */
+    /* 小〜中規模の画面シェイク（ティアマトの咆哮／アギト孵化用）。
+       フィニッシュ専用の fxTriggerFinish とは別系統で、短く弱く揺らすだけ */
+    function fxQuake(cls, ms){
+      if (HEADLESS || stageReducedMotion) return;
+      document.body.classList.remove(cls);
+      void document.body.offsetWidth; /* アニメーションを最初から再生させる */
+      document.body.classList.add(cls);
+      setTimeout(function(){ document.body.classList.remove(cls); }, ms);
+    }
+    /* ===== 魔法陣（全カード共通） =====
+       タイトル画面の魔法陣エンブレムと同系統の紋様（Ωオリジナル）を
+       インラインSVGで描き、ステージカードの背後（z-index:89）に敷く。
+       フワーっと広がり、外側の紋様がゆっくり回転しながら消える。
+       通常カードは控えめに小さく短く、神話カードは大きく長く出す。
+       色は __C__ をカード別の色で置換する（神話は個別エフェクトの色に合わせる）。 */
+    var MAGIC_CIRCLE_SVG =
+      '<svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">' +
+      '<g class="mc-rotor" fill="none" stroke="__C__">' +
+      '<circle cx="60" cy="60" r="56" stroke-width="1.6" />' +
+      '<circle cx="60" cy="60" r="50.5" stroke-width=".8" opacity=".65" />' +
+      '<circle cx="60" cy="60" r="41" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="0.01 6.43" opacity=".85" />' +
+      '<polygon points="60,17 103,60 60,103 17,60" stroke-width="1.4" />' +
+      '<polygon points="60,33 87,60 60,87 33,60" stroke-width="1" opacity=".7" />' +
+      '<g fill="__C__" stroke="none">' +
+      '<rect x="57" y="1" width="6" height="6" transform="rotate(45 60 4)" />' +
+      '<rect x="113" y="57" width="6" height="6" transform="rotate(45 116 60)" />' +
+      '<rect x="57" y="113" width="6" height="6" transform="rotate(45 60 116)" />' +
+      '<rect x="1" y="57" width="6" height="6" transform="rotate(45 4 60)" />' +
+      '</g></g>' +
+      '<g fill="none" stroke="__C__">' +
+      '<circle cx="60" cy="60" r="13" stroke-width="1.2" />' +
+      '<polygon points="60,50 70,60 60,70 50,60" fill="__C__" stroke="none" />' +
+      '</g></svg>';
+    function summonMagicCircle(stageEl, mythic, color){
+      if (HEADLESS || !stageEl) return;
+      var r = stageEl.getBoundingClientRect();
+      if (!r.width) return;
+      var reduced = stageReducedMotion;
+      var size = Math.max(r.width, r.height) * (mythic ? 1.9 : 1.5);
+      var dur = reduced ? 300 : (mythic ? 1150 : 680);
+      var wrap = document.createElement('div');
+      wrap.className = 'fx-magic-circle';
+      wrap.style.left = (r.left + r.width / 2) + 'px';
+      wrap.style.top = (r.top + r.height / 2) + 'px';
+      wrap.style.width = size + 'px';
+      wrap.style.height = size + 'px';
+      wrap.innerHTML = MAGIC_CIRCLE_SVG.split('__C__').join(color || '#eccd7e');
+      document.body.appendChild(wrap);
+      var peak = reduced ? 0.4 : 0.95;
+      try {
+        wrap.animate([
+          { transform: 'translate(-50%,-50%) scale(.32) rotate(-10deg)', opacity: 0 },
+          { transform: 'translate(-50%,-50%) scale(1) rotate(4deg)', opacity: peak, offset: 0.28 },
+          { transform: 'translate(-50%,-50%) scale(1.04) rotate(10deg)', opacity: peak * 0.95, offset: 0.62 },
+          { transform: 'translate(-50%,-50%) scale(1.1) rotate(16deg)', opacity: 0 }
+        ], { duration: dur, easing: 'ease-out', fill: 'forwards' });
+      } catch (e) { wrap.style.opacity = String(peak); }
+      setTimeout(function(){ if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, dur + 90);
+    }
+    /* 046 ミラージュの残像：ステージカードのクローンを赤く染めて左右にずらし、
+       時間差で揺れながら消す（本体の transform アニメーションには触らない） */
+    function mirageEcho(stageEl){
+      if (HEADLESS || stageReducedMotion || !stageEl) return;
+      var r = stageEl.getBoundingClientRect();
+      if (!r.width) return;
+      [-1, 1].forEach(function(sgn, i){
+        var g = stageEl.cloneNode(true);
+        g.removeAttribute('id');
+        g.removeAttribute('data-fol'); g.removeAttribute('data-ov-unit'); g.removeAttribute('data-ov-side');
+        g.classList.remove('fx-spawn', 'fx-spawn-mythic');
+        g.classList.add('fx-mirage-echo');
+        g.style.left = (r.left + sgn * 15) + 'px';
+        g.style.top = r.top + 'px';
+        g.style.width = r.width + 'px';
+        g.style.height = r.height + 'px';
+        document.body.appendChild(g);
+        try {
+          g.animate([
+            { transform: 'translateX(' + (-sgn * 6) + 'px)', opacity: 0.5 },
+            { transform: 'translateX(' + (sgn * 12) + 'px)', opacity: 0 }
+          ], { duration: 560, delay: 120 + i * 130, easing: 'ease-out', fill: 'forwards' });
+        } catch (e) {}
+        setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 1050 + i * 130);
+      });
+    }
+    /* ステージ出現時の演出フック。全カード共通で魔法陣をカードの背後に敷き、
+       神話カードはカードID別の専用エフェクトを中央ステージ上で大きく出す。
+       個別エフェクトを持つ神話はステージ滞在を少し延ばす（stageProcess 側）。
+       CPU戦・オンライン戦のどちらから呼ばれても同じ演出になる。 */
+    var STAGE_FX_IDS = { '39': 1, '46': 1, '48': 1, '51': 1, '52ex': 1, '54': 1 };
+    var STAGE_FX_CIRCLE = { '39': '#ffeeb0', '46': '#ff9a7a', '48': '#c9a2ff', '51': '#ffb08a', '52ex': '#fff6da', '54': '#f2e7bd' };
     function stageSummonFx(cardId, stageEl, mythic){
-      /* TODO(次工程): カードID別の専用エフェクトはここに分岐を追加する */
+      if (HEADLESS || !stageEl) return;
       pixiSummonAt(stageEl); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
+      var id = String(cardId);
+      summonMagicCircle(stageEl, mythic, STAGE_FX_CIRCLE[id] || '#eccd7e');
+      if (pixiReducedMotion || stageReducedMotion) return; /* モーション低減時は魔法陣の淡い表示のみ */
+      var r = stageEl.getBoundingClientRect();
+      if (!r.width) return;
+      var cx = r.left + r.width / 2, cy = r.top + r.height / 2, feet = r.bottom;
+      if (id === '39') fxCelestiaFx(cx, cy, feet, r.width, r.height);
+      else if (id === '46'){ fxMirageFx(cx, cy, r.width, r.height); mirageEcho(stageEl); }
+      else if (id === '48') fxDarkQueenFx(cx, cy, r.width, r.height);
+      else if (id === '51') fxTiamatFx(cx, cy, feet, r.width, r.height);
+      else if (id === '52ex') fxExcaliburFx(cx, cy, feet, r.width, r.height);
+      else if (id === '54') fxLonginusFx(cx, cy, r.width, r.height);
     }
     /* 既存ユニットの整列スライド（FLIP）：再描画前の実位置から新しい
        整列位置へ滑らかに寄せる。除去で列が詰まる時も同じ経路で動く。 */
@@ -3369,8 +3646,10 @@
       document.body.appendChild(clone);
       /* Pixi召喚エフェクトはステージ出現のタイミングで発火させる */
       stageSummonFx(item.cardId, clone, item.mythic);
-      /* 滞在：通常カードは0.3秒前後、神話は少し長め。後続が詰まっていたら短縮する */
-      var dwell = item.mythic ? 620 : 300;
+      /* 滞在：通常カードは0.3秒前後、神話は少し長め。個別専用エフェクトを持つ
+         神話は演出が読める長さまで延ばすが、スライド（0.38秒）と合わせて
+         全体で約1.2秒を上限にする。後続が詰まっていたら短縮する */
+      var dwell = item.mythic ? (STAGE_FX_IDS[String(item.cardId)] ? 800 : 620) : 300;
       if (stageQueue.length >= 2) dwell = Math.min(dwell, 140);
       setTimeout(function(){
         var el2 = stageFindEl(item.key);
@@ -3400,6 +3679,138 @@
         if (anim && anim.finished && anim.finished.then) anim.finished.then(land, land);
         setTimeout(land, 470); /* 着地の保険（アニメーション完了通知が来ない環境でも必ず収まる） */
       }, dwell);
+    }
+
+    /* ===== アギトの孵化エフェクト（場の卵の位置で発生） =====
+       黒竜の卵（053）が黒のアギト（53ag）に変わる瞬間を、場の差分検出
+       （fxPlanCpu／fxPlanOv がカードIDの変化を拾う）で発火させる。
+       流れ：卵にヒビが入る → 割れて黒い影が上方向へ高速で飛び出す（画面外まで）
+       → 少し置いて元の位置へ衝撃波と画面の揺れを伴って着地し、そのタイミングで
+       アギトの姿が現れる。咆哮を思わせる画面の微震動も添える。
+       ステージ召喚ではないため stageQueue には載せず、卵クローンと実要素の
+       表示制御だけで完結させる。HEADLESS／モーション低減時は何もしない
+       （アギトは通常どおり即座に表示される）。 */
+    var HATCH_CRACK_PATHS =
+      '<polyline points="50,44 45,31 48,19 43,7" /><polyline points="50,44 58,33 57,21 63,10" />' +
+      '<polyline points="50,44 39,40 28,42 17,37" /><polyline points="50,44 61,41 72,44 83,39" />' +
+      '<polyline points="50,44 46,57 49,69 44,82" /><polyline points="50,44 57,56 55,68 61,80" />' +
+      '<polyline points="45,31 36,26 29,28" /><polyline points="58,33 66,29 73,31" />';
+    var HATCH_CRACK_SVG =
+      '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+      '<g stroke="rgba(255,244,214,.65)" stroke-width="4.4">' + HATCH_CRACK_PATHS + '</g>' +
+      '<g stroke="#160b2a" stroke-width="2.1">' + HATCH_CRACK_PATHS + '</g>' +
+      '</g></svg>';
+    /* 実要素の見た目を position:fixed のクローンとして切り取る（fxGhost と同方式）。
+       座標は _fxRect に保持し、孵化シーケンスの各演出の基準にする */
+    function fxFixedClone(el, cls){
+      var r = el.getBoundingClientRect();
+      if (!r.width) return null;
+      var g = el.cloneNode(true);
+      g.removeAttribute('id');
+      g.removeAttribute('data-fol'); g.removeAttribute('data-ov-unit'); g.removeAttribute('data-ov-side');
+      g.querySelectorAll('button').forEach(function(b){ b.remove(); });
+      g.classList.remove('fx-spawn','fx-spawn-mythic','fx-hit','fx-lunge-up','fx-lunge-down','fx-finish-up','fx-finish-down','can-attack','targetable','buffable','selected-attacker','selected');
+      g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+      g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+      g.style.visibility = 'visible';
+      g.classList.add(cls);
+      g._fxRect = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height, feet: r.bottom };
+      document.body.appendChild(g);
+      return g;
+    }
+    /* 再描画のたびに、孵化演出中の実要素を隠し直す（stageRehide と同じ理由） */
+    function hatchRehide(scope){
+      Object.keys(hatchInFlight).forEach(function(key){
+        if ((scope === 'ov') !== (key.indexOf('ov|') === 0)) return;
+        var el = stageFindEl(key);
+        if (el) el.style.visibility = 'hidden';
+      });
+    }
+    function hatchFxStart(key, clone, findEl){
+      var killClone = function(){ if (clone && clone.parentNode) clone.parentNode.removeChild(clone); };
+      if (HEADLESS || stageReducedMotion || !clone || !clone._fxRect){ killClone(); return; }
+      var fx = clone._fxRect;
+      hatchInFlight[key] = true;
+      var el = findEl();
+      if (el) el.style.visibility = 'hidden';
+      /* 1) ヒビ：卵クローンにヒビのオーバーレイを重ね、小さく震わせる */
+      var cracks = document.createElement('div');
+      cracks.className = 'fx-cracks';
+      cracks.innerHTML = HATCH_CRACK_SVG;
+      clone.appendChild(cracks);
+      try {
+        clone.animate([
+          { transform: 'translate(0,0)' }, { transform: 'translate(1.5px,-1px)' },
+          { transform: 'translate(-1.5px,1px)' }, { transform: 'translate(1px,1px)' },
+          { transform: 'translate(0,0)' }
+        ], { duration: 520 });
+      } catch (e) {}
+      fxQuake('fx-quake-sm', 480); /* 咆哮を思わせる微震動 */
+      var shadow = null;
+      /* 2) 割れる：卵が弾け、黒い影が上方向へ高速で飛び出す（画面の外まで） */
+      setTimeout(function(){
+        killClone();
+        if (pixiFx.enabled && !pixiReducedMotion){
+          pixiBurst(fx.cx, fx.cy, { count: 22, colors: [0xb18cff, 0x6a3fd4, 0xffffff], power: 1.2 });
+        }
+        shadow = document.createElement('div');
+        shadow.className = 'fx-hatch-shadow';
+        shadow.style.left = fx.cx + 'px';
+        shadow.style.top = fx.cy + 'px';
+        shadow.style.width = (fx.w * 0.62) + 'px';
+        shadow.style.height = (fx.h * 0.4) + 'px';
+        document.body.appendChild(shadow);
+        try {
+          shadow.animate([
+            { transform: 'translate(-50%,-50%) scale(1,1)', opacity: 1 },
+            { transform: 'translate(-50%,-50%) translateY(-' + Math.round(window.innerHeight * 0.95) + 'px) scale(.55,.82)', opacity: 0.9 }
+          ], { duration: 460, easing: 'cubic-bezier(.55,-0.1,.8,.4)', fill: 'forwards' });
+        } catch (e) {}
+        fxQuake('fx-quake-sm', 420);
+      }, 540);
+      /* 3) 着地：少し置いて影が元の位置へ落ち、衝撃と共にアギトが現れる */
+      setTimeout(function(){
+        if (shadow){
+          shadow.style.left = fx.cx + 'px';
+          shadow.style.top = (fx.cy - fx.h * 0.9) + 'px';
+          try {
+            shadow.animate([
+              { transform: 'translate(-50%,-50%) scale(.6,.85)', opacity: 0.95 },
+              { transform: 'translate(-50%,-50%) translateY(' + Math.round(fx.h * 0.9) + 'px) scale(1.15,.7)', opacity: 1 }
+            ], { duration: 130, easing: 'cubic-bezier(.6,0,1,.6)', fill: 'forwards' });
+          } catch (e) {}
+        }
+        setTimeout(function(){
+          if (shadow && shadow.parentNode) shadow.parentNode.removeChild(shadow);
+          shadow = null;
+          hatchLand(key, fx, findEl);
+        }, 145);
+      }, 1060);
+      /* 保険：何があっても実要素は必ず表示に戻す */
+      setTimeout(function(){
+        if (!hatchInFlight[key]) return;
+        delete hatchInFlight[key];
+        killClone();
+        if (shadow && shadow.parentNode) shadow.parentNode.removeChild(shadow);
+        var e2 = findEl();
+        if (e2) e2.style.visibility = '';
+      }, 3200);
+    }
+    function hatchLand(key, fx, findEl){
+      delete hatchInFlight[key];
+      var el = findEl();
+      if (el){
+        el.style.visibility = '';
+        el.classList.add('fx-spawn-mythic');
+        setTimeout(function(){ el.classList.remove('fx-spawn-mythic'); }, 1050);
+      }
+      if (pixiFx.enabled && !pixiReducedMotion){
+        pixiRing(fx.cx, fx.feet, { maxR: fx.w * 1.15, dur: 700, color: 0xb18cff });
+        pixiRing(fx.cx, fx.feet, { maxR: fx.w * 0.8, dur: 550, color: 0xeccd7e });
+        pixiBurst(fx.cx, fx.cy, { count: 26, colors: [0xb18cff, 0x8a5cff, 0xffffff], power: 1.4 });
+      }
+      fxQuake('fx-quake-md', 560);
+      sePlay('summonMythic');
     }
 
     function fxGhost(el){
@@ -3437,12 +3848,21 @@
       });
       return { units: units };
     }
+    function fxCpuCidMap(){
+      var map = {};
+      ['me','cpu'].forEach(function(sk){
+        if (!S || !S[sk] || !S[sk].board) return;
+        S[sk].board.forEach(function(f){ map[sk + '-' + f.uid] = String(f.cardId); });
+      });
+      return map;
+    }
     /* render() の冒頭（盤面DOMがまだ前回の姿のうち）に呼び、演出プランを作る。
        破壊されたユニットのゴーストはこの時点で切り取る。 */
     function fxPlanCpu(){
-      var plan = { spawn: [], hit: [], rects: stageCaptureRects('cpu') };
+      var plan = { spawn: [], hit: [], hatch: [], rects: stageCaptureRects('cpu') };
       if (!fxCpuPrev){ fxClearSpawnReg('cpu'); return plan; }
       var now = fxSnapshotCpu().units;
+      var nowCid = fxCpuCidMap();
       Object.keys(now).forEach(function(k){
         if (!(k in fxCpuPrev.units)){
           var parts = k.split('-');
@@ -3450,8 +3870,17 @@
           var mythic = !!(f && isMythicCard(CARD_BY_ID[f.cardId]));
           plan.spawn.push({ key: k, mythic: mythic, cardId: f ? f.cardId : null });
           fxRegSpawn(k, mythic);
-        } else if (now[k] < fxCpuPrev.units[k]){
-          plan.hit.push(k);
+        } else {
+          /* 孵化：同じ個体のカードIDが 53（黒竜の卵）→ 53ag（黒のアギト）に
+             変わっていたら孵化演出。卵の見た目は再描画前のDOMから切り取る */
+          if (fxCpuPrevCid && fxCpuPrevCid[k] === '53' && nowCid[k] === '53ag' && !HEADLESS){
+            var eggEl = document.querySelector('[data-fol="' + k + '"]');
+            var eggClone = eggEl ? fxFixedClone(eggEl, 'fx-hatch-egg') : null;
+            if (eggClone) plan.hatch.push({ key: k, clone: eggClone });
+          }
+          if (now[k] < fxCpuPrev.units[k]){
+            plan.hit.push(k);
+          }
         }
       });
       Object.keys(fxCpuPrev.units).forEach(function(k){
@@ -3478,7 +3907,11 @@
         if (stageEnqueue({ scope: 'cpu', key: s.key, cardId: s.cardId, mythic: s.mythic })) return;
         var el = document.querySelector('[data-fol="' + s.key + '"]');
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
-        pixiSummonAt(el); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
+        stageSummonFx(s.cardId, el, s.mythic); /* 魔法陣＋神話個別エフェクト（ステージ経由と共通） */
+      });
+      /* 孵化：卵の位置でヒビ→黒い影の飛び出し→衝撃着地のシーケンスを開始する */
+      plan.hatch.forEach(function(h){
+        hatchFxStart(h.key, h.clone, function(){ return document.querySelector('[data-fol="' + h.key + '"]'); });
       });
       /* 演出：召喚音（神話は豪華な専用音。同時出現でも1回だけ鳴らす） */
       if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
@@ -3504,8 +3937,10 @@
       /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
       fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       stageRehide('cpu'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
+      hatchRehide('cpu'); /* 孵化演出中の実要素も同様に隠し直す */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxCpuPrev = fxSnapshotCpu();
+      fxCpuPrevCid = fxCpuCidMap();
     }
 
     function drawRaw(side){
@@ -7127,8 +7562,8 @@
     var fxOvLunge = null;   /* 自分の攻撃の突進予約 {uid} */
     function fxOvSnapshot(v){
       var units = {};
-      (v.me.field || []).forEach(function(u){ units['me-' + u.uid] = { hp: u.hp, al: u.attacksLeft }; });
-      (v.opponent.field || []).forEach(function(u){ units['opp-' + u.uid] = { hp: u.hp, al: u.attacksLeft }; });
+      (v.me.field || []).forEach(function(u){ units['me-' + u.uid] = { hp: u.hp, al: u.attacksLeft, cid: u.cardId }; });
+      (v.opponent.field || []).forEach(function(u){ units['opp-' + u.uid] = { hp: u.hp, al: u.attacksLeft, cid: u.cardId }; });
       return { units: units, meLife: v.me.life, oppLife: v.opponent.life, winner: v.winner, turn: v.turn, you: v.you, log: (v.log || []).slice() };
     }
     /* ログの新規行から攻撃側ユニットを特定する。行の形は
@@ -7175,7 +7610,7 @@
     }
     /* renderOvGame の冒頭（DOMがまだ前回表示のうち）に呼ぶ */
     function fxPlanOv(v){
-      var plan = { spawn: [], hit: [], pops: [], leaderPops: [], lunge: null, destroyed: 0, finish: false, myTurnStart: false, rects: stageCaptureRects('ov') };
+      var plan = { spawn: [], hit: [], hatch: [], pops: [], leaderPops: [], lunge: null, destroyed: 0, finish: false, myTurnStart: false, rects: stageCaptureRects('ov') };
       var prev = fxOvPrev;
       if (!prev){ fxClearSpawnReg('ov'); return plan; }
       if (prev.winner != null && v.winner == null){ fxClearSpawnReg('ov'); return plan; } /* リマッチ開始はベースライン扱い */
@@ -7194,6 +7629,13 @@
           plan.spawn.push({ side: side, uid: uid, mythic: ovMythic, cardId: u ? u.cardId : null });
           fxRegSpawn('ov|' + side + '|' + uid, ovMythic);
         } else {
+          /* 孵化：同じ個体のカードIDが 53（黒竜の卵）→ 53ag（黒のアギト）に
+             変わっていたら孵化演出。卵の見た目は再描画前のDOMから切り取る */
+          if (String(prev.units[k].cid) === '53' && String(now[k].cid) === '53ag' && !HEADLESS){
+            var eggEl2 = fxOvUnitEl(side, uid);
+            var eggClone2 = eggEl2 ? fxFixedClone(eggEl2, 'fx-hatch-egg') : null;
+            if (eggClone2) plan.hatch.push({ side: side, uid: uid, clone: eggClone2 });
+          }
           if (typeof now[k].al === 'number' && typeof prev.units[k].al === 'number' && now[k].al < prev.units[k].al){
             alDropped.push({ side: side, uid: uid });
           }
@@ -7267,7 +7709,11 @@
         if (stageEnqueue({ scope: 'ov', key: 'ov|' + s.side + '|' + s.uid, cardId: s.cardId, mythic: s.mythic })) return;
         var el = fxOvUnitEl(s.side, s.uid);
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
-        pixiSummonAt(el); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
+        stageSummonFx(s.cardId, el, s.mythic); /* 魔法陣＋神話個別エフェクト（ステージ経由と共通） */
+      });
+      /* 孵化：卵の位置でヒビ→黒い影の飛び出し→衝撃着地のシーケンスを開始する */
+      plan.hatch.forEach(function(h){
+        hatchFxStart('ov|' + h.side + '|' + h.uid, h.clone, function(){ return fxOvUnitEl(h.side, h.uid); });
       });
       plan.hit.forEach(function(h){
         var el = fxOvUnitEl(h.side, h.uid);
@@ -7315,6 +7761,7 @@
         return fxOvUnitEl(p[1], p.slice(2).join('|'));
       });
       stageRehide('ov'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
+      hatchRehide('ov'); /* 孵化演出中の実要素も同様に隠し直す */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxOvPrev = fxOvSnapshot(v);
     }
