@@ -593,10 +593,12 @@ function doPlayCard(state, p, handIndex) {
 // 攻撃可能な対象。鉄壁がいる間は鉄壁のみ（守り状態のユニットは対象から外れる。
 // 鉄壁が全て守り状態なら、他の対象が解禁される ― 暫定裁定）。
 // 黒竜の卵は攻撃の対象に選べない（壁でもないので、顔への攻撃は素通りする）。
+// 卵に鉄壁が付与されても壁としては数えない（2026-11-05 ユー決定。付与自体は可能で、
+// 孵化して卵でなくなれば付与された鉄壁は通常どおり機能する）。
 function attackTargets(state, p) {
   const enemy = 1 - p;
   const eField = state.players[enemy].field;
-  const walls = eField.filter((u) => hasKw(u, "wall") && !isProtected(state, u, enemy));
+  const walls = eField.filter((u) => hasKw(u, "wall") && !isProtected(state, u, enemy) && !isEgg(u));
   if (walls.length > 0) return { leader: false, units: walls.map((u) => u.uid) };
   return {
     leader: true,

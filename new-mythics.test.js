@@ -334,6 +334,56 @@ test("貫通：アギトが攻撃された側では発動しない（守備時�
   assert.strictEqual(effHp(agito), 6, "アギトはミーシャの戦闘ダメージ3を受ける");
 });
 
+console.log("[卵と鉄壁付与の裁定（2026-11-05）]");
+test("卵に鉄壁を付与しても壁として数えず、召喚士への攻撃は素通りする", () => {
+  const g = rich(game({ summonerA: "blanc" }));
+  g.players[0].hand = [53];
+  applyAction(g, 0, { type: "playCard", handIndex: 0 });
+  const egg = g.players[0].field[0];
+  applyAction(g, 0, { type: "endTurn" });
+  applyAction(g, 1, { type: "endTurn" }); // Aのターン開始：成長＋ブランの付与待ち
+  assert.strictEqual(g.pending?.type, "blancWall");
+  applyAction(g, 0, { type: "chooseTarget", uid: egg.uid });
+  assert.strictEqual(hasKw(egg, "wall"), true, "付与自体は成立する");
+  applyAction(g, 0, { type: "endTurn" });
+  const misha = place(g, 1, 2, { enteredSeq: g.turnSeq - 1, attacksLeft: 1 });
+  assert.strictEqual(
+    legalActions(g, 1).some((a) => a.type === "attack" && a.targetUid === "leader"),
+    true,
+    "卵の鉄壁は壁として数えないので顔への攻撃が合法手に出る",
+  );
+  applyAction(g, 1, { type: "attack", attackerUid: misha.uid, targetUid: "leader" });
+  assert.strictEqual(g.players[0].life, 17, "卵を素通りして召喚士を攻撃できる");
+  const misha2 = place(g, 1, 2, { enteredSeq: g.turnSeq - 1, attacksLeft: 1 });
+  assert.throws(
+    () => applyAction(g, 1, { type: "attack", attackerUid: misha2.uid, targetUid: egg.uid }),
+    /その対象は攻撃できません/,
+    "卵自体は相変わらず攻撃対象に選べない",
+  );
+});
+test("卵に付与された鉄壁は、孵化してアギトになると通常どおり機能する", () => {
+  const g = rich(game({ summonerA: "blanc" }));
+  g.players[0].hand = [53];
+  applyAction(g, 0, { type: "playCard", handIndex: 0 });
+  const egg = g.players[0].field[0];
+  applyAction(g, 0, { type: "endTurn" });
+  applyAction(g, 1, { type: "endTurn" });
+  assert.strictEqual(g.pending?.type, "blancWall");
+  applyAction(g, 0, { type: "chooseTarget", uid: egg.uid });
+  applyAction(g, 0, { type: "hatch", uid: egg.uid });
+  assert.strictEqual(egg.cardId, 901);
+  assert.strictEqual(hasKw(egg, "wall"), true, "付与された鉄壁は孵化後も残る");
+  applyAction(g, 0, { type: "endTurn" });
+  const misha = place(g, 1, 2, { enteredSeq: g.turnSeq - 1, attacksLeft: 1 });
+  assert.throws(
+    () => applyAction(g, 1, { type: "attack", attackerUid: misha.uid, targetUid: "leader" }),
+    /鉄壁/,
+    "アギトが壁として機能するので顔は殴れない",
+  );
+  applyAction(g, 1, { type: "attack", attackerUid: misha.uid, targetUid: egg.uid });
+  assert.strictEqual(g.players[0].life, 20, "攻撃はアギトに向かい、召喚士は無傷");
+});
+
 console.log("");
 if (failures.length > 0) {
   console.log(`結果: ${passed} PASS / ${failures.length} FAIL`);
