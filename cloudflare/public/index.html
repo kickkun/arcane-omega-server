@@ -957,6 +957,30 @@
         body.fx-finish-dim::after{display:none;}
         .dmg-pop.finish{animation-duration:.5s; animation-delay:0s;}
       }
+      /* ===== PixiJSエフェクトレイヤー（演出専用） =====
+         固定配置の透明キャンバスを盤面の上に重ねる。タップは完全に透過させ、
+         盤面・モーダルの操作には一切干渉しない。読み込み失敗時は要素自体が
+         生成されないため、従来表示と完全に同じになる。 */
+      #pixiFxCanvas{position:fixed; inset:0; pointer-events:none; z-index:93;}
+      /* ===== カード詳細：キーワード説明 =====
+         効果文・種別行の中のキーワード名だけをタップ可能なリンクにする。
+         通常テキストはボタン化しない。 */
+      .kw-link{
+        background:none; border:none; border-bottom:1.5px dashed var(--gold);
+        padding:0 1px; margin:0; font:inherit; font-weight:800; color:var(--gold-bright); cursor:pointer;
+      }
+      .kw-link:active{opacity:.6;}
+      .kw-pop{
+        margin-top:10px; background:var(--panel2); border:1.5px solid var(--gold);
+        border-radius:10px; padding:10px 12px;
+      }
+      .kw-pop-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+      .kw-pop-name{font-size:14.5px; font-weight:900; color:var(--gold-bright);}
+      .kw-pop-close{
+        border:1px solid var(--line); background:var(--panel); color:var(--ink);
+        border-radius:8px; padding:4px 10px; font-size:12px; font-weight:700; flex:0 0 auto;
+      }
+      .kw-pop-text{margin:6px 0 0; font-size:13px; line-height:1.7; color:var(--ink);}
     </style>
   </head>
   <body>
@@ -1029,6 +1053,10 @@
           </div>
         </div>
         <div class="effect-box" id="dEffect" style="margin-top:14px;"></div>
+        <div class="kw-pop" id="dKwPop" style="display:none;">
+          <div class="kw-pop-head"><span class="kw-pop-name" id="dKwName"></span><button class="kw-pop-close" id="dKwClose" type="button" aria-label="キーワード説明を閉じる">✕ 閉じる</button></div>
+          <p class="kw-pop-text" id="dKwText"></p>
+        </div>
         <button class="form-link" id="dFormLink" type="button" style="display:none;"></button>
         <p class="flavor" id="dFlavor"></p>
         <p class="play-note" id="dNote"></p>
@@ -1383,6 +1411,7 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
     <script>
     'use strict';
     /* =========================================================
@@ -2188,6 +2217,263 @@
       });
     }
 
+    /* ===== PixiJSエフェクトレイヤー（演出専用・フォールバック必須） =====
+       対戦盤面の上に固定配置の透明キャンバスを1枚重ね、GPU描画で
+       召喚バースト／フィニッシュバースト／常駐オーラ（鉄壁の盾膜・速攻の風）を描く。
+       pointer-events:none のため盤面の表示・操作・ゲームロジックには一切干渉しない。
+       CDNの読み込みに失敗した場合（window.PIXI が無い場合）はレイヤー全体を
+       無効化し、従来のCSS演出だけでゲームが完全に動作する。
+       テストプレイ（HEADLESS）では初期化せず、演出も発生させない。
+       オーラは補助表現であり、無効化されても盤面の情報は従来通り
+       キーワードアイコンとカード詳細で確認できる。 */
+    var pixiFx = { app: null, enabled: false, tex: null, auraLayer: null, fxLayer: null, bursts: [], rings: [], auras: {}, lastVisCheck: 0 };
+    var pixiReducedMotion = false;
+    try { pixiReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+    /* 詳細シートやタイトル等の全面画面が開いている間はキャンバスを隠す
+       （オンライン対戦画面は盤面そのものなので対象外） */
+    var PIXI_BLOCK_OVERLAYS = ['detailOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay'];
+    function pixiInit(){
+      if (HEADLESS) return;
+      if (typeof window.PIXI === 'undefined') return; /* 読み込み失敗：無効化して従来動作 */
+      try {
+        var app = new PIXI.Application({ backgroundAlpha: 0, antialias: true, autoStart: true, resizeTo: window, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+        app.view.id = 'pixiFxCanvas';
+        document.body.appendChild(app.view);
+        pixiFx.app = app;
+        pixiFx.enabled = true;
+        pixiFx.auraLayer = new PIXI.Container();
+        pixiFx.fxLayer = new PIXI.Container();
+        app.stage.addChild(pixiFx.auraLayer);
+        app.stage.addChild(pixiFx.fxLayer);
+        var tg = new PIXI.Graphics();
+        tg.beginFill(0xffffff, 1); tg.drawCircle(0, 0, 7); tg.endFill();
+        pixiFx.tex = app.renderer.generateTexture(tg);
+        tg.destroy();
+        app.ticker.add(pixiTick);
+      } catch (e) {
+        pixiFx.enabled = false;
+        pixiFx.app = null;
+      }
+    }
+    /* 粒子バースト。rise:true は召喚用（下から舞い上がる）、false は放射状 */
+    function pixiBurst(x, y, opt){
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return;
+      opt = opt || {};
+      var count = opt.count || 20;
+      var colors = opt.colors || [0xffd76a, 0xeccd7e, 0xfff3c4];
+      var power = opt.power || 1;
+      for (var i = 0; i < count; i++){
+        var sp = new PIXI.Sprite(pixiFx.tex);
+        sp.anchor.set(0.5);
+        sp.tint = colors[Math.floor(Math.random() * colors.length)];
+        var ang, spd;
+        if (opt.rise){ ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.6; spd = (60 + Math.random() * 140) * power; }
+        else { ang = Math.random() * Math.PI * 2; spd = (40 + Math.random() * 230) * power; }
+        sp.position.set(x + (Math.random() - 0.5) * 22 * power, y + (Math.random() - 0.5) * 12 * power);
+        var sc = (0.35 + Math.random() * 0.75) * (opt.size || 1);
+        sp.scale.set(sc);
+        pixiFx.fxLayer.addChild(sp);
+        pixiFx.bursts.push({ sp: sp, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0, max: 700 + Math.random() * 700, rise: !!opt.rise, baseScale: sc });
+      }
+    }
+    /* 足元（または着弾点）に広がる光の輪 */
+    function pixiRing(x, y, opt){
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return;
+      opt = opt || {};
+      var gfx = new PIXI.Graphics();
+      pixiFx.fxLayer.addChild(gfx);
+      pixiFx.rings.push({ gfx: gfx, x: x, y: y, life: 0, max: opt.dur || 650, maxR: opt.maxR || 64, color: opt.color || 0xffd76a });
+    }
+    /* 召喚時：金の粒子が舞い上がるバースト＋足元の光の輪 */
+    function pixiSummonAt(el){
+      if (!el || !pixiFx.enabled || HEADLESS) return;
+      var r = el.getBoundingClientRect();
+      if (!r.width) return;
+      var cx = r.left + r.width / 2;
+      pixiBurst(cx, r.top + r.height * 0.62, { count: 20, rise: true, power: 1 });
+      pixiRing(cx, r.bottom - 3, { maxR: Math.max(46, r.width * 0.72), dur: 650 });
+    }
+    /* フィニッシュ着弾時：金と白の大きな粒子バースト＋白い輪 */
+    function pixiFinishAt(el){
+      if (!el || !pixiFx.enabled || HEADLESS) return;
+      var r = el.getBoundingClientRect();
+      if (!r.width) return;
+      var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      pixiBurst(cx, cy, { count: 54, colors: [0xffd76a, 0xffffff, 0xeccd7e, 0xfff6da], power: 1.6, size: 1.25 });
+      pixiBurst(cx, cy, { count: 16, rise: true, colors: [0xffffff, 0xffd76a], power: 1.2 });
+      pixiRing(cx, cy, { maxR: 110, dur: 700, color: 0xffffff });
+    }
+    /* CPU戦のフィニッシュ：着弾タイミング（約0.49秒）に合わせて相手／自分の召喚士位置へ */
+    function pixiScheduleFinish(sideKey){
+      if (!pixiFx.enabled || HEADLESS) return;
+      setTimeout(function(){
+        if (!pixiFx.enabled || HEADLESS) return;
+        pixiFinishAt(document.getElementById(sideKey === 'me' ? 'myLeader' : 'cpuLeader'));
+      }, 490);
+    }
+    /* ===== 常駐オーラ（鉄壁の盾膜／速攻の風） ===== */
+    function pixiDrawGuard(a, w, h){
+      var g = a.guardGfx;
+      if (!g) return;
+      g.clear();
+      g.beginFill(0x9fd0ff, 0.14);
+      g.lineStyle(1.5, 0xcfe6ff, 0.55);
+      g.drawRoundedRect(-w / 2, -h / 2, w, h, 8);
+      g.endFill();
+      /* 中央の盾シルエット（膜の質感付け） */
+      g.beginFill(0xbfe2ff, 0.10);
+      g.lineStyle(1, 0xdff1ff, 0.35);
+      var sw = Math.min(26, w * 0.34), sh = sw * 1.18;
+      g.moveTo(0, -sh / 2);
+      g.lineTo(sw / 2, -sh / 2 + sh * 0.18);
+      g.lineTo(sw / 2, sh * 0.12);
+      g.quadraticCurveTo(sw / 2, sh * 0.42, 0, sh / 2);
+      g.quadraticCurveTo(-sw / 2, sh * 0.42, -sw / 2, sh * 0.12);
+      g.lineTo(-sw / 2, -sh / 2 + sh * 0.18);
+      g.closePath();
+      g.endFill();
+    }
+    function pixiMakeAura(key, hasGuard, hasRush){
+      var cont = new PIXI.Container();
+      pixiFx.auraLayer.addChild(cont);
+      var a = { key: key, cont: cont, hasGuard: hasGuard, hasRush: hasRush, guardGfx: null, w: 0, h: 0, phase: Math.random() * 6.28, windTimer: 400 + Math.random() * 900, winds: [], getEl: null };
+      if (hasGuard){ a.guardGfx = new PIXI.Graphics(); cont.addChild(a.guardGfx); }
+      pixiFx.auras[key] = a;
+      return a;
+    }
+    function pixiRemoveAura(key){
+      var a = pixiFx.auras[key];
+      if (!a) return;
+      a.winds.forEach(function(wn){ if (wn.gfx.parent) wn.gfx.parent.removeChild(wn.gfx); wn.gfx.destroy(); });
+      pixiFx.auraLayer.removeChild(a.cont);
+      a.cont.destroy({ children: true });
+      delete pixiFx.auras[key];
+    }
+    function pixiSpawnWind(a){
+      var gfx = new PIXI.Graphics();
+      var w = a.w || 60;
+      var len = w * (0.45 + Math.random() * 0.3);
+      gfx.lineStyle(1.6, 0xeaf7ff, 0.85);
+      gfx.moveTo(-len / 2, 0); gfx.lineTo(len / 2, 0);
+      gfx.lineStyle(1.1, 0xeaf7ff, 0.5);
+      gfx.moveTo(-len * 0.32, 5); gfx.lineTo(len * 0.18, 5);
+      a.cont.addChild(gfx);
+      a.winds.push({ gfx: gfx, life: 0, max: 620, x: -w / 2 - len / 2, y: (Math.random() - 0.5) * (a.h || 80) * 0.6, speed: (w + len) / 0.62 });
+    }
+    /* 盤面の現在状態とオーラを同期する（render 系から毎回呼ばれる）。
+       鉄壁として機能しているユニットだけ盾膜を出す：CPU戦は f.guard かつ
+       黒竜の卵でないこと（卵は鉄壁が付与されていても壁として機能しない裁定）。
+       オンラインはサーバーの keywords で判定し、egg を含む場合は盾膜を出さない。
+       速攻は f.rush ／ keywords の haste で判定し、両方あれば両方出す。
+       場を離れたユニットのオーラはここで消える。 */
+    function pixiSyncAuras(){
+      if (!pixiFx.enabled) return;
+      var desired = {};
+      var onlineEl = document.getElementById('onlineOverlay');
+      var ovOpen = !!(onlineEl && onlineEl.classList.contains('show'));
+      if (ovOpen && typeof ov !== 'undefined' && ov && ov.view){
+        var v = ov.view;
+        [['me', v.me.field], ['opp', v.opponent.field]].forEach(function(pair){
+          var side = pair[0];
+          (pair[1] || []).forEach(function(u){
+            var kws = u.keywords || [];
+            var hg = kws.indexOf('wall') >= 0 && kws.indexOf('egg') < 0;
+            var hr = kws.indexOf('haste') >= 0;
+            if (!hg && !hr) return;
+            var uid = u.uid;
+            desired['ov|' + side + '|' + uid] = { hasGuard: hg, hasRush: hr, getEl: (function(s2, id2){ return function(){ return fxOvUnitEl(s2, id2); }; })(side, uid) };
+          });
+        });
+      }
+      if (!ovOpen && typeof S !== 'undefined' && S){
+        ['me','cpu'].forEach(function(sk){
+          if (!S[sk] || !S[sk].board) return;
+          S[sk].board.forEach(function(f){
+            var hg = !!f.guard && !isEggFollower(f);
+            var hr = !!f.rush;
+            if (!hg && !hr) return;
+            var folKey = sk + '-' + f.uid;
+            desired['cpu|' + folKey] = { hasGuard: hg, hasRush: hr, getEl: (function(k3){ return function(){ return document.querySelector('[data-fol="' + k3 + '"]'); }; })(folKey) };
+          });
+        });
+      }
+      Object.keys(pixiFx.auras).forEach(function(k){ if (!desired[k]) pixiRemoveAura(k); });
+      Object.keys(desired).forEach(function(k){
+        var d = desired[k];
+        var a = pixiFx.auras[k];
+        if (!a){ a = pixiMakeAura(k, d.hasGuard, d.hasRush); }
+        else if (a.hasGuard !== d.hasGuard || a.hasRush !== d.hasRush){
+          if (d.hasGuard && !a.guardGfx){ a.guardGfx = new PIXI.Graphics(); a.cont.addChild(a.guardGfx); a.w = 0; a.h = 0; }
+          if (!d.hasGuard && a.guardGfx){ a.cont.removeChild(a.guardGfx); a.guardGfx.destroy(); a.guardGfx = null; }
+          a.hasGuard = d.hasGuard; a.hasRush = d.hasRush;
+        }
+        a.getEl = d.getEl;
+      });
+    }
+    function pixiTick(){
+      if (!pixiFx.app) return;
+      var dt = Math.min(50, pixiFx.app.ticker.deltaMS);
+      var now = fxNow();
+      /* 全面画面（詳細・タイトル等）が開いている間はキャンバスごと隠す */
+      pixiFx.lastVisCheck += dt;
+      if (pixiFx.lastVisCheck > 200){
+        pixiFx.lastVisCheck = 0;
+        var blocked = PIXI_BLOCK_OVERLAYS.some(function(id){ var e = document.getElementById(id); return e && e.classList.contains('show'); });
+        pixiFx.app.view.style.display = blocked ? 'none' : '';
+        /* 画面遷移で残ったオーラを確実に掃除するため、定期的にも同期する */
+        pixiSyncAuras();
+      }
+      for (var i = pixiFx.bursts.length - 1; i >= 0; i--){
+        var p = pixiFx.bursts[i];
+        p.life += dt;
+        var t = p.life / p.max;
+        if (t >= 1){ pixiFx.fxLayer.removeChild(p.sp); p.sp.destroy(); pixiFx.bursts.splice(i, 1); continue; }
+        p.sp.position.x += p.vx * dt / 1000;
+        p.sp.position.y += p.vy * dt / 1000;
+        if (p.rise) p.vy -= 60 * dt / 1000; else p.vy += 130 * dt / 1000;
+        p.vx *= 0.99;
+        p.sp.alpha = 1 - t;
+        p.sp.scale.set(p.baseScale * (1 - t * 0.4));
+      }
+      for (var j = pixiFx.rings.length - 1; j >= 0; j--){
+        var rg = pixiFx.rings[j];
+        rg.life += dt;
+        var rt = rg.life / rg.max;
+        if (rt >= 1){ pixiFx.fxLayer.removeChild(rg.gfx); rg.gfx.destroy(); pixiFx.rings.splice(j, 1); continue; }
+        var rad = 6 + (rg.maxR - 6) * (1 - Math.pow(1 - rt, 2));
+        rg.gfx.clear();
+        rg.gfx.lineStyle(2.5 * (1 - rt) + 0.5, rg.color, 0.85 * (1 - rt));
+        rg.gfx.drawEllipse(rg.x, rg.y, rad, rad * 0.32);
+      }
+      Object.keys(pixiFx.auras).forEach(function(k){
+        var a = pixiFx.auras[k];
+        var el = a.getEl ? a.getEl() : null;
+        if (!el){ a.cont.visible = false; return; }
+        var r = el.getBoundingClientRect();
+        if (!r.width){ a.cont.visible = false; return; }
+        a.cont.visible = true;
+        a.cont.position.set(r.left + r.width / 2, r.top + r.height / 2);
+        if (Math.abs(r.width - a.w) > 1 || Math.abs(r.height - a.h) > 1){
+          a.w = r.width; a.h = r.height;
+          if (a.guardGfx) pixiDrawGuard(a, r.width - 2, r.height - 2);
+        }
+        if (a.guardGfx) a.guardGfx.alpha = pixiReducedMotion ? 0.75 : 0.6 + 0.35 * Math.sin(now * 0.0022 + a.phase);
+        if (a.hasRush && !pixiReducedMotion){
+          a.windTimer -= dt;
+          if (a.windTimer <= 0){ pixiSpawnWind(a); a.windTimer = 800 + Math.random() * 1200; }
+        }
+        for (var wi = a.winds.length - 1; wi >= 0; wi--){
+          var wn = a.winds[wi];
+          wn.life += dt;
+          var wt = wn.life / wn.max;
+          if (wt >= 1){ a.cont.removeChild(wn.gfx); wn.gfx.destroy(); a.winds.splice(wi, 1); continue; }
+          wn.gfx.position.set(wn.x + wn.speed * (wn.life / 1000), wn.y);
+          wn.gfx.alpha = Math.sin(Math.PI * wt) * 0.9;
+        }
+      });
+    }
+    pixiInit();
+
     /* ===== 対戦演出の共通基盤（見た目のみ） =====
        盤面の前回スナップショットと現在の状態を見比べ、出現（スポーン）／
        被弾（揺れ＋赤フラッシュ）／破壊（ゴーストのフェードアウト）を付ける。
@@ -2298,6 +2584,7 @@
       plan.spawn.forEach(function(s){
         var el = document.querySelector('[data-fol="' + s.key + '"]');
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
+        pixiSummonAt(el); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
       });
       /* 演出：召喚音（神話は豪華な専用音。同時出現でも1回だけ鳴らす） */
       if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
@@ -2322,6 +2609,7 @@
       fxFinishSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
       fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
+      pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxCpuPrev = fxSnapshotCpu();
     }
 
@@ -3223,7 +3511,7 @@
         /* 演出：とどめの一撃（この攻撃で敵召喚士のライフが0以下）だけ
            フィニッシュ演出を発動する。召喚士への攻撃ではヒットストップは入れない */
         var lethalLeader = atk.atk > 0 && (sideObj(defSide).hp - atk.atk) <= 0;
-        if (lethalLeader){ fxTriggerFinish(); fxLeaderPopFinish = true; }
+        if (lethalLeader){ fxTriggerFinish(); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
         if (atk.atk > 0) sePlay('hit');
         damageLeader(defSide, atk.atk);
         fxLeaderPopFinish = false;
@@ -3277,7 +3565,7 @@
         if (penExcess > 0){
           logMsg(atk.name + ' の貫通：余った ' + penExcess + ' ダメージが ' + sideObj(defSide).label + 'の召喚士を貫いた！', 'dmg');
           /* 演出：貫通でとどめになる場合もフィニッシュ演出（ユニットの攻撃が起点のため） */
-          if ((sideObj(defSide).hp - penExcess) <= 0){ fxTriggerFinish(); fxLeaderPopFinish = true; }
+          if ((sideObj(defSide).hp - penExcess) <= 0){ fxTriggerFinish(); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
           damageLeader(defSide, penExcess);
           fxLeaderPopFinish = false;
         }
@@ -3945,6 +4233,46 @@
           '<div class="gname">' + escapeHtml(card.name) + '</div>' + stats + '</div>';
       }).join('');
     }
+    /* ===== カード詳細：キーワード説明 =====
+       説明文はルール説明（キーワード一覧）の文言をそのまま再利用する。
+       詳細の効果文・種別行に出てくるキーワード名だけをタップ可能にし、
+       タップで詳細シート内の小さな説明ボックスを展開する。
+       キーワードでない通常テキストはリンク化しない。 */
+    var KW_HELP = {
+      '速攻': '出したターンから攻撃できる。',
+      '突破': '場に出たターン、敵の召喚士には攻撃できないが、敵ユニットには攻撃できる（絶槍ロンギヌス）。翌ターン以降は通常どおり攻撃できる。',
+      '貫通': 'このユニットがユニットを攻撃した時、与えたダメージ（装甲で軽減された後の実ダメージ）がそのユニットの現在体力を超えた分を、相手の召喚士に与える。攻撃した側でのみ発動し、攻撃された側では発動しない。効果ダメージには適用されない（黒のアギト）。',
+      '撃墜': 'このユニットが攻撃する時、防御側ユニットが鉄壁を持つ（ブランの付与も含む）なら、ダメージ計算の前にそのユニットを破壊する。戦闘ダメージはお互いに発生せず、反撃も発動しない。攻撃された側では発動しない。',
+      '合体': '自分のターン中、手札に「聖剣の欠片」が3枚あれば、コスト無しで合体を宣言できる。3枚を消費し、手札に「EX-キャリバー」が生まれる（場に出ている欠片は合体に使えない）。',
+      '孵化': '「黒竜の卵」は自分のターン中いつでもコスト無しで孵化でき、その場で「黒のアギト」に変身して現在の攻撃力・体力を引き継ぐ。孵化時点の攻撃力＋体力の合計が15以上で速攻、21以上でさらに装甲、27以上でさらに反撃を得る。孵化後のアギトは、段階によらず常に「貫通」を持つ。',
+      '鉄壁': '相手は先にこのユニットを攻撃しなければならない。',
+      '装甲': 'このユニットが受けるダメージは、そのたびに1減る（最低0）。戦闘ダメージと効果ダメージの両方に適用される。「破壊」効果はダメージではないため軽減できない。召喚士へのダメージには適用されない。',
+      '反撃': 'このユニットがユニットから1以上のダメージを受けた時、そのダメージを与えたユニットに1ダメージを与える。戦闘ダメージでもユニットの効果ダメージでも発動するが、装甲などで実際に受けたダメージが0になった場合は発動しない。「破壊」効果やスペルからのダメージでは発動せず、反撃で与えたダメージでは相手の反撃は発動しない（連鎖防止）。反撃のダメージにも相手の装甲は適用される。ダメージで倒されても、受けた事実をもって反撃は発動する。',
+      '結界': 'このユニットが場にある限り、お互いのプレイヤーは3コスト以下のユニットを手札から出せません（スペルは出せます。効果で出るトークンは制限されません）。場を離れると制限は即座に解除されます。',
+      '3回攻撃': '通常は1ターンに1回までの攻撃を、3回まで行える（「絶影の女神 ミラージュ」）。攻撃のたびに対象を選び直せ、鉄壁の制限も攻撃ごとに適用される。残りの攻撃回数は自分のターン開始時にすべて回復する。',
+      '攻撃で無傷': '自分の攻撃では、相手ユニットから受ける戦闘ダメージが0になる（「絶影の女神 ミラージュ」）。ただし反撃のダメージは通常どおり受ける。相手から攻撃された時や、スペル・効果のダメージも通常どおり受ける。',
+      '奪う': '敵ユニットのコントロールを奪い、そのまま自分の場へ移す（ダーククイーン）。移動では登場時効果は発動しない。受けたダメージ・バフ・弱体やキーワードは引き継ぎ、奪ったユニットは奪ったターンから攻撃できる。自分の場に空きがない場合は発動しない。',
+      '攻撃力弱体': '敵ユニットの攻撃力を下げる効果（アイシー：2下げる、最低0）。場を離れるまで続き、手札に戻ると元に戻る。下がった攻撃力はユニットの攻撃力表示にそのまま反映される。',
+      '登場時': '場に出した時に発動する効果。',
+      'やられた時': '倒された時に発動する効果。'
+    };
+    var KW_NAMES_SORTED = Object.keys(KW_HELP).sort(function(a, b){ return b.length - a.length; });
+    var KW_LINK_RE = new RegExp('(' + KW_NAMES_SORTED.map(function(k){ return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')', 'g');
+    function linkifyKeywords(text){
+      return escapeHtml(text).replace(KW_LINK_RE, function(m){
+        return '<button type="button" class="kw-link" data-kw="' + m + '">' + m + '</button>';
+      });
+    }
+    function showKwHelp(name){
+      if (!KW_HELP[name]) return;
+      document.getElementById('dKwName').textContent = name;
+      document.getElementById('dKwText').textContent = KW_HELP[name];
+      document.getElementById('dKwPop').style.display = '';
+    }
+    function hideKwHelp(){
+      var pop = document.getElementById('dKwPop');
+      if (pop) pop.style.display = 'none';
+    }
     var detailOverlay = document.getElementById('detailOverlay');
     function alertNote(msg){
       if (HEADLESS) return;
@@ -3998,14 +4326,15 @@
       } else {
         typeParts.push('スペル');
       }
-      document.getElementById('dType').textContent = typeParts.join(' ・ ');
+      document.getElementById('dType').innerHTML = linkifyKeywords(typeParts.join(' ・ '));
       document.getElementById('dStats').innerHTML = card.type === 'follower'
         ? (card.id === '53ag'
           /* 黒のアギトの攻撃力・体力は固定値ではなく、孵化時点の卵の数値を引き継ぐ */
           ? '<span class="stat-chip">攻撃・体力 <b style="font-size:13px;">卵の成長を引き継ぐ</b></span><span class="stat-chip">コスト <b>' + card.cost + '</b></span>'
           : '<span class="stat-chip">攻撃 <b>' + card.atk + '</b></span><span class="stat-chip">体力 <b>' + card.hp + '</b></span><span class="stat-chip">コスト <b>' + card.cost + '</b></span>')
         : '<span class="stat-chip">コスト <b>' + card.cost + '</b></span>';
-      document.getElementById('dEffect').textContent = card.text;
+      document.getElementById('dEffect').innerHTML = linkifyKeywords(card.text);
+      hideKwHelp();
       document.getElementById('dFlavor').textContent = card.flavor;
       /* 形態カードへの導線：親カード（052／053）からは形態の詳細へ、
          形態カードからは親カードの詳細へ戻れるようにする */
@@ -4038,6 +4367,11 @@
     }
     function closeDetail(){ detailOverlay.classList.remove('show'); S.detail = null; }
     document.getElementById('dClose').addEventListener('click', closeDetail);
+    document.getElementById('dKwClose').addEventListener('click', hideKwHelp);
+    detailOverlay.addEventListener('click', function(ev){
+      var kwBtn = ev.target.closest('[data-kw]');
+      if (kwBtn) showKwHelp(kwBtn.getAttribute('data-kw'));
+    });
     detailOverlay.addEventListener('click', function(ev){ if (ev.target === detailOverlay) closeDetail(); });
     /* 形態導線：親→形態は現在の詳細を「戻り先」として渡し、形態→親はそれを開き直す。
        形態を直接開いた場合（対戦中の手札・場）は親カードの詳細をそのまま開く */
@@ -5607,6 +5941,7 @@
       plan.spawn.forEach(function(s){
         var el = fxOvUnitEl(s.side, s.uid);
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
+        pixiSummonAt(el); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
       });
       plan.hit.forEach(function(h){
         var el = fxOvUnitEl(h.side, h.uid);
@@ -5637,7 +5972,12 @@
       if (plan.pops.some(function(p){ return p.cls === 'heal'; }) || plan.leaderPops.some(function(p){ return p.cls === 'heal'; })) sePlay('heal');
       if (plan.lunge && plan.hit.length) fxHitstop();
       if (plan.myTurnStart) sePlay('turn');
-      if (plan.finish){ fxTriggerFinish(); sePlay(v.winner === v.you ? 'win' : 'lose'); }
+      if (plan.finish){
+        fxTriggerFinish(); sePlay(v.winner === v.you ? 'win' : 'lose');
+        /* PixiJS：着弾タイミング（約0.49秒）に、敗れた側の召喚士パネルへ大きな粒子バースト */
+        var finishPanelId = v.winner === v.you ? 'ovOppPanel' : 'ovMyPanel';
+        setTimeout(function(){ pixiFinishAt(document.getElementById(finishPanelId)); }, 490);
+      }
       /* 続けて届いた状態更新で盤面が作り直されても、召喚演出を付け直す */
       fxSpawnSweep('ov', function(key){
         var p = key.split('|');
@@ -5648,6 +5988,7 @@
         var p = key.split('|');
         return fxOvUnitEl(p[1], p.slice(2).join('|'));
       });
+      pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxOvPrev = fxOvSnapshot(v);
     }
     function renderOvGame(){
