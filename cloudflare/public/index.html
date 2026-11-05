@@ -867,6 +867,20 @@
         border-radius:9px; padding:7px 10px; font-size:13.5px; font-weight:700; font-family:inherit;
       }
       .deck-sort-select:focus{outline:2px solid var(--gold); outline-offset:1px;}
+      /* ===== デッキ編成：カードプールのコスト絞り込みチップ ===== */
+      .deck-cost-row{display:flex; align-items:flex-start; gap:8px; margin-top:6px;}
+      .deck-cost-row .first-choice-label{margin:0; white-space:nowrap; padding-top:8px;}
+      .cost-chips{display:flex; flex-wrap:wrap; gap:6px; flex:1 1 auto; min-width:0;}
+      .cost-chip{
+        flex:1 1 30px; min-width:30px; max-width:44px; height:32px; padding:0 4px;
+        border:1px solid var(--line); background:var(--panel2); color:var(--ink-dim);
+        border-radius:99px; font-size:13.5px; font-weight:700; line-height:1;
+      }
+      .cost-chip.sel{
+        background:linear-gradient(180deg,#eccd7e,#c9a24b); color:#241a05; border-color:var(--gold-bright);
+        box-shadow:0 2px 0 #7d6220, 0 0 8px rgba(236,205,126,.45);
+      }
+      .cost-chip:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
     </style>
   </head>
   <body>
@@ -1137,6 +1151,20 @@
               <option value="hp">体力順</option>
             </select>
           </div>
+          <div class="deck-cost-row">
+            <p class="first-choice-label">コスト</p>
+            <div class="cost-chips" id="deckCostFilter" role="group" aria-label="コストで絞り込み（カードプール）">
+              <button class="cost-chip" type="button" data-cost="1" aria-pressed="false">1</button>
+              <button class="cost-chip" type="button" data-cost="2" aria-pressed="false">2</button>
+              <button class="cost-chip" type="button" data-cost="3" aria-pressed="false">3</button>
+              <button class="cost-chip" type="button" data-cost="4" aria-pressed="false">4</button>
+              <button class="cost-chip" type="button" data-cost="5" aria-pressed="false">5</button>
+              <button class="cost-chip" type="button" data-cost="6" aria-pressed="false">6</button>
+              <button class="cost-chip" type="button" data-cost="7" aria-pressed="false">7</button>
+              <button class="cost-chip" type="button" data-cost="8" aria-pressed="false">8</button>
+              <button class="cost-chip" type="button" data-cost="9" aria-pressed="false">9</button>
+            </div>
+          </div>
         </div>
         <div class="deck-code-area" id="deckCodeArea">
           <p class="first-choice-label">デッキコード（書き出し・読み込み）</p>
@@ -1154,7 +1182,7 @@
           <button class="btn-sub" id="deckResetBtn" type="button">初期デッキに戻す</button>
           <button class="btn-sub" id="deckCloseBtn" type="button">もどる</button>
         </div>
-        <p class="deck-note">青色の枠と「採用中」バッジが付いたカードが、今のデッキに入っているカードです（×3は上限まで採用中）。上の「採用中のみ」で入っているカードだけに絞り込めます。同名カードは3枚まで。神話カードは1種類のみ（同名3枚まで）入れられます。神話カードは太い金枠と「神話」バッジで強調表示され、採用中の神話カードは金枠の外側に青い光が重なります。カードプールは上の「並び替え」でコスト順／カードNo.順／攻撃力順／体力順に並べ替えられます（「採用中のみ」の表示はコスト順のままです）。カードのイラストをタップすると、効果の全文が読める詳細が開きます。自分のデッキは3つのスロットに別々に保存でき、スロットの切り替え・名前の変更も次回開いた時に残ります。対戦とテストプレイはアクティブなスロットの内容を使います。相手のデッキは、タイトル画面で対戦相手を「カスタム」に選んだ時に対戦相手として使われます。</p>
+        <p class="deck-note">青色の枠と「採用中」バッジが付いたカードが、今のデッキに入っているカードです（×3は上限まで採用中）。上の「採用中のみ」で入っているカードだけに絞り込めます。同名カードは3枚まで。神話カードは1種類のみ（同名3枚まで）入れられます。神話カードは太い金枠と「神話」バッジで強調表示され、採用中の神話カードは金枠の外側に青い光が重なります。カードプールは上の「並び替え」でコスト順／カードNo.順／攻撃力順／体力順に並べ替えられます（「採用中のみ」の表示はコスト順のままです）。上の「コスト」のチップをタップすると、そのコストのカードだけに絞り込めます（複数選択可。どのチップも選んでいない時は全コストを表示し、選択中のチップをもう一度タップすると解除されます。「採用中のみ」の表示には適用されません）。カードのイラストをタップすると、効果の全文が読める詳細が開きます。自分のデッキは3つのスロットに別々に保存でき、スロットの切り替え・名前の変更も次回開いた時に残ります。対戦とテストプレイはアクティブなスロットの内容を使います。相手のデッキは、タイトル画面で対戦相手を「カスタム」に選んだ時に対戦相手として使われます。</p>
       </div>
     </div>
     <div class="overlay" id="galleryOverlay">
@@ -3942,6 +3970,9 @@
     /* カードプールの並び替え：'cost'＝コスト順（既定）／'no'＝カードNo.順／'atk'＝攻撃力順／'hp'＝体力順。
        適用するのはプール表示（すべて）の時だけ。「採用中のみ」（デッキ内リスト）は常にコスト昇順 */
     var deckSort = 'cost';
+    /* カードプールのコスト絞り込み：選択中のコストの集合。空＝絞り込みなし（全コスト表示）。
+       適用するのはプール表示（すべて）の時だけ。「採用中のみ」（デッキ内リスト）には適用しない */
+    var deckCostFilters = new Set();
     /* 編成画面に一度だけ出す通知（神話2種類目を入れようとした時など）。renderDeckEditor が表示後に消す */
     var draftNotice = '';
     function setDraftFrom(ids){
@@ -4026,6 +4057,14 @@
       deckSort = ev.target.value || 'cost';
       renderDeckEditor();
     });
+    document.getElementById('deckCostFilter').addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-cost]');
+      if (!btn) return;
+      var cost = Number(btn.getAttribute('data-cost'));
+      if (deckCostFilters.has(cost)) deckCostFilters.delete(cost);
+      else deckCostFilters.add(cost);
+      renderDeckEditor();
+    });
     function closeDeckEditor(){ deckOverlay.classList.remove('show'); }
     function draftTotal(){
       var t = 0;
@@ -4090,6 +4129,12 @@
       filterBtns.forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-deck-filter') === deckFilter); });
       var sortSel = document.getElementById('deckSortSelect');
       if (sortSel && sortSel.value !== deckSort) sortSel.value = deckSort;
+      var costChips = document.querySelectorAll('#deckCostFilter .cost-chip');
+      costChips.forEach(function(b){
+        var on = deckCostFilters.has(Number(b.getAttribute('data-cost')));
+        b.classList.toggle('sel', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
       var sortByCost = function(a, b){ return (a.cost - b.cost) || (a.id - b.id); };
       var statOf = function(c, k){ return typeof c[k] === 'number' ? c[k] : -1; };
       var allList = CARDS.filter(function(c){ return !c.coin; }).slice();
@@ -4100,12 +4145,22 @@
       var adoptedKinds = allList.filter(function(c){ return (draftCounts[c.id] || 0) > 0; }).length;
       var filterCountEl = document.getElementById('deckFilterCount');
       if (filterCountEl) filterCountEl.textContent = '採用中 ' + adoptedKinds + '種 ・ ' + total + '枚';
-      /* 「採用中のみ」（デッキ内リスト）は並び替えの指定によらず、常に従来通りコスト昇順 */
-      var list = deckFilter === 'in' ? allList.filter(function(c){ return (draftCounts[c.id] || 0) > 0; }).sort(sortByCost) : allList;
+      /* 「採用中のみ」（デッキ内リスト）は並び替え・コスト絞り込みの指定によらず、常に従来通りコスト昇順。
+         コスト絞り込みはプール表示（すべて）の時だけ適用し、並び替え済みの allList を絞り込む（併用可能） */
+      var list;
+      if (deckFilter === 'in'){
+        list = allList.filter(function(c){ return (draftCounts[c.id] || 0) > 0; }).sort(sortByCost);
+      } else if (deckCostFilters.size > 0){
+        list = allList.filter(function(c){ return deckCostFilters.has(c.cost); });
+      } else {
+        list = allList;
+      }
       /* 既に別の神話が入っている場合、その神話以外の神話カードは追加できない */
       var draftMythicIds = CARDS.filter(function(c){ return isMythicCard(c) && (draftCounts[c.id] || 0) > 0; }).map(function(c){ return c.id; });
       if (list.length === 0){
-        document.getElementById('deckList').innerHTML = '<div class="deck-empty">採用中のカードはまだありません。<br>「すべて」に戻して、＋ボタンでカードを加えてください。</div>';
+        document.getElementById('deckList').innerHTML = deckFilter === 'in'
+          ? '<div class="deck-empty">採用中のカードはまだありません。<br>「すべて」に戻して、＋ボタンでカードを加えてください。</div>'
+          : '<div class="deck-empty">選択したコストのカードはありません。<br>コストのチップをもう一度タップすると解除できます。</div>';
         return;
       }
       document.getElementById('deckList').innerHTML = list.map(function(card){
