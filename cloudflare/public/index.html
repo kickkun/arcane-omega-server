@@ -8,7 +8,7 @@
     <title>アーケインサモンΩ</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Shippori+Mincho+B1:wght@700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
     <style>
       :root{
         --bg:#0e1219; --panel:#171e2a; --panel2:#1f2837; --line:#33405a;
@@ -984,6 +984,234 @@
         border-radius:8px; padding:4px 10px; font-size:12px; font-weight:700; flex:0 0 auto;
       }
       .kw-pop-text{margin:6px 0 0; font-size:13px; line-height:1.7; color:var(--ink);}
+      /* ===== 戦闘画面ファンタジー化 第1弾：フォント／ライフ表示／カード枠 =====
+         見た目のみの改修。寸法（枠の太さ・要素サイズ・矩形）は一切変えないため、
+         Pixiオーラの矩形基準・タップ判定・アニメーションには影響しない。
+         フォントは CDN 読み込み失敗時、各スタックのフォールバック
+         （serif／Noto Sans JP）で従来表示に戻る。 */
+      :root{
+        --font-num:'Cinzel','Times New Roman',serif;
+        --font-num-mix:'Cinzel','Noto Sans JP',sans-serif;
+        --font-head:'Shippori Mincho B1','Hiragino Mincho ProN','Yu Mincho',serif;
+        --frame-metal:#93866c;
+        --frame-line:rgba(238,224,186,.38);
+      }
+      /* --- 数字：Cinzel（純粋な数値要素） --- */
+      .hp-num,.turn-chip b,.badge-atk,.badge-hp,
+      .hcard .cost,.gcard .cost,.detail-art .cost,
+      .stat-chip b,.cd-num,.dcount b,.ov-life,.ov-code,
+      .sim-kpi .k-value,.deck-total{font-family:var(--font-num); font-weight:700;}
+      /* --- 数字：Cinzel（日本語と混在する要素は日本語を Noto Sans に落とす） --- */
+      .pp-text,.deck-info,#cpuBoardCount,#myBoardCount,#handCount,
+      .dmeta,.opp-count,.deck-filter-count,.ov-ustats,.ov-player,
+      .sim-table td,.cd-cost{font-family:var(--font-num-mix);}
+      /* --- 見出し・カード名：明朝系 --- */
+      .leader-name,.board-label,.hand-label,.ov-field-label,
+      .fname,.hname,.gname,.dname,.btn-end,.ov-uname,
+      .detail-name,.detail-type{font-family:var(--font-head);}
+      .fname,.hname,.gname{font-weight:700;}
+      .ov-actions .btn-play[data-ov-end]{font-family:var(--font-head);}
+      /* --- ライフ表示：現在値のみ・大型化・残量で色変化 --- */
+      .hp-num{font-size:24px; line-height:1.05; color:var(--ink);}
+      .hp-num.warn{color:#f2a54a;}
+      .hp-num.crit{color:#ff6152;}
+      .ov-life{font-size:22px; line-height:1.1;}
+      .ov-life.warn{color:#f2a54a;}
+      .ov-life.crit{color:#ff6152;}
+      /* --- カード枠：銀〜銅色の金属縁（通常カード） ---
+         レアリティ／状態クラスの枠色（神話・虹・紫・攻撃可など）は
+         詳細度の高い既存ルールが優先され、そのまま維持される。 */
+      .follower,.hcard,.gcard{border-color:var(--frame-metal);}
+      .ov-unit,.ov-hcard{border-color:var(--frame-metal); box-shadow:inset 0 0 0 1px rgba(238,224,186,.22);}
+      /* 二重線の縁：内側の細線＋溝は .shade の inset シャドウで描く
+         （カード本体の box-shadow は状態表示が使うため触らない） */
+      .follower .shade,.hcard .shade,.gcard .shade{
+        box-shadow:inset 0 0 0 1px var(--frame-line), inset 0 0 0 3px rgba(8,6,4,.38), inset 0 0 0 4px rgba(238,224,186,.13);
+      }
+      /* 四隅のダイヤ飾り：SVGデータURIを4隅に配置。バッジ類（z-index:2）の
+         下に潜るため、数字や絵を隠さない */
+      .follower .shade::after,.hcard .shade::after,.gcard .shade::after{
+        content:''; position:absolute; inset:0; pointer-events:none;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E");
+        background-size:8px 8px; background-repeat:no-repeat;
+        background-position:left 2px top 2px, right 2px top 2px, left 2px bottom 2px, right 2px bottom 2px;
+      }
+      /* カード詳細の枠：内側ヘアライン＋四隅ダイヤ */
+      .detail-art{box-shadow:inset 0 0 0 1px var(--frame-line), inset 0 0 0 4px rgba(8,6,4,.30);}
+      .detail-art::before{
+        content:''; position:absolute; inset:0; pointer-events:none;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E");
+        background-size:11px 11px; background-repeat:no-repeat;
+        background-position:left 4px top 4px, right 4px top 4px, left 4px bottom 4px, right 4px bottom 4px;
+      }
+      /* --- カード名の帯：銘板（プレート）風 --- */
+      .follower .fname,.hcard .hname,.gcard .gname{
+        color:#f4ead2; padding:2px 5px; border-radius:3px;
+        background:linear-gradient(180deg, rgba(52,42,24,.93), rgba(19,15,9,.95));
+        border-top:1px solid rgba(236,205,126,.60); border-bottom:1px solid rgba(236,205,126,.32);
+        box-shadow:inset 0 1px 0 rgba(255,244,205,.22), inset 0 -1px 0 rgba(0,0,0,.55);
+      }
+      /* --- コスト：円形の宝石風バッジ --- */
+      .hcard .cost,.gcard .cost,.detail-art .cost{
+        background:radial-gradient(circle at 32% 28%, #e8f6ff 0%, #7fc0f2 34%, #2b6cb8 68%, #173f6e 100%);
+        border-color:#eaf6ff;
+        box-shadow:inset 0 0 5px rgba(255,255,255,.55), inset 0 -3px 6px rgba(10,40,80,.55), 0 1px 4px rgba(0,0,0,.6);
+      }
+      /* --- 攻撃力：ひし形バッジ（回転した正方形を背後に敷く） --- */
+      .badge-atk{background:none; border:none;}
+      .badge-atk::before{
+        content:''; position:absolute; inset:2px; transform:rotate(45deg); border-radius:3px; z-index:-1;
+        background:radial-gradient(circle at 35% 30%, #f4c95a, #a8740f);
+        border:1.5px solid rgba(255,240,200,.85); box-shadow:0 1px 3px rgba(0,0,0,.5);
+      }
+      /* --- 体力：下部が尖った盾型バッジ --- */
+      .badge-hp{background:none; border:none;}
+      .badge-hp::before{
+        content:''; position:absolute; inset:1px; z-index:-1;
+        background:radial-gradient(circle at 35% 28%, #f0977f, #a02c22 78%);
+        clip-path:polygon(50% 0, 100% 14%, 100% 56%, 50% 100%, 0 56%, 0 14%);
+      }
+      .badge-hp.hurt{box-shadow:none; filter:drop-shadow(0 0 4px rgba(255,90,60,.95));}
+      /* --- 神話：金の太枠感を補強（脈打つグローは既存のまま） --- */
+      .follower.mythic,.hcard.mythic,.gcard.mythic{border-width:2.5px;}
+      /* --- デッキ編成：サムネイルの金属縁（採用中の青リングは既存ルールが優先） --- */
+      .dthumb{box-shadow:0 0 0 1.5px var(--frame-metal), 0 0 0 3px rgba(20,16,10,.6);}
+      .dname{font-weight:700;}
+      /* ===== 戦闘画面ファンタジー化 第1弾・仕上げ：彫金グラデーション縁／
+         オンライン枠／詳細枠の拡張 =====
+         見た目のみ。寸法・矩形・タップ判定は一切変えない。
+         金属グラデーションの縁は「マスクで縁だけを切り抜いた疑似要素リング」で
+         描く：角丸を保ったまま外周2pxだけに金属グラデーションが乗り、
+         本体の border／box-shadow（状態表示・レアリティ枠）には一切触れない。
+         神話の金枠・EXの虹枠・黒のアギトの濃紫枠・攻撃可などの状態枠・
+         手札の使用可ハイライトが付いたカードは :not() で対象から外し、
+         それらの枠が常に優先される。マスク合成に未対応の環境では
+         @supports によりリング自体が出ない（従来表示のまま）ため安全。 */
+      :root{
+        --metal-grad:linear-gradient(155deg,#e8d5a0 0%,#9a875f 20%,#6f6046 38%,#e2cd96 52%,#877650 66%,#54482e 84%,#d3ba7d 100%);
+      }
+      @supports ((mask-composite:exclude) or (-webkit-mask-composite:xor)){
+        .follower:not(.mythic):not(.rainbow):not(.agito):not(.can-attack):not(.selected-attacker):not(.targetable):not(.buffable):not(.fx-spawn-mythic)::before,
+        .hcard:not(.mythic):not(.rainbow):not(.agito):not(.playable)::before,
+        .gcard:not(.mythic):not(.rainbow):not(.agito)::before,
+        .ov-unit:not(.mythic):not(.rainbow):not(.agito):not(.can-attack):not(.selected):not(.targetable):not(.fx-spawn-mythic)::before,
+        .ov-hcard:not(.mythic):not(.rainbow):not(.agito):not(.playable):not(.selected)::before{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:2px;
+          background:var(--metal-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:3;
+        }
+        /* カード詳細：イラスト外周の金属グラデーション縁
+           （四隅ダイヤは既存の ::before が担当するため ::after を使う） */
+        .detail-art:not(.mythic):not(.rainbow):not(.agito)::after{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:2px;
+          background:var(--metal-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:2;
+        }
+        /* デッキ編成：サムネイルの金属グラデーション縁
+           （神話行の金リング・採用中行の青リングが付く行は対象外） */
+        .drow:not(.mythic):not(.in) .dthumb::before{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
+          background:var(--metal-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:2;
+        }
+      }
+      /* デッキ編成サムネイル：従来の単色リングはグラデーション縁に置き換える
+         （神話／採用中の行は既存ルールが優先され、そのまま残る） */
+      .drow:not(.mythic):not(.in) .dthumb{box-shadow:0 0 0 1px rgba(20,16,10,.55);}
+      /* デッキ編成：行カード自体の外周にも金属グラデーション縁
+         （背景レイヤー方式。神話の金枠・採用中の青グローは :not() で優先維持） */
+      .drow:not(.mythic):not(.in){
+        border:1px solid transparent;
+        background:linear-gradient(var(--panel),var(--panel)) padding-box, var(--metal-grad) border-box;
+      }
+      /* --- オンライン対戦カード：二重線＋四隅ダイヤ ---
+         内側の細線と溝は ::after（内周3pxの枠＋四隅のダイヤ）で描く。
+         神話・虹・紫は既存の内側リング（::after）が優先されるため対象外。 */
+      .ov-unit:not(.mythic):not(.rainbow):not(.agito)::after,
+      .ov-hcard::after{
+        content:''; position:absolute; inset:3px; border:1px solid var(--frame-line);
+        border-radius:5px; pointer-events:none; z-index:3;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%23d9b45f' stroke='%232a2008' stroke-width='1'/%3E%3C/svg%3E");
+        background-size:7px 7px; background-repeat:no-repeat;
+        background-position:left 1px top 1px, right 1px top 1px, left 1px bottom 1px, right 1px bottom 1px;
+      }
+      /* --- オンライン対戦カード：名前帯の銘板化（CPU戦の .fname 等と同言語） --- */
+      .ov-unit .ov-uname,.ov-hcard .ov-uname{
+        color:#f4ead2;
+        background:linear-gradient(180deg, rgba(52,42,24,.96), rgba(19,15,9,.97));
+        border-top:1px solid rgba(236,205,126,.55);
+        border-bottom:1px solid rgba(236,205,126,.30);
+        box-shadow:inset 0 1px 0 rgba(255,244,205,.20), inset 0 -1px 0 rgba(0,0,0,.55);
+      }
+      /* --- オンライン対戦カード：ステータスの宝石バッジ化 ---
+         コスト＝宝石風の円／攻撃力＝ひし形／体力＝盾型（CPU戦のバッジと同形状）。
+         形状は ::before を背後に敷くため、数字の可読性と行の高さは変えない。 */
+      .ov-ustats{align-items:center;}
+      .ov-b-cost,.ov-b-atk,.ov-b-hp{
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:19px; height:19px; padding:0 2px; font-size:11.5px; line-height:1;
+        color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.65);
+        position:relative; z-index:0;
+      }
+      .ov-b-cost{
+        border-radius:50%;
+        background:radial-gradient(circle at 32% 28%, #e8f6ff 0%, #7fc0f2 34%, #2b6cb8 68%, #173f6e 100%);
+        border:1px solid #eaf6ff;
+        box-shadow:inset 0 0 4px rgba(255,255,255,.5), inset 0 -2px 4px rgba(10,40,80,.5);
+      }
+      .ov-b-atk::before{
+        content:''; position:absolute; inset:2px; transform:rotate(45deg); border-radius:2px; z-index:-1;
+        background:radial-gradient(circle at 35% 30%, #f4c95a, #a8740f);
+        border:1px solid rgba(255,240,200,.85); box-shadow:0 1px 2px rgba(0,0,0,.45);
+      }
+      .ov-b-hp::before{
+        content:''; position:absolute; inset:1px; z-index:-1;
+        background:radial-gradient(circle at 35% 28%, #f0977f, #a02c22 78%);
+        clip-path:polygon(50% 0, 100% 14%, 100% 56%, 50% 100%, 0 56%, 0 14%);
+      }
+      /* --- カード詳細：名前表示部の銘板化 ---
+         両端にダイヤの鋲を打った金属プレートに名前を載せる。 */
+      .detail-name{
+        position:relative; color:#f4ead2; text-align:center;
+        margin:4px 0 8px; padding:7px 26px 8px; border-radius:4px;
+        background:linear-gradient(180deg, rgba(62,49,27,.96), rgba(24,19,11,.97));
+        border:1px solid rgba(120,96,44,.85);
+        border-top-color:rgba(236,205,126,.75); border-bottom-color:rgba(0,0,0,.65);
+        box-shadow:inset 0 1px 0 rgba(255,244,205,.28), inset 0 -9px 15px rgba(0,0,0,.38), 0 2px 7px rgba(0,0,0,.35);
+        text-shadow:0 1px 3px #000;
+      }
+      .detail-name::before,.detail-name::after{
+        content:''; position:absolute; top:50%; width:7px; height:7px;
+        transform:translateY(-50%) rotate(45deg);
+        background:linear-gradient(135deg,#f0d488,#a8842f);
+        border:1px solid rgba(42,32,8,.9);
+      }
+      .detail-name::before{left:8px;}
+      .detail-name::after{right:8px;}
     </style>
   </head>
   <body>
@@ -4041,7 +4269,7 @@
           '<div class="hpbar"><i style="width:' + hpPct + '%"></i></div>' +
           '<div class="leader-nums">' +
             '<span class="hp-label">召喚士ライフ</span>' +
-            '<span class="hp-num">' + Math.max(0, side.hp) + ' <small>/ ' + side.maxHp + '</small></span>' +
+            '<span class="hp-num' + (side.hp <= 5 ? ' crit' : (side.hp <= 10 ? ' warn' : '')) + '">' + Math.max(0, side.hp) + '</span>' +
             (isMe
               ? '<span class="pp-wrap">' + ppDots + '<span class="pp-text">魔力 ' + side.pp + '/' + side.maxPp + '</span></span>'
               : '<span>魔力 ' + side.pp + '/' + side.maxPp + '</span>') +
@@ -5792,14 +6020,14 @@
       var hpTxt = u.hp + (u.hp < u.maxHp ? '/' + u.maxHp : '');
       return '<button type="button" class="' + cls + '" data-ov-unit="' + u.uid + '" data-ov-side="' + side + '">' +
         (img ? '<img src="' + img + '" alt="" />' : '') +
-        '<span class="ov-ustats"><span>' + u.atk + '</span><span>' + hpTxt + '</span></span>' +
+        '<span class="ov-ustats"><span class="ov-b-atk">' + u.atk + '</span><span class="ov-b-hp">' + hpTxt + '</span></span>' +
         '<span class="ov-uname">' + escapeHtml(u.name) + (kws ? '（' + kws + '）' : '') + (u.attacksLeft > 1 ? ' 残攻撃' + u.attacksLeft : '') + '</span></button>';
     }
     function ovPlayerHtml(p, isMe){
       var s = SUMMONER_BY_ID[p.summoner];
       var handTxt = isMe ? ('手札' + (p.hand ? p.hand.length : 0) + '枚') : ('手札' + p.handCount + '枚');
       return '<span><b>' + escapeHtml(p.name || '(名無し)') + '</b>（' + escapeHtml(s ? s.name : p.summoner) + '）</span>' +
-        '<span>ライフ <span class="ov-life">' + p.life + '</span></span>' +
+        '<span>ライフ <span class="ov-life' + (p.life <= 5 ? ' crit' : (p.life <= 10 ? ' warn' : '')) + '">' + p.life + '</span></span>' +
         '<span>魔力 ' + p.mana + '/' + p.manaMax + '</span>' +
         '<span>' + handTxt + '</span><span>山札' + p.deckCount + '枚</span>' +
         (p.coin ? '<span>追い上げコイン有</span>' : '');
@@ -6028,10 +6256,10 @@
         var cd = CARD_BY_ID[id];
         if (!cd) return '';
         var playable = legal.some(function(a){ return a.type === 'playCard' && a.handIndex === i; });
-        var stats = cd.type === 'follower' ? ('<span>' + cd.atk + '</span><span>' + cd.hp + '</span>') : '<span>スペル</span><span></span>';
+        var stats = cd.type === 'follower' ? ('<span class="ov-b-atk">' + cd.atk + '</span><span class="ov-b-hp">' + cd.hp + '</span>') : '<span>スペル</span><span></span>';
         return '<button type="button" class="ov-hcard' + (playable ? ' playable' : '') + (ov.selHand === i ? ' selected' : '') + (cd.mythic && cd.id !== '53ag' ? ' mythic' : '') + (cd.id === '52ex' ? ' rainbow' : '') + (cd.id === '53ag' ? ' agito' : '') + '" data-ov-hand="' + i + '"' + (playable ? '' : ' disabled') + '>' +
           '<img src="' + cd.img + '" alt="" />' +
-          '<span class="ov-ustats"><span>' + cd.cost + '</span>' + stats + '</span>' +
+          '<span class="ov-ustats"><span class="ov-b-cost">' + cd.cost + '</span>' + stats + '</span>' +
           '<span class="ov-uname">' + escapeHtml(cd.name) + '</span></button>';
       }).join('');
       /* アクションバー */
