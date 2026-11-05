@@ -1442,6 +1442,42 @@
       @media (prefers-reduced-motion: reduce){
         .summoner-avatar,.leader.enemy .summoner-avatar,.ov-summoner-avatar{animation:none;}
       }
+      /* ===== 手札バッジのタブ列化（扇形で隣に隠れる問題の修正） =====
+         対象は自分の手札だけ（CPU戦 .hcard／オンライン戦 .ov-hcard）。
+         コスト（青い宝石）・攻撃力（ひし形）・体力（盾型）の3バッジを
+         カード上端の中央に横並びのタブ列へまとめ、上端から約半分
+         頭を出す位置に置く。扇の回転・重なりで隣のカード本体が
+         被さるのはタブの下半分までで、数字のある中心部は常に見える。
+         場・図鑑・詳細のバッジ配置は変更しない。
+         タブがカード上端より上に張り出す分は、手札コンテナの
+         上パディングで受け、手札エリアの外（盤面・ラベル）には
+         被らないようにする。カード本体は overflow:visible にし、
+         角丸は画像・陰影レイヤー側の border-radius で保つ。 */
+      .hand{padding-top:12px;}
+      .ov-hand{padding-top:12px;}
+      .hcard{overflow:visible;}
+      .hcard img,.hcard .shade,.hcard .coin-face{border-radius:7px;}
+      .ov-hcard{overflow:visible;}
+      .ov-hcard img{border-radius:6px;}
+      .hand-tabs{
+        position:absolute; top:-9px; left:50%; transform:translateX(-50%);
+        display:flex; align-items:center; gap:2px; z-index:6; pointer-events:none;
+        filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));
+      }
+      .hand-tabs .cost,.hand-tabs .badge-atk,.hand-tabs .badge-hp,
+      .hand-tabs .ov-b-cost,.hand-tabs .ov-b-atk,.hand-tabs .ov-b-hp{
+        position:relative; top:auto; left:auto; right:auto; bottom:auto;
+        flex:0 0 auto; width:19px; height:19px; margin:0;
+        font-size:11px; line-height:1; z-index:0;
+      }
+      .hand-tabs .ov-b-spell{
+        flex:0 0 auto; display:inline-flex; align-items:center;
+        font-size:9px; font-weight:900; line-height:1; color:#fff;
+        background:#7d5fc0; padding:3px 5px; border-radius:4px;
+      }
+      /* タブ列（カード上端から下へ約10px）に重ならないよう、手札内の
+         スペル／神話タグは一段下げてタブ列の下に逃がす */
+      .hcard .spell-tag,.hcard .mythic-tag{top:12px;}
     </style>
   </head>
   <body>
@@ -4584,12 +4620,20 @@
        重なり順は中央が最前面、両端ほど背面。重なった部分をタップすると
        見えている側（中央寄り）のカードが自然に優先される。
        高さは「カード高＋扇の最大落差＋余白」に抑え、盤面を圧迫しない。 */
+    /* 震え対策：前回適用したレイアウトと「同じカード要素・同じ計算結果」
+       の場合はスタイルに一切触らない。手札が不変の再描画で呼ばれても
+       transform／margin／z-index／高さを書き直さないため、カードが
+       微妙に動く（ブルッとする）ことがなくなる。幅が変わるリサイズ等で
+       計算結果が変わった時だけ再適用する。 */
     function applyFanLayout(container){
       if (!container) return;
       var cards = Array.prototype.slice.call(container.children).filter(function(el){
         return el.classList && (el.classList.contains('hcard') || el.classList.contains('ov-hcard'));
       });
-      if (!cards.length){ container.style.height = ''; return; }
+      if (!cards.length){
+        if (container._fanKey){ container.style.height = ''; container._fanKey = ''; container._fanNodes = null; }
+        return;
+      }
       var n = cards.length;
       var cardW = cards[0].offsetWidth || 70;
       var cardH = cards[0].offsetHeight || 86;
@@ -4603,18 +4647,33 @@
       var centre = (n - 1) / 2;
       var angleStep = n <= 1 ? 0 : Math.min(4.8, 36 / Math.max(1, n - 1));
       var maxDrop = n <= 2 ? 3 : (n <= 6 ? 10 : 13);
-      cards.forEach(function(el, i){
+      var layouts = cards.map(function(el, i){
         var off = i - centre;
         var rot = off * angleStep;
         var ratio = centre > 0 ? Math.abs(off) / centre : 0;
         var drop = Math.round(Math.pow(ratio, 1.4) * maxDrop);
+        return {
+          z: String(100 - Math.round(Math.abs(off) * 10) - (off > 0 ? 2 : 0)),
+          ml: i === 0 ? '0px' : (-(cardW - step)).toFixed(1) + 'px',
+          tf: 'translateY(' + drop + 'px) rotate(' + rot.toFixed(2) + 'deg)'
+        };
+      });
+      var height = (cardH + maxDrop + 10) + 'px';
+      var key = n + '|' + cardW + '|' + cardH + '|' + avail + '|' + step.toFixed(2) + '|' + height + '|' +
+        layouts.map(function(l){ return l.tf + ',' + l.ml + ',' + l.z; }).join(';');
+      var sameNodes = container._fanNodes && container._fanNodes.length === cards.length &&
+        container._fanNodes.every(function(el, i){ return el === cards[i]; });
+      if (sameNodes && container._fanKey === key) return;
+      cards.forEach(function(el, i){
         el.style.position = 'relative';
-        el.style.zIndex = String(100 - Math.round(Math.abs(off) * 10) - (off > 0 ? 2 : 0));
-        el.style.marginLeft = i === 0 ? '0px' : (-(cardW - step)).toFixed(1) + 'px';
-        el.style.transform = 'translateY(' + drop + 'px) rotate(' + rot.toFixed(2) + 'deg)';
+        el.style.zIndex = layouts[i].z;
+        el.style.marginLeft = layouts[i].ml;
+        el.style.transform = layouts[i].tf;
         el.style.transformOrigin = '50% 100%';
       });
-      container.style.height = (cardH + maxDrop + 10) + 'px';
+      container.style.height = height;
+      container._fanKey = key;
+      container._fanNodes = cards;
     }
     if (typeof window !== 'undefined' && window.addEventListener){
       window.addEventListener('resize', function(){
@@ -4761,15 +4820,41 @@
       document.getElementById('myDeckCount').textContent = S.me.deck.length;
       document.getElementById('cpuHandCount').textContent = '手札 ' + S.cpu.hand.length;
       var handEl = document.getElementById('hand');
-      if (!S.me.hand.length){
+      /* 震え対策：手札の枚数・中身（uid＋cardId の並び）が前回描画時と
+         同じなら、DOM を作り直さず扇形レイアウトも再適用しない。
+         相手の行動などで画面が再描画されても、既存のカード要素と
+         配置をそのまま保持し、手札に一切の動きを発生させない。
+         出せる／出せないの見た目だけは既存要素のクラス付け替えで追随する。
+         手札が本当に変わった時（ドロー／使用／バウンス等）だけ従来通り
+         作り直して扇形を再計算する。 */
+      var handSig = S.me.hand.map(function(h){ return h.uid + ':' + h.cardId; }).join(',');
+      var handUnchanged = handSig === render._lastHandSig && (S.me.hand.length
+        ? (handEl.querySelectorAll('.hcard').length === S.me.hand.length && S.me.hand.every(function(h){ return !!handEl.querySelector('[data-hand-uid="' + h.uid + '"]'); }))
+        : !!handEl.querySelector('.hand-empty'));
+      if (handUnchanged){
+        if (S.me.hand.length){
+          S.me.hand.forEach(function(h){
+            var node = handEl.querySelector('[data-hand-uid="' + h.uid + '"]');
+            if (!node) return;
+            var reason = playableReason('me', h);
+            node.classList.toggle('playable', !reason);
+            node.classList.toggle('unplayable', !!reason);
+          });
+        }
+      } else if (!S.me.hand.length){
         handEl.innerHTML = '<div class="hand-empty">手札がありません</div>';
+        render._lastHandSig = handSig;
       } else {
         handEl.innerHTML = S.me.hand.map(function(h){
           var card = CARD_BY_ID[h.cardId];
           var reason = playableReason('me', h);
           var cls = 'hcard ' + (reason ? 'unplayable' : 'playable') + (isMythicCard(card) && !isAgitoCard(card) ? ' mythic' : '') + (isRainbowCard(card) ? ' rainbow' : '') + (isAgitoCard(card) ? ' agito' : '');
-          var stats = card.type === 'follower'
-            ? '<span class="badge-atk">' + card.atk + '</span><span class="badge-hp">' + card.hp + '</span>' : '';
+          /* バッジはカード上端のタブ列にまとめる（左からコスト／攻撃力／体力）。
+             .hand-tabs が上端から頭を出すため、扇の重なりでも隠れない */
+          var stats = '<span class="hand-tabs"><span class="cost">' + card.cost + '</span>' +
+            (card.type === 'follower'
+              ? '<span class="badge-atk">' + card.atk + '</span><span class="badge-hp">' + card.hp + '</span>' : '') +
+            '</span>';
           var spellTag = card.type === 'spell' ? '<span class="spell-tag">スペル</span>' : '';
           var mythicTag = isMythicCard(card) ? '<span class="mythic-tag">神話</span>' : '';
           var kwChips = '';
@@ -4790,11 +4875,12 @@
             : '<img src="' + card.img + '" alt="' + escapeHtml(card.name) + '" />';
           return '<div class="' + cls + '" data-hand-uid="' + h.uid + '">' +
             art +
-            '<div class="shade"></div><span class="cost">' + card.cost + '</span>' + spellTag + mythicTag + kwHtml +
-            stats + '</div>';
+            '<div class="shade"></div>' + stats + spellTag + mythicTag + kwHtml +
+            '</div>';
         }).join('');
+        render._lastHandSig = handSig;
       }
-      applyFanLayout(handEl);
+      if (!handUnchanged) applyFanLayout(handEl);
       document.getElementById('handCount').textContent = S.me.hand.length + '枚';
       /* 合体バー：自分のターン中、手札に聖剣の欠片が3枚あれば出す */
       var fuseBarEl = document.getElementById('fuseBar');
@@ -6694,16 +6780,42 @@
       ovEl('ovMyPanel').innerHTML = ovPlayerHtml(v.me, true);
       /* 手札 */
       var legal = ovLegal();
-      ovEl('ovHand').innerHTML = v.me.hand.map(function(id, i){
+      /* 震え対策（CPU戦の #hand と同方針）：手札の並びが前回描画時と
+         同じなら DOM を作り直さず扇形も再適用しない。相手の行動による
+         状態更新で再描画されても、既存のカード要素と配置を保持する。
+         出せる／選択中／無効の見た目だけは既存要素へその場で反映する。 */
+      var ovHandBox = ovEl('ovHand');
+      var ovHandSig = v.me.hand.join(',');
+      var ovHandUnchanged = ovHandSig === renderOvGame._lastHandSig &&
+        ovHandBox.querySelectorAll('.ov-hcard').length === v.me.hand.length;
+      if (ovHandUnchanged){
+        v.me.hand.forEach(function(id, i){
+          var node = ovHandBox.querySelector('[data-ov-hand="' + i + '"]');
+          if (!node) return;
+          var playableNow = legal.some(function(a){ return a.type === 'playCard' && a.handIndex === i; });
+          node.classList.toggle('playable', playableNow);
+          node.classList.toggle('selected', ov.selHand === i);
+          node.disabled = !playableNow;
+        });
+      } else {
+      ovHandBox.innerHTML = v.me.hand.map(function(id, i){
         var cd = CARD_BY_ID[id];
         if (!cd) return '';
         var playable = legal.some(function(a){ return a.type === 'playCard' && a.handIndex === i; });
-        var stats = cd.type === 'follower' ? ('<span class="ov-b-atk">' + cd.atk + '</span><span class="ov-b-hp">' + cd.hp + '</span>') : '<span>スペル</span><span></span>';
+        /* バッジはカード上端のタブ列にまとめる（左からコスト／攻撃力／体力）。
+           .hand-tabs が上端から頭を出すため、扇の重なりでも隠れない */
+        var tabs = '<span class="hand-tabs"><span class="ov-b-cost">' + cd.cost + '</span>' +
+          (cd.type === 'follower'
+            ? '<span class="ov-b-atk">' + cd.atk + '</span><span class="ov-b-hp">' + cd.hp + '</span>'
+            : '<span class="ov-b-spell">スペル</span>') +
+          '</span>';
         return '<button type="button" class="ov-hcard' + (playable ? ' playable' : '') + (ov.selHand === i ? ' selected' : '') + (cd.mythic && cd.id !== '53ag' ? ' mythic' : '') + (cd.id === '52ex' ? ' rainbow' : '') + (cd.id === '53ag' ? ' agito' : '') + '" data-ov-hand="' + i + '"' + (playable ? '' : ' disabled') + '>' +
           '<img src="' + cd.img + '" alt="" />' +
-          '<span class="ov-ustats"><span class="ov-b-cost">' + cd.cost + '</span>' + stats + '</span></button>';
+          tabs + '</button>';
       }).join('');
-      applyFanLayout(ovEl('ovHand'));
+        renderOvGame._lastHandSig = ovHandSig;
+      }
+      if (!ovHandUnchanged) applyFanLayout(ovHandBox);
       /* アクションバー */
       var bar = [];
       if (!ov.ws){
