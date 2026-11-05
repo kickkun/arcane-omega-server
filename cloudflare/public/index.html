@@ -356,22 +356,23 @@
       .deck-filter-count{font-size:12px; font-weight:700; color:var(--gold-bright); white-space:nowrap;}
       .deck-empty{border:1.5px dashed var(--line); border-radius:10px; padding:22px 14px; text-align:center; font-size:13px; line-height:1.7; color:var(--ink-dim);}
       .drow{display:flex; gap:11px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px 10px;}
-      /* 採用中（1枚以上）：金枠＋薄い金の背景とグローで一目で分かるようにする */
+      /* 採用中（1枚以上）：青枠＋薄い青の背景とグローで一目で分かるようにする
+         （神話の金枠と見分けが付くよう、採用中は金ではなく青で示す） */
       .drow.in{
-        border:2px solid var(--gold-bright); padding:10px 9px;
-        background:linear-gradient(180deg,rgba(236,205,126,.16),rgba(201,162,75,.07)), var(--panel);
-        box-shadow:0 0 0 1px rgba(201,162,75,.35), 0 0 12px rgba(236,205,126,.28), inset 0 0 18px rgba(201,162,75,.08);
+        border:2px solid #57b6ff; padding:10px 9px;
+        background:linear-gradient(180deg,rgba(87,182,255,.16),rgba(77,159,214,.07)), var(--panel);
+        box-shadow:0 0 0 1px rgba(87,182,255,.4), 0 0 12px rgba(87,182,255,.35), inset 0 0 18px rgba(87,182,255,.08);
       }
       .drow.in.max{
-        border-color:#ffd970;
-        background:linear-gradient(180deg,rgba(236,205,126,.26),rgba(201,162,75,.12)), var(--panel);
-        box-shadow:0 0 0 1.5px rgba(236,205,126,.6), 0 0 16px rgba(236,205,126,.45), inset 0 0 20px rgba(201,162,75,.12);
+        border-color:#8fd0ff;
+        background:linear-gradient(180deg,rgba(87,182,255,.26),rgba(77,159,214,.12)), var(--panel);
+        box-shadow:0 0 0 1.5px rgba(87,182,255,.65), 0 0 16px rgba(87,182,255,.55), inset 0 0 20px rgba(87,182,255,.12);
       }
       /* 未採用（0枚）：サムネイルだけ彩度を落として対比を作る（文字は通常のまま） */
       .drow.out .dthumb img{filter:saturate(.45) brightness(.82);}
       .drow.out .dname{color:var(--ink-dim);}
       .dthumb{width:56px; height:75px; border-radius:7px; overflow:hidden; flex:0 0 auto; background:#000; cursor:pointer; padding:0; border:none; display:block; position:relative;}
-      .drow.in .dthumb{box-shadow:0 0 0 2px var(--gold-bright), 0 0 8px rgba(236,205,126,.5);}
+      .drow.in .dthumb{box-shadow:0 0 0 2px #57b6ff, 0 0 8px rgba(87,182,255,.55);}
       .dthumb img{width:100%; height:100%; object-fit:cover; object-position:top center; display:block;}
       .in-chip{
         display:inline-block; margin-left:7px; vertical-align:1px; font-size:10px; font-weight:900; letter-spacing:.06em;
@@ -841,6 +842,21 @@
       }
       .drow.mythic .dthumb{box-shadow:0 0 0 2px var(--gold-bright), 0 0 10px rgba(236,205,126,.65);}
       .drow.mythic .dname{color:#ffe9a8;}
+      /* 神話＋採用中：金枠と金の背景はそのまま残し、採用中を示す青いグローは
+         金枠の外側に重ねる（青で金枠を上書きしない）。
+         「神話であり、かつ採用中」が同時に見て分かるようにする。 */
+      .drow.mythic.in{
+        border-color:var(--gold-bright);
+        background:linear-gradient(180deg,rgba(236,205,126,.20),rgba(201,162,75,.08)), var(--panel);
+        box-shadow:0 0 0 3px rgba(87,182,255,.85), 0 0 18px rgba(87,182,255,.6), 0 0 16px rgba(236,205,126,.5), inset 0 0 20px rgba(201,162,75,.10);
+      }
+      .drow.mythic.in.max{
+        border-color:var(--gold-bright);
+        box-shadow:0 0 0 3.5px rgba(87,182,255,.95), 0 0 22px rgba(87,182,255,.75), 0 0 16px rgba(236,205,126,.55), inset 0 0 20px rgba(201,162,75,.10);
+      }
+      .drow.mythic.in .dthumb{
+        box-shadow:0 0 0 2px var(--gold-bright), 0 0 0 4px rgba(87,182,255,.85), 0 0 12px rgba(87,182,255,.6);
+      }
       .drow .mythic-tag{font-size:11px; padding:2px 9px; letter-spacing:.12em; border-width:1.5px; box-shadow:0 0 10px rgba(236,205,126,.8);}
       .gcard.mythic{border:2px solid var(--gold-bright); box-shadow:0 0 14px rgba(236,205,126,.6), inset 0 0 0 1px rgba(255,233,168,.7);}
       /* ===== デッキ編成：カードプールの並び替えセレクタ ===== */
@@ -1138,7 +1154,7 @@
           <button class="btn-sub" id="deckResetBtn" type="button">初期デッキに戻す</button>
           <button class="btn-sub" id="deckCloseBtn" type="button">もどる</button>
         </div>
-        <p class="deck-note">金色の枠と「採用中」バッジが付いたカードが、今のデッキに入っているカードです（×3は上限まで採用中）。上の「採用中のみ」で入っているカードだけに絞り込めます。同名カードは3枚まで。神話カードは1種類のみ（同名3枚まで）入れられます。神話カードは太い金枠と「神話」バッジで強調表示されます。カードプールは上の「並び替え」でコスト順／カードNo.順／攻撃力順／体力順に並べ替えられます（「採用中のみ」の表示はコスト順のままです）。カードのイラストをタップすると、効果の全文が読める詳細が開きます。自分のデッキは3つのスロットに別々に保存でき、スロットの切り替え・名前の変更も次回開いた時に残ります。対戦とテストプレイはアクティブなスロットの内容を使います。相手のデッキは、タイトル画面で対戦相手を「カスタム」に選んだ時に対戦相手として使われます。</p>
+        <p class="deck-note">青色の枠と「採用中」バッジが付いたカードが、今のデッキに入っているカードです（×3は上限まで採用中）。上の「採用中のみ」で入っているカードだけに絞り込めます。同名カードは3枚まで。神話カードは1種類のみ（同名3枚まで）入れられます。神話カードは太い金枠と「神話」バッジで強調表示され、採用中の神話カードは金枠の外側に青い光が重なります。カードプールは上の「並び替え」でコスト順／カードNo.順／攻撃力順／体力順に並べ替えられます（「採用中のみ」の表示はコスト順のままです）。カードのイラストをタップすると、効果の全文が読める詳細が開きます。自分のデッキは3つのスロットに別々に保存でき、スロットの切り替え・名前の変更も次回開いた時に残ります。対戦とテストプレイはアクティブなスロットの内容を使います。相手のデッキは、タイトル画面で対戦相手を「カスタム」に選んだ時に対戦相手として使われます。</p>
       </div>
     </div>
     <div class="overlay" id="galleryOverlay">
