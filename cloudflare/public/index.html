@@ -1578,6 +1578,24 @@
         -webkit-user-drag:none;
         user-drag:none;
       }
+      /* ===== 召喚アニメーション：中央ステージ出現＋場へスライド =====
+         場の最終配置は「出た順に左から、列全体が常に中心」の1ルールに統一する。
+         CPU戦の .board は5枠グリッドをやめて flex 中央寄せにし、ユニット幅は
+         5体並んでも収まる幅（(100% - gap×4) / 5）を全枚数で共通に使う。
+         オンラインのユニット列（.ov-units）も同じく中央寄せにする。
+         中央ステージのカードは実要素のクローンを position:fixed で両方の場の
+         間に浮かせる（.fx-stage-card）。実要素はステージ滞在中 visibility:hidden
+         でレイアウト上の最終位置だけ確保し、クローンが滑り込んだら差し替える。 */
+      .board{display:flex; justify-content:center; align-items:stretch;}
+      .board .follower{flex:0 0 calc((100% - 24px) / 5); min-width:0;}
+      .board .slot{flex:0 0 calc((100% - 24px) / 5);}
+      .ov-units{display:flex; gap:6px; justify-content:center; align-items:flex-start; width:100%; flex-wrap:nowrap;}
+      .ov-units .ov-unit{flex:0 1 auto; min-width:0;}
+      .fx-stage-card{
+        position:fixed !important; z-index:90; margin:0 !important; pointer-events:none;
+        transform-origin:center center; cursor:default;
+        box-shadow:0 16px 38px rgba(0,0,0,.6), 0 0 26px rgba(236,205,126,.35);
+      }
     </style>
   </head>
   <body>
@@ -3201,6 +3219,9 @@
       Object.keys(fxSpawnReg).forEach(function(key){
         var isOv = key.indexOf('ov|') === 0;
         if ((scope === 'ov') !== isOv) return;
+        /* 中央ステージ演出中のユニットは実要素へ召喚クラスを付け直さない
+           （ステージのクローン側で演出する。実要素は滞在中ずっと隠す） */
+        if (stageInFlight[key]) return;
         var rec = fxSpawnReg[key];
         var elapsed = now - rec.start;
         if (elapsed >= rec.dur){ delete fxSpawnReg[key]; return; }
@@ -3213,6 +3234,174 @@
         }
       });
     }
+    /* ===== 召喚アニメーション：中央ステージ出現＋場へスライド =====
+       新しいユニットは、まず両プレイヤーの場の間にある中央の空きスペース
+       （中央ステージ）に通常より少し大きめに出現し、短い滞在の後で持ち主の
+       場の最終位置へ滑らかにスライドして収まる。既存ユニットは新しい整列
+       位置へ FLIP（旧位置→新位置の transform 補間）でスライドして追随し、
+       除去時も残りが中心へスライドして整列し直す。
+       発火条件は場の構成が実際に変化した時（fxPlanCpu／fxPlanOv が検出した
+       召喚・除去イベント）だけ。通常の再描画では一切動かさない。
+       すべて見た目のみの処理で、ゲーム進行・タップ操作は待たせない
+       （クローンとタイマーは盤面DOMと独立）。HEADLESS では一切動かない。
+       連続召喚はキューで1体ずつ順番に流し、詰まったら滞在を短縮する。 */
+    var stageReducedMotion = false;
+    try { stageReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+    var stageQueue = [];        /* 処理待ちのステージ出現 {scope,key,cardId,mythic} */
+    var stageBusy = false;      /* ステージに滞在・スライド中のクローンがあるか */
+    var stageInFlight = {};     /* ステージ演出中（実要素を隠し続ける）キーの集合 */
+    function stageFindEl(key){
+      if (key.indexOf('ov|') === 0){
+        var p = key.split('|');
+        return fxOvUnitEl(p[1], p.slice(2).join('|'));
+      }
+      return document.querySelector('[data-fol="' + key + '"]');
+    }
+    /* 中央ステージの中心点：両プレイヤーの場の間の空きスペース。
+       CPU戦は相手の場と自分の場の間、オンラインも相手の場と自分の場の間。 */
+    function stageCenterFor(scope){
+      var topEl, botEl;
+      if (scope === 'ov'){
+        topEl = document.getElementById('ovOppField');
+        botEl = document.getElementById('ovMyField');
+      } else {
+        topEl = document.getElementById('cpuBoard');
+        botEl = document.getElementById('myBoard');
+      }
+      if (topEl && botEl){
+        var rt = topEl.getBoundingClientRect(), rb = botEl.getBoundingClientRect();
+        if (rt.width && rb.width){
+          return { x: rb.left + rb.width / 2, y: (rt.bottom + rb.top) / 2 };
+        }
+      }
+      return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    }
+    /* ステージ出現時の演出フック。次工程「神話カードの個別専用エフェクト」は
+       ここでカードIDごとに分岐して差し込む（例：switch (String(cardId))）。
+       今回は全カード共通で、既存の召喚エフェクト（神話は神話用）を
+       ステージ出現のタイミングに合わせて発火させる。 */
+    function stageSummonFx(cardId, stageEl, mythic){
+      /* TODO(次工程): カードID別の専用エフェクトはここに分岐を追加する */
+      pixiSummonAt(stageEl); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
+    }
+    /* 既存ユニットの整列スライド（FLIP）：再描画前の実位置から新しい
+       整列位置へ滑らかに寄せる。除去で列が詰まる時も同じ経路で動く。 */
+    function stageFlip(el, oldRect){
+      if (!el || !oldRect || HEADLESS || stageReducedMotion) return;
+      var r = el.getBoundingClientRect();
+      if (!r.width) return;
+      var dx = (oldRect.left + oldRect.width / 2) - (r.left + r.width / 2);
+      var dy = (oldRect.top + oldRect.height / 2) - (r.top + r.height / 2);
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+      try {
+        el.animate(
+          [{ transform: 'translate(' + dx + 'px,' + dy + 'px)' }, { transform: 'translate(0px,0px)' }],
+          { duration: 380, easing: 'cubic-bezier(.25,.9,.3,1)' }
+        );
+      } catch (e) {}
+    }
+    /* 盤面要素の現在位置を key→矩形 で記録する（fxPlan* が再描画前に呼ぶ） */
+    function stageCaptureRects(scope){
+      var rects = {};
+      if (scope === 'ov'){
+        document.querySelectorAll('[data-ov-unit]').forEach(function(el){
+          var r = el.getBoundingClientRect();
+          rects['ov|' + el.getAttribute('data-ov-side') + '|' + el.getAttribute('data-ov-unit')] = { left: r.left, top: r.top, width: r.width, height: r.height };
+        });
+      } else {
+        document.querySelectorAll('[data-fol]').forEach(function(el){
+          var r = el.getBoundingClientRect();
+          rects[el.getAttribute('data-fol')] = { left: r.left, top: r.top, width: r.width, height: r.height };
+        });
+      }
+      return rects;
+    }
+    /* 再描画のたびに、ステージ演出中の実要素を隠し直す（innerHTML で
+       作り直されると visibility が消えるため）。演出中でない時は触らない。 */
+    function stageRehide(scope){
+      Object.keys(stageInFlight).forEach(function(key){
+        if ((scope === 'ov') !== (key.indexOf('ov|') === 0)) return;
+        var el = stageFindEl(key);
+        if (el) el.style.visibility = 'hidden';
+      });
+    }
+    /* ステージ出現をキューへ積む。積めたら true（実要素は即座に隠す）。
+       HEADLESS／モーション低減時は積まず、従来のその場の召喚演出に任せる。 */
+    function stageEnqueue(item){
+      if (HEADLESS || stageReducedMotion) return false;
+      if (stageInFlight[item.key]) return true; /* 同一個体の二重登録は防ぐ */
+      stageInFlight[item.key] = true;
+      stageQueue.push(item);
+      var el = stageFindEl(item.key);
+      if (el) el.style.visibility = 'hidden';
+      stageProcess();
+      return true;
+    }
+    function stageProcess(){
+      if (stageBusy) return;
+      var item = stageQueue.shift();
+      if (!item) return;
+      stageBusy = true;
+      var done = function(){
+        delete stageInFlight[item.key];
+        stageBusy = false;
+        stageProcess();
+      };
+      var el = stageFindEl(item.key);
+      if (!el){ done(); return; }
+      el.style.visibility = 'hidden';
+      var target = el.getBoundingClientRect();
+      if (!target.width){ done(); return; }
+      var center = stageCenterFor(item.scope);
+      var scale = item.mythic ? 1.38 : 1.24; /* ステージでは通常より少し大きめ（神話はさらに大きく） */
+      var w = target.width * scale, h = target.height * scale;
+      var clone = el.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.removeAttribute('data-fol'); clone.removeAttribute('data-ov-unit'); clone.removeAttribute('data-ov-side');
+      clone.classList.remove('can-attack','targetable','buffable','selected-attacker','selected','fx-hit','fx-lunge-up','fx-lunge-down');
+      clone.classList.add('fx-stage-card');
+      clone.classList.add(item.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
+      clone.style.left = (center.x - w / 2) + 'px';
+      clone.style.top = (center.y - h / 2) + 'px';
+      clone.style.width = w + 'px';
+      clone.style.height = h + 'px';
+      clone.style.visibility = 'visible';
+      document.body.appendChild(clone);
+      /* Pixi召喚エフェクトはステージ出現のタイミングで発火させる */
+      stageSummonFx(item.cardId, clone, item.mythic);
+      /* 滞在：通常カードは0.3秒前後、神話は少し長め。後続が詰まっていたら短縮する */
+      var dwell = item.mythic ? 620 : 300;
+      if (stageQueue.length >= 2) dwell = Math.min(dwell, 140);
+      setTimeout(function(){
+        var el2 = stageFindEl(item.key);
+        if (!el2){ if (clone.parentNode) clone.parentNode.removeChild(clone); done(); return; }
+        el2.style.visibility = 'hidden';
+        var t2 = el2.getBoundingClientRect();
+        var dx = (t2.left + t2.width / 2) - center.x;
+        var dy = (t2.top + t2.height / 2) - center.y;
+        var sx = t2.width / w, sy = t2.height / h;
+        var anim = null;
+        try {
+          anim = clone.animate(
+            [{ transform: 'translate(0px,0px) scale(1,1)' },
+             { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }],
+            { duration: 380, easing: 'cubic-bezier(.25,.9,.3,1)', fill: 'forwards' }
+          );
+        } catch (e) {}
+        var landed = false;
+        var land = function(){
+          if (landed) return;
+          landed = true;
+          if (clone.parentNode) clone.parentNode.removeChild(clone);
+          var el3 = stageFindEl(item.key);
+          if (el3) el3.style.visibility = '';
+          done();
+        };
+        if (anim && anim.finished && anim.finished.then) anim.finished.then(land, land);
+        setTimeout(land, 470); /* 着地の保険（アニメーション完了通知が来ない環境でも必ず収まる） */
+      }, dwell);
+    }
+
     function fxGhost(el){
       if (!el || !el.getBoundingClientRect) return;
       var r = el.getBoundingClientRect();
@@ -3251,7 +3440,7 @@
     /* render() の冒頭（盤面DOMがまだ前回の姿のうち）に呼び、演出プランを作る。
        破壊されたユニットのゴーストはこの時点で切り取る。 */
     function fxPlanCpu(){
-      var plan = { spawn: [], hit: [] };
+      var plan = { spawn: [], hit: [], rects: stageCaptureRects('cpu') };
       if (!fxCpuPrev){ fxClearSpawnReg('cpu'); return plan; }
       var now = fxSnapshotCpu().units;
       Object.keys(now).forEach(function(k){
@@ -3259,7 +3448,7 @@
           var parts = k.split('-');
           var f = findFollower(parts[0], Number(parts[1]));
           var mythic = !!(f && isMythicCard(CARD_BY_ID[f.cardId]));
-          plan.spawn.push({ key: k, mythic: mythic });
+          plan.spawn.push({ key: k, mythic: mythic, cardId: f ? f.cardId : null });
           fxRegSpawn(k, mythic);
         } else if (now[k] < fxCpuPrev.units[k]){
           plan.hit.push(k);
@@ -3275,7 +3464,18 @@
     }
     /* render() の盤面書き換え後に呼び、プランと突進キューを実要素へ付ける。 */
     function fxApplyCpu(plan){
+      /* 整列スライド：召喚・除去で最終位置が変わった既存ユニットを、
+         再描画前の位置から新しい整列位置へ滑らせる（新規ユニットは除く） */
+      var spawnKeys = {};
+      plan.spawn.forEach(function(s){ spawnKeys[s.key] = true; });
+      Object.keys(plan.rects || {}).forEach(function(k){
+        if (spawnKeys[k]) return;
+        stageFlip(document.querySelector('[data-fol="' + k + '"]'), plan.rects[k]);
+      });
+      /* 召喚：中央ステージに出現→場の最終位置へスライド（キューで順番に流す）。
+         ステージが使えない環境（モーション低減時）だけ従来のその場演出にする */
       plan.spawn.forEach(function(s){
+        if (stageEnqueue({ scope: 'cpu', key: s.key, cardId: s.cardId, mythic: s.mythic })) return;
         var el = document.querySelector('[data-fol="' + s.key + '"]');
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
         pixiSummonAt(el); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
@@ -3303,6 +3503,7 @@
       fxFinishSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
       fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
+      stageRehide('cpu'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxCpuPrev = fxSnapshotCpu();
     }
@@ -5136,11 +5337,11 @@
     }
     function boardHtml(sideKey){
       var board = sideObj(sideKey).board;
-      var html = '';
-      for (var i=0;i<5;i++){
-        html += board[i] ? followerHtml(sideKey, board[i]) : '<div class="slot">空き</div>';
-      }
-      return html;
+      /* 最終配置ルール（全枚数共通）：ユニットは出た順に左から並び、
+         列全体が常に場の中心に来るよう .board 側の flex 中央寄せで整列する。
+         空き枠はユニットの間には挟まない（空の時だけ中央に1枠出す）。 */
+      if (!board.length) return '<div class="slot">空き</div>';
+      return board.map(function(f){ return followerHtml(sideKey, f); }).join('');
     }
     function render(){
       if (HEADLESS) return;
@@ -6974,7 +7175,7 @@
     }
     /* renderOvGame の冒頭（DOMがまだ前回表示のうち）に呼ぶ */
     function fxPlanOv(v){
-      var plan = { spawn: [], hit: [], pops: [], leaderPops: [], lunge: null, destroyed: 0, finish: false, myTurnStart: false };
+      var plan = { spawn: [], hit: [], pops: [], leaderPops: [], lunge: null, destroyed: 0, finish: false, myTurnStart: false, rects: stageCaptureRects('ov') };
       var prev = fxOvPrev;
       if (!prev){ fxClearSpawnReg('ov'); return plan; }
       if (prev.winner != null && v.winner == null){ fxClearSpawnReg('ov'); return plan; } /* リマッチ開始はベースライン扱い */
@@ -6990,7 +7191,7 @@
           (list || []).forEach(function(x){ if (String(x.uid) === String(uid)) u = x; });
           var c = u ? CARD_BY_ID[u.cardId] : null;
           var ovMythic = !!(c && c.mythic);
-          plan.spawn.push({ side: side, uid: uid, mythic: ovMythic });
+          plan.spawn.push({ side: side, uid: uid, mythic: ovMythic, cardId: u ? u.cardId : null });
           fxRegSpawn('ov|' + side + '|' + uid, ovMythic);
         } else {
           if (typeof now[k].al === 'number' && typeof prev.units[k].al === 'number' && now[k].al < prev.units[k].al){
@@ -7051,7 +7252,19 @@
     }
     /* renderOvGame の盤面書き換え後に呼ぶ */
     function fxApplyOv(plan, v){
+      /* 整列スライド：召喚・除去で最終位置が変わった既存ユニットを、
+         再描画前の位置から新しい整列位置へ滑らせる（新規ユニットは除く） */
+      var ovSpawnKeys = {};
+      plan.spawn.forEach(function(s){ ovSpawnKeys['ov|' + s.side + '|' + s.uid] = true; });
+      Object.keys(plan.rects || {}).forEach(function(k){
+        if (ovSpawnKeys[k]) return;
+        var kp = k.split('|');
+        stageFlip(fxOvUnitEl(kp[1], kp.slice(2).join('|')), plan.rects[k]);
+      });
+      /* 召喚：中央ステージに出現→場の最終位置へスライド（キューで順番に流す）。
+         ステージが使えない環境（モーション低減時）だけ従来のその場演出にする */
       plan.spawn.forEach(function(s){
+        if (stageEnqueue({ scope: 'ov', key: 'ov|' + s.side + '|' + s.uid, cardId: s.cardId, mythic: s.mythic })) return;
         var el = fxOvUnitEl(s.side, s.uid);
         if (el) el.classList.add(s.mythic ? 'fx-spawn-mythic' : 'fx-spawn');
         pixiSummonAt(el); /* PixiJS：召喚バースト＋足元の光の輪（無効時は無動作） */
@@ -7101,6 +7314,7 @@
         var p = key.split('|');
         return fxOvUnitEl(p[1], p.slice(2).join('|'));
       });
+      stageRehide('ov'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxOvPrev = fxOvSnapshot(v);
     }
@@ -7125,9 +7339,10 @@
       for (var bi = 0; bi < (v.opponent.handCount || 0); bi++) backs += '<span class="ov-cardback"></span>';
       ovEl('ovOppField').innerHTML = '<p class="ov-field-label">相手の場（手札：裏向き）</p>' +
         '<div style="display:flex; gap:4px; flex-wrap:wrap; width:100%;">' + backs + '</div>' +
-        (v.opponent.field.length ? v.opponent.field.map(function(u){ return ovUnitHtml(u, 'opp'); }).join('') : '<span style="color:var(--ink-faint); font-size:12.5px;">（ユニットなし）</span>');
+        /* 最終配置ルール（CPU戦と共通）：出た順に左から、列全体が常に中心に来るよう中央寄せで整列する */
+        '<div class="ov-units">' + (v.opponent.field.length ? v.opponent.field.map(function(u){ return ovUnitHtml(u, 'opp'); }).join('') : '<span style="color:var(--ink-faint); font-size:12.5px;">（ユニットなし）</span>') + '</div>';
       ovEl('ovMyField').innerHTML = '<p class="ov-field-label">自分の場<span class="mine-pill">自分</span></p>' +
-        (v.me.field.length ? v.me.field.map(function(u){ return ovUnitHtml(u, 'me'); }).join('') : '<span style="color:var(--ink-faint); font-size:12.5px;">（ユニットなし）</span>');
+        '<div class="ov-units">' + (v.me.field.length ? v.me.field.map(function(u){ return ovUnitHtml(u, 'me'); }).join('') : '<span style="color:var(--ink-faint); font-size:12.5px;">（ユニットなし）</span>') + '</div>';
       ovEl('ovMyPanel').innerHTML = ovPlayerHtml(v.me, true);
       /* 手札 */
       var legal = ovLegal();
