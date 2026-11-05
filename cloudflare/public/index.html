@@ -1351,6 +1351,36 @@
       }
       .battle-menu[hidden]{display:none;}
       .battle-menu .btn-sub{padding:9px 4px; font-size:12.5px; text-align:center;}
+      /* ===== 背景の見える化 第2段：パネルを小さく＋透かし強化 =====
+         前段（透かし＋メニュー収納）でも実機で背景が見えなかった真因は、
+         不透明度ではなく「面積」だった。盤面ゾーン2枚に flex:1 1 0 が
+         付いており、100dvh の余り高さを全部吸って画面のほぼ全面を
+         濃いパネル（.86〜.88）が覆っていた。ベールを薄くしても、
+         絵が出るのは 5px の隙間と余白だけだった。
+         対策は3つ。(1) 盤面ゾーンはカードの高さに合わせて縮め、
+         余った縦幅は自分の場の上（画面中央）に集めて背景の絵を
+         開ける。(2) パネル類の不透明度をもう一段下げ、空きスロット
+         にも半透明の暗色を敷いて「絵の上にガラス板」という見え方に
+         する。(3) ベール自体もさらに薄くする。
+         盤面の最低高さ（64px）は既存指定のまま守られるため、実効高さの
+         小さい環境で盤面が潰れる旧問題は再発しない。収まらない場合は
+         従来どおり .app の縦スクロールに逃げる。演出レイヤー（Pixi）は
+         要素の矩形を動的に測る実装のため、高さ変更の影響を受けない。
+         オンライン画面（.ov-*）も同じ考え方で透かす。 */
+      #battleBg .veil{background:linear-gradient(180deg, rgba(7,9,15,.20) 0%, rgba(7,9,15,.28) 45%, rgba(7,9,15,.44) 100%);}
+      .board-zone{flex:0 1 auto;}
+      .board{flex:0 0 auto; height:clamp(96px, 25vw, 132px); min-height:96px;}
+      .board-zone.mine-zone{margin-top:auto;}
+      .leader{background:linear-gradient(180deg, rgba(30,37,53,.72), rgba(17,22,33,.76));}
+      .board-zone.enemy-zone{background:linear-gradient(180deg, rgba(37,26,32,.55), rgba(23,18,25,.62));}
+      .board-zone.mine-zone{background:linear-gradient(180deg, rgba(24,42,61,.55), rgba(16,26,40,.62));}
+      .slot{background:rgba(6,9,14,.32);}
+      .log{background:rgba(23,30,42,.68);}
+      .hand-zone{background:rgba(23,30,42,.72);}
+      .ov-player{background:rgba(31,40,55,.74);}
+      .ov-field.enemy-zone{background:linear-gradient(180deg, rgba(37,26,32,.55), rgba(23,18,25,.62));}
+      .ov-field.mine-zone{background:linear-gradient(180deg, rgba(24,42,61,.55), rgba(16,26,40,.62));}
+      .ov-log{background:rgba(23,30,42,.72);}
     </style>
   </head>
   <body>
