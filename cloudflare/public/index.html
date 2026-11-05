@@ -2312,7 +2312,7 @@
       return !!card && card.type === 'follower' && card.cost <= 3 && barrierActive();
     }
     function guardsOn(sideKey){
-      return sideObj(sideKey).board.filter(function(f){ return f.guard; });
+      return sideObj(sideKey).board.filter(function(f){ return f.guard && !isEggFollower(f); });
     }
     /* ダーククイーンの「守り」：自分の場に自分以外のユニットがいる限り、そのユニットは
        相手の攻撃・単体効果の対象に選べない。全体効果・反撃は対象選択ではないため対象外。
