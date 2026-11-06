@@ -1024,13 +1024,30 @@
         position:fixed; inset:0; z-index:94; pointer-events:none; opacity:0;
         background:radial-gradient(ellipse at center, rgba(255,255,255,.98) 0%, rgba(255,240,200,.75) 46%, rgba(255,220,150,.25) 78%, transparent 100%);
       }
+      /* ===== 神話フィニッシュ SDキャラ方式（見た目のみ） =====
+         素材は同一オリジンの fx/ 以下に置く外部ファイル（透過WebP／
+         黒背景のエフェクトWebP）を相対パスで参照する。SDキャラは
+         そのまま、黒背景のエフェクト素材は screen 合成で黒を抜く。
+         z-index は複製パネル（.fx-fin-wrap）と同じ 92：DOM順で後から
+         出した要素が上に重なる。モーション低減時は JS 側が従来演出へ
+         フォールバックし、この CSS は念のための二重防御。 */
+      .fx-sd-char{
+        position:fixed; z-index:92; pointer-events:none; width:auto;
+        filter:drop-shadow(0 10px 22px rgba(0,0,0,.55));
+        will-change:transform,opacity;
+      }
+      .fx-sd-fximg{
+        position:fixed; z-index:92; pointer-events:none;
+        mix-blend-mode:screen;
+        will-change:transform,opacity;
+      }
       /* 演出チェック画面：フィニッシュ確認用のダミー敵召喚士パネルと見出し */
       .fx-dummy-leader{position:absolute; top:34px; left:50%; transform:translateX(-50%); width:min(336px,90%); z-index:2; margin:0;}
       .fx-dummy-face{display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:#2a1214; color:#f0a49c; font-size:15px; font-weight:900;}
       .fx-fin-head{margin:18px 0 0; font-size:13.5px; font-weight:800; letter-spacing:.04em; color:var(--gold-bright);}
       .fx-fin-note{margin:3px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-dim);}
       @media (prefers-reduced-motion: reduce){
-        .fx-fin-wrap,.fx-fin-flash{display:none;}
+        .fx-fin-wrap,.fx-fin-flash,.fx-sd-char,.fx-sd-fximg{display:none;}
       }
       /* ===== PixiJSエフェクトレイヤー（演出専用） =====
          固定配置の透明キャンバスを盤面の上に重ねる。タップは完全に透過させ、
@@ -1684,6 +1701,10 @@
         filter:drop-shadow(0 0 6px rgba(236,205,126,.35));
       }
       .fx-magic-circle svg{display:block; width:100%; height:100%; overflow:visible;}
+      /* 画像版の魔法陣（生成素材 fx/fx-circle.webp）：黒背景のエフェクト素材を
+         screen 合成で黒を抜くため、ラッパー側の drop-shadow は外す */
+      .fx-magic-circle.img-mode{filter:none;}
+      .fx-magic-circle img{display:block; width:100%; height:100%; mix-blend-mode:screen;}
       .fx-magic-circle .mc-rotor{transform-box:view-box; transform-origin:60px 60px; animation:mcSpin 7s linear infinite;}
       @keyframes mcSpin{to{transform:rotate(360deg);}}
       .fx-mirage-echo{
@@ -2314,7 +2335,7 @@
         </div>
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
-        <p class="fx-fin-note">神話ユニットが止めを刺した時に、敵召喚士パネルへ再生される専用フィニッシュです。上のダミーパネルに対してそのまま再生されます（パネルは演出後に元へ戻ります）。</p>
+        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるSDキャラ方式の専用フィニッシュです。上のダミーパネルに対してそのまま再生されます（パネルは演出後に元へ戻ります）。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
@@ -3122,6 +3143,7 @@
     var FX_MYTHIC_FINISH_MS = 3050; /* 神話フィニッシュ時の勝敗表示遅延 */
     var fxFinishOverDelay = 1750;   /* finishGame が使う勝敗表示の遅延（発動時に決まる） */
     var fxMythicFxNodes = [];       /* 神話フィニッシュの複製要素（後片付け用） */
+    var fxMythicExtraCleanup = null; /* SD方式が登録する追加の後片付け（召喚台の点灯解除など） */
     var fxMythicHiddenPanel = null; /* 演出中に隠した実パネル（復帰用） */
     var fxMythicGen = 0;            /* 世代カウンタ：遅延コールバックの無効化用 */
     function fxFinishLater(fn, ms){ fxFinishTimers.push(setTimeout(fn, ms)); }
@@ -3140,10 +3162,11 @@
         document.body.classList.add('fx-impact');
         fxFinishLater(function(){ document.body.classList.remove('fx-impact'); }, 420);
       }, 490);
-      /* 神話フィニッシュ：着弾の直前から、敗れた側のパネルへ専用演出を開始する */
+      /* 神話フィニッシュ：着弾の直前から、敗れた側のパネルへ専用演出を開始する
+         （SD素材が揃っていればSDキャラ方式、無ければ従来の抽象演出） */
       if (mythic){
         var mf = mythic;
-        fxFinishLater(function(){ mythicFinishFx(mf.cardId, mf.panelEl); }, 430);
+        fxFinishLater(function(){ mythicFinishDispatch(mf.cardId, mf.panelEl); }, 430);
       }
       /* 余韻：暗転して一拍置き、勝敗表示へつなぐ（神話時は演出の後半にずらす） */
       fxFinishLater(function(){ document.body.classList.add('fx-finish-dim'); }, mythic ? 2350 : 850);
@@ -3217,6 +3240,7 @@
     }
     /* 神話フィニッシュの後片付け：複製要素をすべて撤去し、隠した実パネルを戻す */
     function mythicFxCleanup(){
+      if (fxMythicExtraCleanup){ var fxc = fxMythicExtraCleanup; fxMythicExtraCleanup = null; try { fxc(); } catch (e) {} }
       fxMythicFxNodes.forEach(function(n){ if (n.parentNode) n.parentNode.removeChild(n); });
       fxMythicFxNodes = [];
       if (fxMythicHiddenPanel){ fxMythicHiddenPanel.style.visibility = ''; fxMythicHiddenPanel = null; }
@@ -3562,6 +3586,469 @@
       }
     }
 
+    /* ===== 神話フィニッシュ SDキャラ方式（見た目のみ） =====
+       素材（SDキャラ透過WebP／アギトの巨大な顎／黒背景のエフェクトWebP）は
+       同一オリジンの fx/ 以下に置く外部ファイル前提で、相対パスで参照する
+       （HTMLへは埋め込まない）。読み込みは非同期プリロードのみで行い、
+       ゲーム進行は一切ブロックしない。対象キャラの必須素材が揃っていない
+       ／読み込みに失敗した場合は従来の抽象フィニッシュ（mythicFinishFx）へ
+       フォールバックする。モーション低減時も従来演出へフォールバックする。
+       HEADLESS では完全に無効（プリロードも演出も行わない）。
+       流れは従来と同じ全体長（約2.5秒）：攻撃側のSDキャラが中央の召喚台に
+       召喚時と同じ登場演出（台座の点灯＋魔法陣）で現れる → キャラごとの
+       アクション → 既存のパネル破壊演出で締める。 */
+    var SD_FIN = {
+      '39':   { sd: 'fx/sd-celestia.webp',  fx: 'fx/fx-pillar.webp',    color: '#ffe9a8' },
+      '46':   { sd: 'fx/sd-mirage.webp',    fx: 'fx/fx-slash.webp',     color: '#ff7a5c' },
+      '48':   { sd: 'fx/sd-darkqueen.webp', fx: 'fx/fx-chains.webp',    color: '#b07dff' },
+      '51':   { sd: 'fx/sd-tiamat.webp',    fx: 'fx/fx-breath.webp',    color: '#ff8a5c' },
+      '52ex': { sd: 'fx/sd-excalibur.webp', fx: 'fx/fx-lightwave.webp', color: '#ffe27a' },
+      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff' },
+      '54':   { sd: 'fx/sd-longinus.webp',  fx: 'fx/fx-spear.webp',     color: '#f2e7bd' }
+    };
+    /* 任意素材：無くても演出は成立する（登場の魔法陣画像／EXの剣） */
+    var SD_FIN_EXTRA = ['fx/fx-circle.webp', 'fx/fx-sword.webp'];
+    var sdImgState = {}; /* src -> 1:読込OK / -1:失敗 / 0:読込中 */
+    function sdFxPreload(){
+      if (HEADLESS) return;
+      var srcs = SD_FIN_EXTRA.slice();
+      Object.keys(SD_FIN).forEach(function(k){ srcs.push(SD_FIN[k].sd); srcs.push(SD_FIN[k].fx); });
+      srcs.forEach(function(src){
+        if (sdImgState[src] != null) return;
+        sdImgState[src] = 0;
+        var im = new Image();
+        im.onload = function(){ sdImgState[src] = 1; };
+        im.onerror = function(){ sdImgState[src] = -1; };
+        im.src = src;
+      });
+    }
+    /* 対象キャラの必須素材（SD本体＋専用エフェクト）が読み込み済みか */
+    function sdFxReady(cardId){
+      var c = SD_FIN[String(cardId)];
+      if (!c) return false;
+      return sdImgState[c.sd] === 1 && sdImgState[c.fx] === 1;
+    }
+    function sdFxPending(cardId){
+      var c = SD_FIN[String(cardId)];
+      if (!c) return false;
+      return sdImgState[c.sd] === 0 || sdImgState[c.fx] === 0;
+    }
+    /* 神話フィニッシュの振り分け：SD素材が揃っていればSD方式、無ければ従来演出。
+       実戦（fxTriggerFinish）と演出チェック画面の共通入口 */
+    function mythicFinishDispatch(cardId, panelEl){
+      if (HEADLESS || !panelEl) return;
+      if (!(stageReducedMotion || pixiReducedMotion) && sdFxReady(cardId)) mythicSdFinishFx(cardId, panelEl);
+      else mythicFinishFx(cardId, panelEl);
+    }
+    sdFxPreload(); /* ページ読み込み直後から裏で読み始める（進行はブロックしない） */
+
+    /* SD演出用の一時要素（後片付けは従来演出と共通の fxMythicFxNodes で行う） */
+    function sdFinNode(tag, cls){
+      var el = document.createElement(tag);
+      if (cls) el.className = cls;
+      el.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(el);
+      fxMythicFxNodes.push(el);
+      return el;
+    }
+    /* SDの登場位置：表示中の召喚台（常駐台座）の中心。無ければ画面中央の下寄り */
+    function sdFinAnchor(){
+      var peds = document.querySelectorAll('.fx-pedestal.persistent');
+      for (var i = 0; i < peds.length; i++){
+        var p = peds[i];
+        if (p.classList.contains('ped-hidden')) continue;
+        var r = p.getBoundingClientRect();
+        if (r.width > 0) return { ped: p, x: r.left + r.width / 2, feetY: r.top + 8 };
+      }
+      return { ped: null, x: window.innerWidth / 2, feetY: Math.round(window.innerHeight * 0.6) };
+    }
+
+    /* SDキャラ方式の神話フィニッシュ本体：panelEl（敗れた側の召喚士パネル）に
+       対して、SDキャラの登場＋キャラ別アクション＋パネル破壊を約2.5秒再生する */
+    function mythicSdFinishFx(cardId, panelEl){
+      if (HEADLESS || !panelEl || !panelEl.getBoundingClientRect) return;
+      mythicFxCleanup();
+      var gen = ++fxMythicGen;
+      var r = panelEl.getBoundingClientRect();
+      if (!r.width) return;
+      var conf = SD_FIN[String(cardId)];
+      if (!conf){ mythicFinishFx(cardId, panelEl); return; }
+      var id = String(cardId);
+      var pcx = r.left + r.width / 2, pcy = r.top + r.height / 2, w = r.width, h = r.height;
+      function later(fn, ms){ setTimeout(function(){ if (gen === fxMythicGen) fn(); }, ms); }
+      later(function(){ mythicFxCleanup(); }, 2500);
+
+      /* --- 登場：召喚台を神話仕様に点灯させ、魔法陣とともにSDキャラが現れる --- */
+      var anchor = sdFinAnchor();
+      var ax = anchor.x, feetY = anchor.feetY;
+      var sdH = Math.max(168, Math.min(300, Math.round(window.innerHeight * 0.34)));
+      if (anchor.ped){
+        var ped = anchor.ped;
+        var pedAdded = [];
+        ['mythic', 'active'].forEach(function(c){ if (!ped.classList.contains(c)){ ped.classList.add(c); pedAdded.push(c); } });
+        fxMythicExtraCleanup = function(){ pedAdded.forEach(function(c){ ped.classList.remove(c); }); };
+      } else {
+        var tmpPed = summonPedestal(ax, feetY + 7, sdH, true);
+        if (tmpPed) later(function(){ tmpPed._dismiss(320); }, 2050);
+      }
+      /* 魔法陣は召喚時と共通の summonMagicCircle（SDの矩形を代理で渡す） */
+      summonMagicCircle({ getBoundingClientRect: function(){ return { left: ax - sdH / 2, top: feetY - sdH, width: sdH, height: sdH, right: ax + sdH / 2, bottom: feetY }; } }, true, conf.color);
+      /* 魔法陣画像（fx-circle）が読めていれば、足元にもう一枚 回転する陣を重ねる */
+      if (sdImgState['fx/fx-circle.webp'] === 1){
+        var circ = sdFinNode('img', 'fx-sd-fximg');
+        circ.src = 'fx/fx-circle.webp'; circ.alt = '';
+        var cs = Math.round(sdH * 1.85);
+        circ.style.left = ax + 'px'; circ.style.top = (feetY - 4) + 'px';
+        circ.style.width = cs + 'px'; circ.style.height = cs + 'px';
+        fxFinAnimate(circ, [
+          { transform: 'translate(-50%,-50%) scale(.45) rotate(-14deg)', opacity: 0 },
+          { transform: 'translate(-50%,-50%) scale(1) rotate(10deg)', opacity: 0.95, offset: 0.3 },
+          { transform: 'translate(-50%,-50%) scale(1.06) rotate(38deg)', opacity: 0 }
+        ], { duration: 1500, easing: 'ease-out', fill: 'forwards' });
+      }
+      var sd = sdFinNode('img', 'fx-sd-char');
+      sd.src = conf.sd; sd.alt = '';
+      sd.style.left = ax + 'px'; sd.style.top = feetY + 'px'; sd.style.height = sdH + 'px';
+      /* SDの基本姿勢（足元を原点に中央寄せ）＋任意のオフセットで transform を組む */
+      function sdT(dx, dy, s, rot){ return 'translate(-50%,-100%) translate(' + (dx || 0) + 'px,' + (dy || 0) + 'px) rotate(' + (rot || 0) + 'deg) scale(' + (s == null ? 1 : s) + ')'; }
+      fxFinAnimate(sd, [
+        { transform: sdT(0, 30, 0.3), opacity: 0 },
+        { transform: sdT(0, -9, 1.07), opacity: 1, offset: 0.55 },
+        { transform: sdT(0, 0, 1), opacity: 1 }
+      ], { duration: 480, easing: 'ease-out', fill: 'forwards' });
+      pixiBurst(ax, feetY - sdH * 0.35, { count: 16, colors: [0xffffff, 0xeccd7e], power: 0.9 });
+      var sdCx = ax, sdCy = feetY - sdH * 0.52; /* SDの重心あたり（ビームの起点） */
+      var dxP = pcx - sdCx, dyP = pcy - sdCy;   /* SD → パネル中心のベクトル */
+      /* パネルへ向かう帯状エフェクト（光波／ブレス）：SDの重心からパネル方向へ伸ばす */
+      function sdBeam(src, bh, lifeMs, flick){
+        var len = Math.sqrt(dxP * dxP + dyP * dyP) + bh * 0.4;
+        var ang = Math.atan2(dyP, dxP) * 180 / Math.PI;
+        var img = sdFinNode('img', 'fx-sd-fximg');
+        img.src = src; img.alt = '';
+        img.style.left = sdCx + 'px'; img.style.top = (sdCy - bh / 2) + 'px';
+        img.style.width = Math.round(len) + 'px'; img.style.height = bh + 'px';
+        img.style.transformOrigin = '0 50%';
+        var pre = 'rotate(' + ang + 'deg) ';
+        var frames = [
+          { transform: pre + 'scaleX(.03) scaleY(.55)', opacity: 0 },
+          { transform: pre + 'scaleX(1) scaleY(1)', opacity: 1, offset: 0.22 }
+        ];
+        if (flick){
+          frames.push({ transform: pre + 'scaleX(1) scaleY(.82)', opacity: 0.85, offset: 0.45 });
+          frames.push({ transform: pre + 'scaleX(1) scaleY(1.08)', opacity: 1, offset: 0.68 });
+        }
+        frames.push({ transform: pre + 'scaleX(1) scaleY(1)', opacity: 0 });
+        fxFinAnimate(img, frames, { duration: lifeMs, easing: 'ease-out', fill: 'forwards' });
+        return img;
+      }
+      /* パネル中央（または指定点）に重ねるエフェクト画像。キーフレーム側で
+         translate(-50%,-50%) を含める前提で、left/top は中心座標 */
+      function sdOverlay(src, size, cxp, cyp){
+        var img = sdFinNode('img', 'fx-sd-fximg');
+        img.src = src; img.alt = '';
+        img.style.left = (cxp == null ? pcx : cxp) + 'px';
+        img.style.top = (cyp == null ? pcy : cyp) + 'px';
+        if (size.w) img.style.width = size.w + 'px';
+        if (size.h) img.style.height = size.h + 'px';
+        return img;
+      }
+      /* 定位置にいるSDの退場（その場でふっと消える） */
+      function sdFadeOut(atMs){
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(0, 0, 1), opacity: 1 },
+            { transform: sdT(0, -14, 0.94), opacity: 0 }
+          ], { duration: 420, easing: 'ease-in', fill: 'forwards' });
+        }, atMs);
+      }
+
+      if (id === '52ex'){
+        /* EX-キャリバー：少し下がって剣を振り、光波がパネルへ飛んで真っ二つに崩れる */
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(0, 0, 1), opacity: 1 },
+            { transform: sdT(0, 34, 1.02, -6), opacity: 1, offset: 0.45 },
+            { transform: sdT(0, 26, 1.02, 4), opacity: 1, offset: 0.62 },
+            { transform: sdT(0, 0, 1), opacity: 1 }
+          ], { duration: 620, easing: 'ease-in-out', fill: 'forwards' });
+          if (sdImgState['fx/fx-sword.webp'] === 1){
+            var sw = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.05) }, ax + sdH * 0.42, feetY - sdH * 0.52);
+            fxFinAnimate(sw, [
+              { transform: 'translate(-50%,-50%) rotate(38deg) scale(.6)', opacity: 0 },
+              { transform: 'translate(-50%,-50%) rotate(-24deg) scale(1)', opacity: 1, offset: 0.4 },
+              { transform: 'translate(-50%,-50%) rotate(-38deg) scale(1.02)', opacity: 0 }
+            ], { duration: 560, easing: 'ease-out', fill: 'forwards' });
+          }
+        }, 500);
+        later(function(){ sdBeam(conf.fx, Math.round(sdH * 0.7), 900, false); }, 640);
+        later(function(){
+          fxFinFlash(0.9, 620);
+          fxQuake('fx-quake-md', 560);
+          pixiBurst(pcx, pcy, { count: 42, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 2.0 });
+          pixiCrackFx(pcx, pcy, Math.max(w, h) * 1.15, 1300, 8);
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var halves = fxFinPieces(panelEl, mk.wrap, 2, 1);
+          fxFinHidePanel(panelEl);
+          halves.forEach(function(pc){
+            var dir = pc.col === 0 ? -1 : 1;
+            fxFinAnimate(pc.el, [
+              { transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+              { transform: 'translate(' + (dir * 22) + 'px, 30px) rotate(' + (dir * 5) + 'deg)', opacity: 0 }
+            ], { duration: 900, delay: 110, easing: 'ease-in', fill: 'forwards' });
+          });
+        }, 1230);
+        sdFadeOut(1560);
+      } else if (id === '54'){
+        /* ロンギヌス：SDがパネルへ突進し、槍の突きが重なって放射状のヒビが広がり砕ける */
+        var lx = Math.round(dxP * 0.6), ly = Math.round(dyP * 0.6);
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(0, 0, 1), opacity: 1 },
+            { transform: sdT(Math.round(lx * 0.25), Math.round(ly * 0.25), 1.04), opacity: 1, offset: 0.35 },
+            { transform: sdT(lx, ly, 1.13), opacity: 1 }
+          ], { duration: 330, easing: 'cubic-bezier(.5,0,.9,.4)', fill: 'forwards' });
+        }, 500);
+        later(function(){
+          var sp = sdOverlay(conf.fx, { h: Math.round(h * 3.0) });
+          var angS = Math.atan2(dyP, dxP) * 180 / Math.PI + 90; /* 槍素材は穂先が上向き */
+          fxFinAnimate(sp, [
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(1.5)', opacity: 0 },
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(1)', opacity: 1, offset: 0.3 },
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(0.98)', opacity: 1, offset: 0.75 },
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(0.98)', opacity: 0 }
+          ], { duration: 1050, easing: 'ease-out', fill: 'forwards' });
+          fxQuake('fx-quake-sm', 480);
+          pixiBurst(pcx, pcy, { count: 22, colors: [0xffffff, 0xf2e7bd], power: 1.4 });
+        }, 800);
+        later(function(){ pixiCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.9, 1250, 7); }, 860);
+        later(function(){
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var quads = fxFinPieces(panelEl, mk.wrap, 2, 2);
+          fxFinHidePanel(panelEl);
+          quads.forEach(function(pc){
+            var ddx = (pc.col === 0 ? -1 : 1) * (22 + fxFinRand(pc.col + pc.row * 3 + 1) * 16);
+            var ddy = (pc.row === 0 ? -1 : 1) * 16 + 22;
+            fxFinAnimate(pc.el, [
+              { transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+              { transform: 'translate(' + ddx + 'px,' + ddy + 'px) rotate(' + ((pc.col === 0 ? -1 : 1) * 6) + 'deg)', opacity: 0 }
+            ], { duration: 820, easing: 'ease-in', fill: 'forwards' });
+          });
+        }, 1560);
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(lx, ly, 1.13), opacity: 1 },
+            { transform: sdT(lx, ly - 12, 1.05), opacity: 0 }
+          ], { duration: 400, easing: 'ease-in', fill: 'forwards' });
+        }, 1620);
+      } else if (id === '46'){
+        /* ミラージュ：残像を残して2〜3箇所へワープし、斬撃がパネルに重なってバラバラに崩れる */
+        var hops = [[-105, -40], [100, -66], [0, -14]];
+        var curHop = [0, 0];
+        function afterimage(at){
+          var g = sdFinNode('img', 'fx-sd-char');
+          g.src = conf.sd; g.alt = '';
+          g.style.left = ax + 'px'; g.style.top = feetY + 'px'; g.style.height = sdH + 'px';
+          g.style.filter = 'brightness(1.15) sepia(.7) hue-rotate(-48deg) saturate(2.4) drop-shadow(0 0 14px rgba(255,60,40,.55))';
+          fxFinAnimate(g, [
+            { transform: sdT(at[0], at[1], 1), opacity: 0.55 },
+            { transform: sdT(at[0] + (at[0] < 0 ? -14 : 14), at[1] + 4, 1), opacity: 0 }
+          ], { duration: 620, easing: 'ease-out', fill: 'forwards' });
+        }
+        hops.forEach(function(hp, i){
+          later(function(){
+            afterimage(curHop);
+            var from = curHop; curHop = hp;
+            fxFinAnimate(sd, [
+              { transform: sdT(from[0], from[1], 1), opacity: 1 },
+              { transform: sdT(hp[0], hp[1], 1), opacity: 1 }
+            ], { duration: 200, easing: 'ease-in-out', fill: 'forwards' });
+          }, 470 + i * 270);
+        });
+        [860, 1180].forEach(function(ms, i){
+          later(function(){
+            var sl = sdOverlay(conf.fx, { w: Math.round(w * 1.6) });
+            var rotS = i ? 9 : -11;
+            fxFinAnimate(sl, [
+              { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(1.25)', opacity: 0 },
+              { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(1)', opacity: 1, offset: 0.25 },
+              { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(0.98)', opacity: 0 }
+            ], { duration: 430, easing: 'ease-out', fill: 'forwards' });
+            pixiBurst(pcx, pcy, { count: 14, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.2 });
+          }, ms);
+        });
+        later(function(){
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var pieces = fxFinPieces(panelEl, mk.wrap, 3, 2);
+          fxFinHidePanel(panelEl);
+          fxQuake('fx-quake-sm', 480);
+          pieces.forEach(function(pc, i){
+            var ddx = (fxFinRand(i * 7 + 3) - 0.5) * 90;
+            var ddy = 110 + fxFinRand(i * 11 + 5) * 170 + pc.row * 50;
+            var rot = (fxFinRand(i * 13 + 7) - 0.5) * 85;
+            fxFinAnimate(pc.el, [
+              { transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+              { transform: 'translate(' + ddx + 'px,' + ddy + 'px) rotate(' + rot + 'deg)', opacity: 0 }
+            ], { duration: 850 + fxFinRand(i * 17) * 350, delay: pc.row * 110 + fxFinRand(i * 19) * 90, easing: 'cubic-bezier(.45,.02,.75,.45)', fill: 'forwards' });
+          });
+        }, 1420);
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(0, -14, 1), opacity: 1 },
+            { transform: sdT(0, -26, 0.95), opacity: 0 }
+          ], { duration: 380, easing: 'ease-in', fill: 'forwards' });
+        }, 1560);
+      } else if (id === '48'){
+        /* ダーククイーン：鎖がパネル全体へ拡大して被さり、パネルは闇の渦へ引きずり込まれる */
+        later(function(){
+          var ch = sdOverlay(conf.fx, { w: Math.round(w * 1.5) });
+          fxFinAnimate(ch, [
+            { transform: 'translate(-50%,-50%) scale(.45) rotate(-4deg)', opacity: 0 },
+            { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.35 },
+            { transform: 'translate(-50%,-50%) scale(1.05) rotate(2deg)', opacity: 1, offset: 0.8 },
+            { transform: 'translate(-50%,-50%) scale(1.02)', opacity: 0 }
+          ], { duration: 1750, easing: 'ease-out', fill: 'forwards' });
+        }, 500);
+        later(function(){
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
+          var vsize = w * 0.95;
+          var vortex = document.createElement('div');
+          vortex.className = 'fx-fin-vortex';
+          vortex.style.width = vsize + 'px';
+          vortex.style.height = (vsize * 0.62) + 'px';
+          vortex.style.left = (w / 2 - vsize / 2) + 'px';
+          vortex.style.top = (h - vsize * 0.28) + 'px';
+          mk.wrap.appendChild(vortex);
+          fxFinAnimate(vortex, [
+            { transform: 'rotate(0deg) scale(.35)', opacity: 0 },
+            { transform: 'rotate(200deg) scale(1)', opacity: 1, offset: 0.35 },
+            { transform: 'rotate(660deg) scale(1.12)', opacity: 1, offset: 0.8 },
+            { transform: 'rotate(760deg) scale(.7)', opacity: 0 }
+          ], { duration: 1500, easing: 'ease-in-out', fill: 'forwards' });
+          fxFinAnimate(cl, [
+            { transform: 'translateY(0px) rotate(0deg) scale(1)', opacity: 1, filter: 'brightness(1)' },
+            { transform: 'translateY(6px) rotate(-2deg) scale(.97)', opacity: 1, filter: 'brightness(.85)', offset: 0.3 },
+            { transform: 'translateY(' + (h * 0.95) + 'px) rotate(16deg) scale(.26)', opacity: 0, filter: 'brightness(.4)' }
+          ], { duration: 1200, delay: 120, easing: 'ease-in', fill: 'forwards' });
+        }, 780);
+        later(function(){ pixiBurst(pcx, pcy + h * 0.4, { count: 26, colors: [0xc39bff, 0x8a5cff, 0x2a1650], power: 1.4 }); }, 1750);
+        sdFadeOut(1650);
+      } else if (id === '51'){
+        /* ティアマト：ブレスがSDからパネルへ流れ、パネルが爆発する。
+           ブレス中は実パネルを小刻みに震わせる（ダミーパネルの中央寄せも維持） */
+        var baseTx51 = panelEl.classList.contains('fx-dummy-leader') ? 'translateX(-50%) ' : '';
+        later(function(){
+          fxFinAnimate(panelEl, [
+            { transform: baseTx51 + 'translate(0px,0px)' }, { transform: baseTx51 + 'translate(-3px,1px)' },
+            { transform: baseTx51 + 'translate(3px,-1px)' }, { transform: baseTx51 + 'translate(0px,0px)' }
+          ], { duration: 480, iterations: 2 });
+          sdBeam(conf.fx, Math.round(sdH * 0.85), 1250, true);
+          fxFinAnimate(sd, [
+            { transform: sdT(0, 0, 1), opacity: 1 },
+            { transform: sdT(Math.round(-dxP * 0.03), Math.round(-dyP * 0.03) + 6, 0.98), opacity: 1, offset: 0.3 },
+            { transform: sdT(0, 0, 1), opacity: 1 }
+          ], { duration: 900, easing: 'ease-out', fill: 'forwards' });
+        }, 500);
+        later(function(){
+          fxFinFlash(0.9, 620);
+          fxQuake('fx-quake-md', 560);
+          pixiBurst(pcx, pcy, { count: 70, colors: [0xffffff, 0xffa04a, 0xff5030, 0x5aa2ff, 0x9cc4ff], power: 2.4, size: 1.3 });
+          pixiRing(pcx, pcy, { maxR: w * 1.15, dur: 750, color: 0xffffff });
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
+          fxFinAnimate(cl, [
+            { transform: 'translate(0px,0px) scale(1)', filter: 'brightness(1)', opacity: 1 },
+            { transform: 'translate(-5px,2px) scale(1.05)', filter: 'brightness(2.4)', opacity: 1, offset: 0.16 },
+            { transform: 'translate(4px,7px) scale(1.02)', filter: 'brightness(1.2) sepia(.7)', opacity: 0.85, offset: 0.45 },
+            { transform: 'translateY(20px) scale(.98)', filter: 'brightness(.5) blur(3px)', opacity: 0 }
+          ], { duration: 1000, easing: 'ease-out', fill: 'forwards' });
+        }, 1420);
+        sdFadeOut(1700);
+      } else if (id === '39'){
+        /* セレスティア：光柱がパネル上から降り注ぎ、パネルが光の粒に浄化される */
+        later(function(){
+          var pilH = Math.round(h + window.innerHeight * 0.36);
+          var pil = sdOverlay(conf.fx, { h: pilH }, pcx, r.bottom - pilH / 2 + 6);
+          fxFinAnimate(pil, [
+            { transform: 'translate(-50%,-50%) translateY(-46px)', opacity: 0 },
+            { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 1, offset: 0.22 },
+            { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 1, offset: 0.78 },
+            { transform: 'translate(-50%,-50%) translateY(6px)', opacity: 0 }
+          ], { duration: 1650, easing: 'ease-out', fill: 'forwards' });
+          pixiRing(pcx, r.bottom, { maxR: w * 0.95, dur: 850, color: 0xffffff });
+        }, 500);
+        later(function(){
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
+          fxFinAnimate(cl, [
+            { transform: 'translateY(0px)', filter: 'brightness(1)', opacity: 1 },
+            { transform: 'translateY(-4px)', filter: 'brightness(1.9)', opacity: 1, offset: 0.4 },
+            { transform: 'translateY(-30px)', filter: 'brightness(2.8) blur(3px)', opacity: 0 }
+          ], { duration: 1500, delay: 150, easing: 'ease-in', fill: 'forwards' });
+        }, 620);
+        [800, 1300, 1750].forEach(function(ms){
+          later(function(){ pixiBurst(pcx, pcy, { count: 26, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 }); }, ms);
+        });
+        sdFadeOut(1750);
+      } else if (id === '53ag'){
+        /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて巨大な顎が
+           横からスライドインし、パネルを覆って噛み砕く（飲み込まれて消える） */
+        later(function(){
+          var up = feetY + sdH + 90;
+          fxFinAnimate(sd, [
+            { transform: sdT(0, 0, 1), opacity: 1 },
+            { transform: sdT(0, -46, 1.04), opacity: 1, offset: 0.3 },
+            { transform: sdT(6, -up, 0.92), opacity: 1 }
+          ], { duration: 600, easing: 'cubic-bezier(.5,0,.8,.4)', fill: 'forwards' });
+        }, 470);
+        later(function(){
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
+          /* 飲み込まれる直前の小刻みな震え */
+          fxFinAnimate(cl, [
+            { transform: 'translate(0px,0px)' }, { transform: 'translate(-2.5px,1px)' },
+            { transform: 'translate(2.5px,-1px)' }, { transform: 'translate(0px,0px)' }
+          ], { duration: 300, iterations: 2 });
+          /* 顎素材は右向きの横顔：口の中心がパネル中心に重なる位置へ左から滑り込む */
+          var jawW = Math.round(Math.max(w * 2.35, 330));
+          var jaw = sdFinNode('img', 'fx-sd-char');
+          jaw.src = conf.fx; jaw.alt = '';
+          jaw.style.width = jawW + 'px';
+          var finL = pcx - jawW * 0.70, finT = pcy - jawW * 0.60;
+          jaw.style.left = finL + 'px'; jaw.style.top = finT + 'px';
+          var startOff = -(finL + jawW + 40);
+          fxFinAnimate(jaw, [
+            { transform: 'translateX(' + startOff + 'px)', opacity: 1 },
+            { transform: 'translateX(0px)', opacity: 1 }
+          ], { duration: 540, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'forwards' });
+          /* 噛み砕く：顎とパネルが一緒に揺れ、パネルは口の中へ吸い込まれて消える */
+          later(function(){
+            fxQuake('fx-quake-md', 560);
+            pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
+            fxFinAnimate(jaw, [
+              { transform: 'translateX(0px) rotate(0deg)' },
+              { transform: 'translateX(-9px) rotate(-1.1deg)' },
+              { transform: 'translateX(7px) rotate(0.9deg)' },
+              { transform: 'translateX(-5px) rotate(-0.6deg)' },
+              { transform: 'translateX(0px) rotate(0deg)' }
+            ], { duration: 460, easing: 'ease-in-out', fill: 'forwards' });
+            fxFinAnimate(cl, [
+              { transform: 'translate(0px,0px) scale(1)', opacity: 1 },
+              { transform: 'translate(6px,-4px) scale(.55) rotate(3deg)', opacity: 0.9, offset: 0.45 },
+              { transform: 'translate(14px,-8px) scale(.1) rotate(7deg)', opacity: 0 }
+            ], { duration: 520, easing: 'ease-in', fill: 'forwards' });
+          }, 580);
+          /* 飲み込んだ顎は左へ退場する */
+          later(function(){
+            fxFinAnimate(jaw, [
+              { transform: 'translateX(0px)', opacity: 1 },
+              { transform: 'translateX(' + Math.round(startOff * 0.55) + 'px)', opacity: 0 }
+            ], { duration: 270, easing: 'ease-in', fill: 'forwards' });
+          }, 1060);
+        }, 1120);
+      }
+    }
+
     /* ===== PixiJSエフェクトレイヤー（演出専用・フォールバック必須） =====
        対戦盤面の上に固定配置の透明キャンバスを1枚重ね、GPU描画で
        召喚バースト／フィニッシュバースト／常駐オーラ（鉄壁の盾膜・速攻の風）を描く。
@@ -3723,6 +4210,73 @@
         }
       });
     }
+    /* ===== 召喚演出の画像素材（生成素材の剣／槍） =====
+       素材は同一オリジンの fx/ 以下に置く外部WebPを相対パスで参照し、
+       HTMLには埋め込まない。読み込みは非同期プリロードのみでゲーム進行は
+       一切ブロックしない。読み込めた素材は Pixi テクスチャ化して画像版の
+       演出に使い、未読込／失敗の場合は従来の描画版へフォールバックする。
+       素材は黒背景のエフェクト画像前提で、SDフィニッシュ側と同様に
+       screen 合成で黒を抜く。HEADLESS ではプリロードも演出も行わない。 */
+    var SUMMON_FX_SRC = { sword: 'fx/fx-sword.webp', spear: 'fx/fx-spear.webp', circle: 'fx/fx-circle.webp' };
+    var summonFxImg = {};   /* key -> { img, ok } */
+    var summonFxTexCache = {}; /* key -> PIXI.Texture */
+    function summonFxPreload(){
+      if (HEADLESS) return;
+      Object.keys(SUMMON_FX_SRC).forEach(function(key){
+        if (summonFxImg[key]) return;
+        var rec = { img: null, ok: false };
+        summonFxImg[key] = rec;
+        var im = new Image();
+        im.onload = function(){ rec.ok = true; };
+        im.onerror = function(){ rec.ok = false; };
+        im.src = SUMMON_FX_SRC[key];
+        rec.img = im;
+      });
+    }
+    function summonFxImgReady(key){
+      var rec = summonFxImg[key];
+      return !!(rec && rec.ok);
+    }
+    function summonFxTexture(key){
+      var rec = summonFxImg[key];
+      if (!rec || !rec.ok) return null;
+      if (typeof window.PIXI === 'undefined' || !pixiFx.enabled) return null;
+      var tex = summonFxTexCache[key];
+      if (!tex){
+        try { tex = PIXI.Texture.from(rec.img); } catch (e) { return null; }
+        if (!tex) return null;
+        summonFxTexCache[key] = tex;
+      }
+      return (tex.baseTexture && tex.baseTexture.valid && tex.width > 0) ? tex : null;
+    }
+    summonFxPreload(); /* ページ読み込み直後から裏で読み始める（進行はブロックしない） */
+    /* 空から降る剣（画像版）：生成素材の剣をスプライトで落とす。動きと
+       タイミングは描画版 pixiSwordFx と同一（前半42%で加速しながら落下し、
+       終盤20%でフェード）。剣は縦向きのまま、描画版の剣の全長
+       （-63S〜+34S ≒ 97S）に合わせて大きく出す。
+       素材が使えない場合は false を返し、呼び出し側が描画版へ倒す */
+    function pixiSwordImgFx(cx, cy, h, dur){
+      var tex = summonFxTexture('sword');
+      if (!tex) return false;
+      var S = Math.max(1.6, Math.min(2.4, h / 76));
+      var startY = cy - h * 2.3, endY = cy - h * 0.05;
+      var spr = null;
+      var rec = pixiAnim(dur, function(gfx, t){
+        if (!spr){
+          spr = new PIXI.Sprite(tex);
+          spr.anchor.set(0.5, 0.5);
+          spr.blendMode = PIXI.BLEND_MODES.SCREEN;
+          var dispH = 97 * S;
+          spr.height = dispH;
+          spr.width = dispH * (tex.width / tex.height);
+          gfx.addChild(spr);
+        }
+        var p = Math.min(1, t / 0.42); p = p * p;
+        spr.position.set(cx, startY + (endY - startY) * p - 14.5 * S);
+        spr.alpha = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
+      });
+      return !!rec;
+    }
     /* 空から降る剣（EX-キャリバー）：白い刃＋金の鍔・柄を1枚の Graphics に描き、
        前半で加速しながら突き立つ位置まで落とす。剣はカード並み〜カードより
        大きく（ステージカードの高さ基準で約1.2倍）描く */
@@ -3774,10 +4328,11 @@
       pixiBurst(cx, feet - 4, { count: 42, colors: [0xd8c6a5, 0xa08b6d, 0xefe4cc], power: 2.1, size: 1.35 });
       fxQuake('fx-quake-md', 560);
     }
-    /* 52ex EX-キャリバー：空から巨大な剣がドーンと落ち、着弾の衝撃波も大きく */
+    /* 52ex EX-キャリバー：空から巨大な剣がドーンと落ち、着弾の衝撃波も大きく。
+       剣は生成素材（fx/fx-sword.webp）が読めていれば画像版、無ければ描画版 */
     function fxExcaliburFx(cx, cy, feet, w, h){
       pixiBeamFx(cx, feet - h * 3.2, feet + 4, w * 0.52, [0xeccd7e, 0xfff6da], 900);
-      pixiSwordFx(cx, cy, h, 950);
+      if (!pixiSwordImgFx(cx, cy, h, 950)) pixiSwordFx(cx, cy, h, 950);
       setTimeout(function(){
         pixiBurst(cx, feet - h * 0.2, { count: 34, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 1.8 });
         pixiRing(cx, feet, { maxR: w * 1.65, dur: 720, color: 0xffd76a });
@@ -3821,10 +4376,55 @@
         spearAt(ang, 0.98 * fade, 1.18);
       });
     }
-    /* 054 ロンギヌス：光の槍がカードの周りをぐるっと一周し、頂点で閃光 */
+    /* 光の槍（画像版）：生成素材の槍をスプライトで周回させる。軌跡の弧は
+       描画版と同一にラインで引き、槍本体と残像2つを画像に差し替える。
+       槍素材は穂先が上向き前提で、接線方向（進行方向）を向くよう回転させる。
+       素材が使えない場合は false を返し、呼び出し側が描画版へ倒す */
+    function pixiOrbitSpearImgFx(cx, cy, R, dur){
+      var tex = summonFxTexture('spear');
+      if (!tex) return false;
+      var sprs = null;
+      var rec = pixiAnim(dur, function(gfx, t){
+        gfx.clear();
+        var fade = t > 0.78 ? Math.max(0, 1 - (t - 0.78) / 0.22) : 1;
+        var ang = -Math.PI / 2 + t * Math.PI * 2;
+        if (!sprs){
+          sprs = [];
+          [{ lag: 0.95, alpha: 0.18, sc: 1 }, { lag: 0.5, alpha: 0.34, sc: 1 }, { lag: 0, alpha: 0.98, sc: 1.18 }].forEach(function(d){
+            var s = new PIXI.Sprite(tex);
+            s.anchor.set(0.5, 0.5);
+            s.blendMode = PIXI.BLEND_MODES.SCREEN;
+            var len = 72 * d.sc; /* 描画版の槍の全長（約51×sc）より少し大きめに存在感を出す */
+            s.height = len;
+            s.width = len * (tex.width / tex.height);
+            gfx.addChild(s);
+            sprs.push({ s: s, lag: d.lag, alpha: d.alpha });
+          });
+        }
+        /* 軌跡：頭の後ろに尾を引く弧（描画版と同一） */
+        for (var i = 0; i < 30; i++){
+          var f = i / 30;
+          var a2 = ang - f * 2.1;
+          var a3 = a2 - 0.075;
+          gfx.lineStyle(1.5 + 5.5 * (1 - f), 0xf2e7bd, (1 - f) * 0.6 * fade);
+          gfx.moveTo(cx + Math.cos(a2) * R, cy + Math.sin(a2) * R * 0.92);
+          gfx.lineTo(cx + Math.cos(a3) * R, cy + Math.sin(a3) * R * 0.92);
+        }
+        /* 残像（少し遅れた位置に淡く）→ 本体の順に配置する */
+        sprs.forEach(function(o){
+          var a = ang - o.lag;
+          o.s.position.set(cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.92);
+          o.s.rotation = Math.atan2(Math.cos(a) * 0.92, -Math.sin(a)) + Math.PI / 2;
+          o.s.alpha = o.alpha * fade;
+        });
+      });
+      return !!rec;
+    }
+    /* 054 ロンギヌス：光の槍がカードの周りをぐるっと一周し、頂点で閃光。
+       槍は生成素材（fx/fx-spear.webp）が読めていれば画像版、無ければ描画版 */
     function fxLonginusFx(cx, cy, w, h){
       var R = Math.max(w, h) * 1.02;
-      pixiOrbitSpearFx(cx, cy, R, 840);
+      if (!pixiOrbitSpearImgFx(cx, cy, R, 840)) pixiOrbitSpearFx(cx, cy, R, 840);
       setTimeout(function(){ pixiBurst(cx, cy - R * 0.92, { count: 16, colors: [0xffffff, 0xf2e7bd, 0xeccd7e], power: 1.2 }); }, 800);
     }
     /* ===== 常駐オーラ（鉄壁の盾膜／速攻の風） ===== */
@@ -4100,11 +4700,12 @@
       setTimeout(function(){ document.body.classList.remove(cls); }, ms);
     }
     /* ===== 魔法陣（全カード共通） =====
-       タイトル画面の魔法陣エンブレムと同系統の紋様（Ωオリジナル）を
-       インラインSVGで描き、ステージカードの背後（z-index:89）に敷く。
-       フワーっと広がり、外側の紋様がゆっくり回転しながら消える。
+       生成素材（fx/fx-circle.webp）が読み込めていれば画像版を、無ければ
+       タイトル画面の魔法陣エンブレムと同系統の紋様（Ωオリジナル）を描く
+       インラインSVG版を、ステージカードの背後（z-index:89）に敷く。
+       フワーっと広がり、回転しながら消える動きは両版で共通。
        通常カードは控えめに小さく短く、神話カードは大きく長く出す。
-       色は __C__ をカード別の色で置換する（神話は個別エフェクトの色に合わせる）。 */
+       色は __C__ をカード別の色で置換する（神話は個別エフェクトの色に合わせる／SVG版のみ）。 */
     var MAGIC_CIRCLE_SVG =
       '<svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">' +
       '<g class="mc-rotor" fill="none" stroke="__C__">' +
@@ -4136,7 +4737,18 @@
       wrap.style.top = (r.top + r.height / 2) + 'px';
       wrap.style.width = size + 'px';
       wrap.style.height = size + 'px';
-      wrap.innerHTML = MAGIC_CIRCLE_SVG.split('__C__').join(color || '#eccd7e');
+      /* 生成素材（fx/fx-circle.webp）が読み込めていれば画像版、無ければ描画版SVG。
+         広がり・回転・フェードと通常／神話のサイズ・時間差はどち��も共通 */
+      if (summonFxImgReady('circle')){
+        wrap.classList.add('img-mode');
+        var mcImg = document.createElement('img');
+        mcImg.src = SUMMON_FX_SRC.circle;
+        mcImg.alt = '';
+        mcImg.setAttribute('aria-hidden', 'true');
+        wrap.appendChild(mcImg);
+      } else {
+        wrap.innerHTML = MAGIC_CIRCLE_SVG.split('__C__').join(color || '#eccd7e');
+      }
       document.body.appendChild(wrap);
       var peak = reduced ? 0.4 : 0.95;
       try {
@@ -8066,16 +8678,17 @@
     });
     /* ===== 神話フィニッシュ演出のチェック =====
        実戦で止めを刺さなくても、ダミーの敵召喚士パネル（#fxDummyLeader）に
-       対して実戦と共通の mythicFinishFx をそのまま再生して確認できる。
+       対して実戦と共通の振り分け（mythicFinishDispatch：SD方式／従来演出）を
+       そのまま再生して確認できる。
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
-      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'光柱がパネルを包み、光の粒になって浄化・消散する' },
-      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'赤い閃光がパネル全体を切り裂き、バラバラに崩れ落ちる' },
-      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'紫の鎖がパネルを縛り上げ、闇の渦へ引きずり込んで沈める' },
-      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'紅と蒼のブレスがパネルを包み込み、大きく爆ぜる' },
-      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'召喚時より大きな剣が落ち、光で画面が割れる閃光' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'紫の縁光の黒い影が上から襲いかかり、パネルを食い砕く' },
-      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'槍がパネルの中心を貫通し、ヒビが放射状に広がって砕ける' }
+      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが登場し、光柱でパネルを浄化して消し去る' },
+      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像を残してワープし、斬撃でパネルをバラバラに崩す' },
+      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖がパネル全体に被さり、闇の渦へ引きずり込む' },
+      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトのブレスがパネルへ流れ、大きく爆ぜる' },
+      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーが剣を振り、光波がパネルを真っ二つに崩す' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが上空へ消え、巨大な顎が横から現れてパネルを飲み込む' },
+      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスがパネルへ突進し、槍の一突きで放射状のヒビを入れる' }
     ];
     function fxCheckPlayFinish(item){
       fxCheckClearStageCard();
@@ -8092,8 +8705,24 @@
         setTimeout(function(){ panel.classList.remove('fx-hit'); }, 500);
         return;
       }
+      /* SD素材の読み込み完了を少しだけ待ってから振り分ける（対戦中は待たず、
+         未読込なら従来演出へフォールバックする）。読み込み自体は開いた時点で開始済み */
+      if (sdFxPending(item.cardId)){
+        fxCheckCaption(item.label + '：SD素材を読み込んでいます…');
+        var tries = 0;
+        var iv = setInterval(function(){
+          tries++;
+          if (!sdFxPending(item.cardId) || tries >= 20){
+            clearInterval(iv);
+            if (!fxOverlay.classList.contains('show')) return;
+            fxCheckCaption(item.label + ' 再生中');
+            mythicFinishDispatch(item.cardId, panel);
+          }
+        }, 150);
+        return;
+      }
       fxCheckCaption(item.label + ' 再生中');
-      mythicFinishFx(item.cardId, panel);
+      mythicFinishDispatch(item.cardId, panel);
     }
     var fxFinishListEl = document.getElementById('fxFinishList');
     fxFinishListEl.innerHTML = FXCHECK_FINISH_ITEMS.map(function(item){
@@ -8118,6 +8747,7 @@
     window.addEventListener('resize', function(){ fxCheckPlaceCard(); });
     function openFxCheck(){
       closeAllOverlays();
+      sdFxPreload(); /* SDフィニッシュ素材の読み込みを開始しておく */
       fxCheckClearStageCard();
       fxCheckClearHatchFx();
       mythicFxCleanup(); /* フィニッシュ演出の複製が残っていたら実パネルへ戻す */
