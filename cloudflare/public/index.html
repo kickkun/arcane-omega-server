@@ -1062,6 +1062,38 @@
         position:fixed; z-index:92; pointer-events:none;
         will-change:transform,opacity;
       }
+      /* ===== SDオーラパッケージ（全SD共通・テーマカラー） =====
+         rim 光の複製・足元の発光リングと影・上る炎状のゆらめき・
+         キラキラ粒子はすべて JS（sdAuraStart）が毎フレーム SD の実矩形へ
+         追随させる。位置は transform で与えるため left/top は 0 固定 */
+      .fx-sd-aura-ring{
+        position:fixed; left:0; top:0; z-index:91; pointer-events:none;
+        border:2px solid #fff; border-radius:50%;
+        background:radial-gradient(ellipse at center, rgba(255,255,255,.20) 0%, transparent 68%);
+        will-change:transform,opacity;
+      }
+      .fx-sd-aura-shadow{
+        position:fixed; left:0; top:0; z-index:91; pointer-events:none; border-radius:50%;
+        background:radial-gradient(ellipse at center, rgba(0,0,0,.55) 0%, transparent 70%);
+        will-change:transform,opacity;
+      }
+      .fx-sd-aura-wisp{
+        position:fixed; left:0; top:0; z-index:93; pointer-events:none; border-radius:50%;
+        filter:blur(5px); will-change:transform,opacity;
+      }
+      .fx-sd-aura-spark{
+        position:fixed; left:0; top:0; z-index:93; pointer-events:none; border-radius:1px;
+        will-change:transform,opacity;
+      }
+      .fx-sd-aura-orb{
+        position:fixed; z-index:93; pointer-events:none; border-radius:50%;
+        background:radial-gradient(circle, #ffffff 0%, #ffeeb0 34%, rgba(255,215,106,.55) 62%, transparent 78%);
+        will-change:transform,opacity;
+      }
+      .fx-sd-beamdiv{
+        position:fixed; z-index:92; pointer-events:none; border-radius:999px;
+        filter:blur(1px); will-change:transform,opacity;
+      }
       /* 演出チェック画面：フィニッシュ確認用のダミー召喚士パネルと見出し。
          ステージ内では対戦画面と同じ通常フロー配置（全幅・transformなし）で
          置き、大きさ・距離感が実戦と揃うようにする */
@@ -1072,7 +1104,7 @@
       .fx-fin-head{margin:18px 0 0; font-size:13.5px; font-weight:800; letter-spacing:.04em; color:var(--gold-bright);}
       .fx-fin-note{margin:3px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-dim);}
       @media (prefers-reduced-motion: reduce){
-        .fx-fin-wrap,.fx-fin-flash,.fx-sd-char,.fx-sd-fximg{display:none;}
+        .fx-fin-wrap,.fx-fin-flash,.fx-sd-char,.fx-sd-fximg,.fx-sd-aura-ring,.fx-sd-aura-shadow,.fx-sd-aura-wisp,.fx-sd-aura-spark,.fx-sd-aura-orb,.fx-sd-beamdiv{display:none;}
       }
       /* ===== PixiJSエフェクトレイヤー（演出専用） =====
          固定配置の透明キャンバスを盤面の上に重ねる。タップは完全に透過させ、
@@ -3655,18 +3687,25 @@
        キャラ別（SD_FIN_MS：4〜5.5秒、アギトのみ現行の約2.5秒）。
        大きさは頭基準で統一：ミラージュの表示高さを基準に、各キャラの頭が
        全体に占める割合（SD_FIN.head）で割り戻して表示高さを決める。
-       遠距離系（EX-キャリバー／セレスティア／ダーククイーン）は召喚台では
-       なく攻撃側の陣地寄りに現れ、そこから敗れた側のパネルへ効果を放つ。
+       遠距離系（EX-キャリバー／セレスティア／ダーククイーン／ティアマト）と
+       ロンギヌス／黒のアギトは召喚台ではなく攻撃側の陣地寄りに現れ、
+       そこから敗れた側のパネルへ効果を放つ／向かう（ミラージュのみ召喚台）。
+       全SDにはテーマカラーのオーラパッケージ（シルエットに沿う rim 光の
+       脈動・体の周囲を上る炎状のゆらめき・多めのキラキラ粒子・足元の
+       発光リングと影・待機中の浮遊モーション）をフィニッシュ中ずっと
+       纏わせ、登場・退場のフェードにも連動させる。
        登場・移動・着弾には発光フラッシュ／光のバースト／画面揺れ／足元の
        砂煙／風切りを重ね、素材の貼り付け感を誤魔化す。 */
+    /* aura／auraN：オーラパッケージのテーマカラー（CSS色／Pixi色）。
+       ティアマトは紅と蒼の2色、ロンギヌスは銀と赤、EXは金＋虹（rainbow） */
     var SD_FIN = {
-      '39':   { sd: 'fx/sd-celestia.webp',  fx: 'fx/fx-pillar.webp',    color: '#ffe9a8', head: 0.33 },
-      '46':   { sd: 'fx/sd-mirage.webp',    fx: 'fx/fx-slash.webp',     color: '#ff7a5c', head: 0.38 },
-      '48':   { sd: 'fx/sd-darkqueen.webp', fx: 'fx/fx-chains.webp',    color: '#b07dff', head: 0.30 },
-      '51':   { sd: 'fx/sd-tiamat.webp',    fx: 'fx/fx-breath.webp',    color: '#ff8a5c', head: 0.23 },
-      '52ex': { sd: 'fx/sd-excalibur.webp', fx: 'fx/fx-lightwave.webp', color: '#ffe27a', head: 0.30 },
-      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff', head: 0.45 },
-      '54':   { sd: 'fx/sd-longinus.webp',  fx: 'fx/fx-spear.webp',     color: '#f2e7bd', head: 0.27 }
+      '39':   { sd: 'fx/sd-celestia.webp',  fx: 'fx/fx-pillar.webp',    color: '#ffe9a8', head: 0.33, aura: ['#ffd76a', '#fff3c4', '#ffedb5'], auraN: [0xffd76a, 0xfff3c4, 0xffffff] },
+      '46':   { sd: 'fx/sd-mirage.webp',    fx: 'fx/fx-slash.webp',     color: '#ff7a5c', head: 0.38, aura: ['#ff3b30', '#ff7a5c', '#ffb0a0'], auraN: [0xff3b30, 0xff7a5c, 0xffffff] },
+      '48':   { sd: 'fx/sd-darkqueen.webp', fx: 'fx/fx-chains.webp',    color: '#b07dff', head: 0.30, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
+      '51':   { sd: 'fx/sd-tiamat.webp',    fx: 'fx/fx-breath.webp',    color: '#ff8a5c', head: 0.23, aura: ['#ff4030', '#4a90ff'], auraN: [0xff4030, 0x4a90ff, 0xffffff] },
+      '52ex': { sd: 'fx/sd-excalibur.webp', fx: 'fx/fx-lightwave.webp', color: '#ffe27a', head: 0.30, aura: ['#ffd76a', '#fff3c4'], auraN: [0xffd76a, 0xfff3c4, 0xffffff], rainbow: true },
+      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff', head: 0.45, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
+      '54':   { sd: 'fx/sd-longinus.webp',  fx: 'fx/fx-spear.webp',     color: '#f2e7bd', head: 0.27, aura: ['#e8ecf5', '#ff4a3c', '#ffd9d2'], auraN: [0xe8ecf5, 0xff4a3c, 0xffffff] }
     };
     /* head：頭の高さがSD素材全体の高さに占める割合（目視見積もり）。
        表示サイズはミラージュ（0.38）の現在の表示高さを基準に
@@ -3782,8 +3821,8 @@
       var sdH = Math.max(56, Math.round(mirageH * 0.38 / (conf.head || 0.38)));
       sdH = Math.min(sdH, Math.round(window.innerHeight * 0.62));
       var anchor = sdFinAnchor();
-      if (id === '52ex' || id === '39' || id === '48'){
-        /* 遠距離系（EX-キャリバー／セレスティア／ダーククイーン）は中央の召喚台ではなく、攻撃側の陣地寄りに立つ
+      if (id === '52ex' || id === '39' || id === '48' || id === '51' || id === '54' || id === '53ag'){
+        /* 遠距離系（EX-キャリバー／セレスティア／ダーククイーン／ティアマト）とロンギヌス／黒のアギトは中央の召喚台ではなく、攻撃側の陣地寄りに立つ（下側からパネルへ向かう動きが見えるように）
            （敗れたパネルが画面上半分なら攻撃者は下＝自分側、下半分なら上側）。
            演出チェックでも同じ基準で、自分の場の下端寄り（自分のダミー
            パネルの手前）に立つ。光波（sdBeam）はこの登場位置からパネル方向へ
@@ -3942,6 +3981,121 @@
         pixiBurst(pcx, pcy, { count: big ? 40 : 22, colors: colArr || [0xffffff, 0xffe9a8], power: big ? 2.0 : 1.3 });
       }
 
+      /* SDオーラパッケージ（全SD共通・極力派手に）：テーマカラーのオーラを
+         フィニッシュ中ずっと纏わせる。構成は
+         ・rim 光：SD素材の複製2枚を背後に重ね、シルエットに沿う色つき
+           drop-shadow を複数層で強く当て、脈動させる（EXは虹色に循環）
+         ・体の周囲を上る炎・エネルギー状のゆらめき（ぼかした楕円が上昇）
+         ・周囲に漂う多めのキラキラ粒子（20個が周回＋明滅）＋定期バースト
+         ・足元の発光リング（脈動リング＋拡散リングの2重）と影（接地感）
+         追随は rAF ループで SD の実矩形と不透明度を毎フレーム読む方式。
+         ワープ／突進／飛翔といった transform アニメにも、登場・退場の
+         フェードにもそのまま連動する。待機中の浮遊は transform と競合
+         しない独立プロパティ translate の揺らしで付ける */
+      function sdAuraStart(){
+        var cols = conf.aura || [conf.color];
+        function colAt(i){ return cols[i % cols.length]; }
+        var clones = [];
+        for (var ci = 0; ci < 2; ci++){
+          var cl = sdFinNode('img', 'fx-sd-fximg');
+          cl.src = conf.sd; cl.alt = '';
+          cl.style.zIndex = 91;
+          cl.style.left = ax + 'px'; cl.style.top = feetY + 'px'; cl.style.height = sdH + 'px';
+          cl.style.filter = 'drop-shadow(0 0 ' + (ci ? 17 : 7) + 'px ' + colAt(ci) + ') drop-shadow(0 0 ' + (ci ? 32 : 15) + 'px ' + colAt(ci + 1) + ')';
+          clones.push(cl);
+        }
+        function mkDiv(cls, z){
+          var el = sdFinNode('div', cls);
+          el.style.zIndex = z;
+          return el;
+        }
+        var shadow = mkDiv('fx-sd-aura-shadow', 91);
+        var ring1 = mkDiv('fx-sd-aura-ring', 91);
+        var ring2 = mkDiv('fx-sd-aura-ring', 91);
+        [ring1, ring2].forEach(function(rg, ri){
+          rg.style.borderColor = colAt(ri);
+          rg.style.boxShadow = '0 0 16px ' + colAt(ri) + ', inset 0 0 12px ' + colAt(ri);
+        });
+        var wisps = [];
+        for (var wi = 0; wi < 7; wi++){
+          var wp = mkDiv('fx-sd-aura-wisp', 93);
+          wp.style.background = 'radial-gradient(ellipse at 50% 72%, ' + colAt(wi) + ' 0%, transparent 68%)';
+          wisps.push(wp);
+        }
+        var sparks = [];
+        for (var si2 = 0; si2 < 20; si2++){
+          var sp2 = mkDiv('fx-sd-aura-spark', 93);
+          sp2.style.background = colAt(si2);
+          sp2.style.boxShadow = '0 0 7px 2px ' + colAt(si2);
+          sparks.push(sp2);
+        }
+        /* 待機中のふわりとした浮遊（キャラ別の transform 振り付けとは独立） */
+        fxFinAnimate(sd, [
+          { translate: '0px 0px' }, { translate: '0px -6px' }, { translate: '0px 0px' }
+        ], { duration: 2300, iterations: Math.max(1, Math.ceil(FIN_MS / 2300)), easing: 'ease-in-out' });
+        var startT = performance.now();
+        var lastBurst = 0;
+        function frame(now){
+          if (gen !== fxMythicGen) return;
+          var t = now - startT;
+          if (t > FIN_MS + 60) return;
+          var rect = sd.getBoundingClientRect();
+          if (rect && rect.width > 0){
+            var sop = 1;
+            try { var csop = parseFloat(window.getComputedStyle(sd).opacity); if (!isNaN(csop)) sop = csop; } catch (e) {}
+            var cxp = rect.left + rect.width / 2, fyp = rect.bottom, bw = rect.width, bh = rect.height;
+            var pulse = 0.5 + 0.5 * Math.sin(t * 0.007);
+            clones.forEach(function(cEl, i2){
+              cEl.style.left = rect.left + 'px'; cEl.style.top = rect.top + 'px';
+              cEl.style.height = rect.height + 'px'; cEl.style.width = 'auto';
+              cEl.style.transformOrigin = '50% 50%';
+              cEl.style.transform = 'scale(' + (i2 ? 1.14 + pulse * 0.035 : 1.055 + pulse * 0.02) + ')';
+              cEl.style.opacity = sop * (i2 ? 0.34 + pulse * 0.18 : 0.62 + pulse * 0.26);
+              if (conf.rainbow) cEl.style.filter = 'drop-shadow(0 0 ' + (i2 ? 17 : 7) + 'px ' + colAt(i2) + ') drop-shadow(0 0 ' + (i2 ? 32 : 15) + 'px ' + colAt(i2 + 1) + ') hue-rotate(' + Math.round((t * 0.14) % 360) + 'deg)';
+            });
+            var rw = bw * 1.3;
+            ring1.style.width = rw + 'px'; ring1.style.height = (rw * 0.30) + 'px';
+            ring1.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (1 + pulse * 0.07) + ')';
+            ring1.style.opacity = sop * (0.55 + pulse * 0.35);
+            var ph2 = (t % 1150) / 1150;
+            ring2.style.width = rw + 'px'; ring2.style.height = (rw * 0.30) + 'px';
+            ring2.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (0.55 + ph2 * 0.95) + ')';
+            ring2.style.opacity = sop * (1 - ph2) * 0.75;
+            shadow.style.width = (bw * 0.85) + 'px'; shadow.style.height = (bw * 0.22) + 'px';
+            shadow.style.transform = 'translate(' + cxp + 'px,' + (fyp + 2) + 'px) translate(-50%,-50%)';
+            shadow.style.opacity = sop * 0.5;
+            wisps.forEach(function(wEl, i2){
+              var ph = ((t * 0.00042) + i2 / wisps.length) % 1;
+              var side = (i2 % 2 ? 1 : -1);
+              var wx = cxp + side * bw * (0.26 + 0.2 * fxFinRand(i2 * 3.3 + 1)) + Math.sin(t * 0.004 + i2 * 2.1) * 5;
+              var wy = fyp - ph * bh * 1.02;
+              var ws = bh * (0.30 + 0.16 * fxFinRand(i2 * 7.7 + 2));
+              wEl.style.width = ws + 'px'; wEl.style.height = (ws * 1.5) + 'px';
+              wEl.style.transform = 'translate(' + wx + 'px,' + wy + 'px) translate(-50%,-100%) scale(' + (0.75 + ph * 0.5) + ')';
+              wEl.style.opacity = sop * Math.sin(Math.PI * ph) * 0.55;
+            });
+            sparks.forEach(function(sEl, i2){
+              var ang = t * 0.0011 * (i2 % 2 ? -1 : 1) + i2 * (Math.PI * 2 / sparks.length);
+              var radX = bw * (0.52 + 0.16 * Math.sin(t * 0.0016 + i2 * 1.93));
+              var radY = bh * (0.42 + 0.14 * Math.cos(t * 0.0013 + i2 * 2.71));
+              var sxp = cxp + Math.cos(ang) * radX;
+              var syp = (fyp - bh * 0.48) + Math.sin(ang) * radY + Math.sin(t * 0.003 + i2 * 1.31) * 4;
+              var ss = 2.6 + 2.2 * fxFinRand(i2 * 5.13 + 3);
+              sEl.style.width = ss + 'px'; sEl.style.height = ss + 'px';
+              sEl.style.transform = 'translate(' + sxp + 'px,' + syp + 'px) translate(-50%,-50%) rotate(45deg)';
+              sEl.style.opacity = sop * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.006 + i2 * 2.39)));
+            });
+            if (t - lastBurst > 640 && sop > 0.4){
+              lastBurst = t;
+              pixiBurst(cxp, fyp - bh * 0.45, { count: 7, rise: true, colors: conf.auraN || [0xffffff], power: 0.65 });
+            }
+          }
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }
+      sdAuraStart();
+
       if (id === '52ex'){
         /* EX-キャリバー：オーラを溜める → 剣をSD中心の上半円弧で大きく振る →
            円弧の終端から素材ビーム＋描画光の混合ビームを放ち、パネルが真っ二つに崩れる */
@@ -3957,55 +4111,91 @@
         [620, 980, 1340].forEach(function(ms){
           later(function(){ pixiBurst(ax, feetY - sdH * 0.35, { count: 14, rise: true, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 0.8 }); }, ms);
         });
-        /* 剣の円弧スイング：剣スプライトがSDを中心に上半分の円弧を描く。
-           SD本体も振りに合わせて沈み／傾く。振りかぶりで足元に砂煙、弧に風切り */
+        /* 剣の円弧スイング：剣スプライトがSDを中心に「上半分」の円弧を
+           大きく描く（左端→天頂→右端）。剣の向きは円弧の進行方向（接線）に
+           合わせ、刃（素材は刃下向き）が常に進む先を向くように回す。
+           描画の弧トレイルも重ねて、上半円の軌跡そのものが読めるようにする。
+           SD本体は沈まずに振りへ乗り、振りかぶりで足元に砂煙、弧に風切り */
         later(function(){
           sdDust(ax, feetY, false);
           sdWind(ax, sdCy - sdH * 0.2, dxP >= 0 ? 0 : 180, sdH * 1.1, 0xffe9a8);
           fxFinAnimate(sd, [
             { transform: sdT(0, 3, 1.03), opacity: 1 },
-            { transform: sdT(0, -3, 1.04, -4), opacity: 1, offset: 0.35 },
-            { transform: sdT(0, 13, 1.0, 5), opacity: 1, offset: 0.68 },
-            { transform: sdT(0, 4, 1.01), opacity: 1 }
-          ], { duration: 640, easing: 'ease-in-out', fill: 'forwards' });
+            { transform: sdT(0, -7, 1.05, -5), opacity: 1, offset: 0.35 },
+            { transform: sdT(0, -4, 1.04, 5), opacity: 1, offset: 0.68 },
+            { transform: sdT(0, 2, 1.01), opacity: 1 }
+          ], { duration: 700, easing: 'ease-in-out', fill: 'forwards' });
+          var arcR = sdH * 0.52;
+          pixiAnim(720, function(gfx, t){
+            gfx.clear();
+            var prog = Math.min(1, t / 0.82);
+            var fade = t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1;
+            gfx.lineStyle(Math.max(7, sdH * 0.15), 0xffd76a, 0.32 * fade);
+            gfx.arc(sdCx, sdCy, arcR, -Math.PI, -Math.PI + Math.PI * prog);
+            gfx.lineStyle(Math.max(2.5, sdH * 0.05), 0xffffff, 0.85 * fade);
+            gfx.arc(sdCx, sdCy, arcR, -Math.PI, -Math.PI + Math.PI * prog);
+          });
           if (sdImgState['fx/fx-sword.webp'] === 1){
-            var sw = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.3) }, ax, sdCy);
+            var sw = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.45) }, ax, sdCy);
             var swordFrames = [];
-            var steps = 8;
+            var steps = 10;
             for (var si = 0; si <= steps; si++){
               var ft = si / steps;
-              var angR = (165 - 150 * ft) * Math.PI / 180; /* 左上→天頂→右上の上半円弧 */
+              var angR = (1 - ft) * Math.PI; /* 左端(π)→天頂(π/2)→右端(0) の上半円弧 */
+              var rotT = Math.round(Math.atan2(Math.cos(angR), Math.sin(angR)) * 180 / Math.PI - 90);
               swordFrames.push({
-                transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(angR) * sdH * 0.36) + 'px,' + Math.round(-Math.sin(angR) * sdH * 0.36) + 'px) rotate(' + Math.round(118 - 236 * ft) + 'deg) scale(1)',
+                transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(angR) * arcR) + 'px,' + Math.round(-Math.sin(angR) * arcR) + 'px) rotate(' + rotT + 'deg) scale(1)',
                 opacity: si === 0 ? 0 : 1, offset: ft
               });
             }
-            fxFinAnimate(sw, swordFrames, { duration: 620, easing: 'cubic-bezier(.45,.05,.6,1)', fill: 'forwards' });
+            fxFinAnimate(sw, swordFrames, { duration: 690, easing: 'cubic-bezier(.45,.05,.6,1)', fill: 'forwards' });
             later(function(){
               fxFinAnimate(sw, [
-                { transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(0.26) * sdH * 0.36) + 'px,' + Math.round(-Math.sin(0.26) * sdH * 0.36) + 'px) rotate(-118deg) scale(1)', opacity: 1 },
-                { transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(0.26) * sdH * 0.36) + 'px,' + Math.round(-Math.sin(0.26) * sdH * 0.36) + 'px) rotate(-118deg) scale(1)', opacity: 0 }
+                { transform: 'translate(-50%,-50%) translate(' + Math.round(arcR) + 'px,0px) rotate(0deg) scale(1)', opacity: 1 },
+                { transform: 'translate(-50%,-50%) translate(' + Math.round(arcR) + 'px,0px) rotate(0deg) scale(1)', opacity: 0 }
               ], { duration: 160, easing: 'ease-in', fill: 'forwards' });
-            }, 600);
+            }, 670);
           }
         }, 1750);
-        /* 混合ビーム：素材の光波に、描画の太い発光ライン（外側グロー／中間／白い芯）を重ねる */
+        /* 混合ビーム：全神話フィニッシュで一番派手にする。素材の光波を
+           大幅に太くし、ぼかしの光帯＋描画の多層ライン（外側グロー／虹の
+           煌めき／中間／白い芯）を重ね、粒子・フラッシュ・揺れも強める */
         later(function(){
-          sdBeam(conf.fx, Math.round(sdH * 0.75), 1050, true);
-          pixiAnim(1050, function(gfx, t, life){
+          var bd = sdFinNode('div', 'fx-sd-beamdiv');
+          bd.style.left = sdCx + 'px'; bd.style.top = (sdCy - Math.round(sdH * 0.45)) + 'px';
+          bd.style.width = Math.round(Math.sqrt(dxP * dxP + dyP * dyP) + sdH * 0.4) + 'px';
+          bd.style.height = Math.round(sdH * 0.9) + 'px';
+          bd.style.background = 'linear-gradient(180deg, rgba(255,215,106,0) 0%, rgba(255,215,106,.5) 32%, rgba(255,246,218,.85) 50%, rgba(255,215,106,.5) 68%, rgba(255,215,106,0) 100%)';
+          bd.style.filter = 'blur(7px)';
+          bd.style.transformOrigin = '0 50%';
+          var bpre2 = 'rotate(' + (Math.atan2(dyP, dxP) * 180 / Math.PI) + 'deg) ';
+          fxFinAnimate(bd, [
+            { transform: bpre2 + 'scaleX(.04)', opacity: 0 },
+            { transform: bpre2 + 'scaleX(1)', opacity: 0.85, offset: 0.16 },
+            { transform: bpre2 + 'scaleX(1)', opacity: 0.7, offset: 0.6 },
+            { transform: bpre2 + 'scaleX(1)', opacity: 0 }
+          ], { duration: 1150, easing: 'ease-out', fill: 'forwards' });
+          sdBeam(conf.fx, Math.round(sdH * 1.0), 1150, true);
+          var rainbowCols = [0xff5a5a, 0xffa04a, 0xffe27a, 0x7dff8a, 0x5aa2ff, 0xb07dff];
+          pixiAnim(1150, function(gfx, t, life){
             gfx.clear();
-            var env = Math.min(1, t / 0.15) * (t > 0.68 ? Math.max(0, 1 - (t - 0.68) / 0.32) : 1);
-            var fl = 0.82 + 0.18 * Math.sin(life * 0.055);
-            gfx.lineStyle(Math.max(10, sdH * 0.52), 0xffd76a, 0.15 * env * fl);
+            var env = Math.min(1, t / 0.13) * (t > 0.68 ? Math.max(0, 1 - (t - 0.68) / 0.32) : 1);
+            var fl = 0.84 + 0.16 * Math.sin(life * 0.055);
+            gfx.lineStyle(Math.max(14, sdH * 0.88), 0xffd76a, 0.16 * env * fl);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(6, sdH * 0.27), 0xffe9a8, 0.34 * env * fl);
+            gfx.lineStyle(Math.max(9, sdH * 0.52), 0xffe9a8, 0.36 * env * fl);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(3, sdH * 0.11), 0xffffff, 0.9 * env * fl);
+            gfx.lineStyle(Math.max(6, sdH * 0.33), rainbowCols[Math.floor(life / 110) % rainbowCols.length], 0.30 * env);
+            gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
+            gfx.lineStyle(Math.max(3.5, sdH * 0.19), 0xffffff, 0.95 * env * fl);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
           });
-        }, 2420);
+        }, 2480);
         later(function(){
           sdImpact(true, [0xffffff, 0xffd76a, 0xfff3c4]);
+          fxFinFlash(0.95, 720);
+          pixiBurst(pcx, pcy, { count: 55, colors: [0xffffff, 0xffd76a, 0xfff3c4, 0xffa04a], power: 2.3, size: 1.25 });
+          pixiRing(pcx, pcy, { maxR: w * 1.3, dur: 800, color: 0xffffff });
           pixiCrackFx(pcx, pcy, Math.max(w, h) * 1.15, 1500, 8);
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
           var halves = fxFinPieces(panelEl, mk.wrap, 2, 1);
@@ -4017,7 +4207,7 @@
               { transform: 'translate(' + (dir * 22) + 'px, 30px) rotate(' + (dir * 5) + 'deg)', opacity: 0 }
             ], { duration: 900, delay: 110, easing: 'ease-in', fill: 'forwards' });
           });
-        }, 2980);
+        }, 3050);
         sdFadeOut(3750);
       } else if (id === '54'){
         /* ロンギヌス：溜め→一気に突進（速）→槍が刺さる瞬間にドンッと急停止
@@ -4229,15 +4419,18 @@
         later(function(){ pixiBurst(pcx, pcy + h * 0.4, { count: 18, colors: [0xc39bff, 0x8a5cff], power: 1.1 }); }, 2650);
         sdFadeOut(2500);
       } else if (id === '51'){
-        /* ティアマト：本人はブレスを吐かない。両腕を広げて力を集中させると、
-           画面外上方（虚空）に紅蒼の発光が集まり、巨大なビームが斜めに
-           降り注いでパネルを直撃 → 炎に包まれて大爆発する。
-           ビームの発生源は彼女の口ではなく虚空であることが伝わる流れにする。
+        /* ティアマト：本人は攻撃側の陣地寄りに下がって力を集中させる側に徹する。
+           画面の左下（紅）と右下（蒼）から2本のビームがクロス（X字）しながら
+           負け側パネルに収束して直撃し、パネルが包まれて大爆発する。
            ビーム中は実パネルを小刻みに震わせる（ダミーパネルも対戦画面と
            同じ通常配置のため、基底 transform の付け足しは不要） */
         var baseTx51 = '';
-        var srcX = pcx + w * 0.85, srcY = -60; /* 虚空の発生点：画面外の右上 */
-        /* 力を集中：SDが少し浮いて光り、周囲と画面上方に紅蒼の発光が集まる */
+        var winH51 = window.innerHeight, winW51 = window.innerWidth;
+        var srcL = { x: Math.max(14, Math.round(pcx - winW51 * 0.44)), y: winH51 + 26 }; /* 左下：紅の発射点 */
+        var srcR = { x: Math.min(winW51 - 14, Math.round(pcx + winW51 * 0.44)), y: winH51 + 26 }; /* 右下：蒼の発射点 */
+        var tgtL = { x: pcx + w * 0.20, y: pcy - h * 0.12 }; /* 左下→パネル右寄りへ */
+        var tgtR = { x: pcx - w * 0.20, y: pcy - h * 0.12 }; /* 右下→パネル左寄りへ：2本が途中で交差してXになる */
+        /* 力を集中：SDが少し浮いて紅蒼に光る */
         later(function(){
           fxFinAnimate(sd, [
             { transform: sdT(0, 0, 1), filter: 'brightness(1)', opacity: 1 },
@@ -4249,10 +4442,14 @@
         [700, 1200].forEach(function(ms){
           later(function(){ pixiBurst(ax, feetY - sdH * 0.5, { count: 16, rise: true, colors: [0xff5030, 0xffa04a, 0x5aa2ff, 0x9cc4ff], power: 0.9 }); }, ms);
         });
-        [1000, 1450].forEach(function(ms){
-          later(function(){ pixiBurst(srcX, 24, { count: 18, colors: [0xff5030, 0x5aa2ff, 0xffffff], power: 1.1 }); }, ms);
+        /* 画面下の両隅に紅と蒼の光が集まる（発射点の予告） */
+        [1250, 1650].forEach(function(ms){
+          later(function(){
+            pixiBurst(srcL.x, winH51 - 8, { count: 14, rise: true, colors: [0xff4030, 0xffa04a, 0xffffff], power: 1.0 });
+            pixiBurst(srcR.x, winH51 - 8, { count: 14, rise: true, colors: [0x4a90ff, 0x9cc4ff, 0xffffff], power: 1.0 });
+          }, ms);
         });
-        /* 咆哮の震え：SDが小刻みに震え、画面も微振動する */
+        /* 集中の震え：SDが小刻みに震え、画面も微振動する */
         later(function(){
           fxFinAnimate(sd, [
             { transform: sdT(-3, -10, 1.07), opacity: 1 }, { transform: sdT(3, -9, 1.07), opacity: 1 },
@@ -4260,41 +4457,26 @@
             { transform: sdT(0, -10, 1.07), opacity: 1 }
           ], { duration: 430, easing: 'linear', fill: 'forwards' });
           fxQuake('fx-quake-sm', 430);
-        }, 1560);
-        /* 虚空ビーム：画面外上方からパネルへ、ブレス素材＋描画の紅蒼二重ライン＋白い芯。
-           放出中は小さく画面が揺れ続け、パネルも震える */
+        }, 1750);
+        /* クロスビーム：左下の紅と右下の蒼がX字に交差しながらパネルへ収束。
+           標的を少し通り過ぎるまで伸ばし、交差する様子が読めるようにする。
+           各ビームは外側グロー／色／白い芯の3層。放出中は画面とパネルが震える */
         later(function(){
-          var bdx = pcx - srcX, bdy = pcy - srcY;
-          var blen = Math.sqrt(bdx * bdx + bdy * bdy) + 160;
-          var bang = Math.atan2(bdy, bdx) * 180 / Math.PI;
-          var bimg = sdFinNode('img', 'fx-sd-fximg');
-          bimg.src = conf.fx; bimg.alt = '';
-          bimg.style.left = (srcX + pcx) / 2 + 'px'; bimg.style.top = (srcY + pcy) / 2 + 'px';
-          bimg.style.width = Math.round(blen) + 'px'; bimg.style.height = Math.round(sdH * 1.05) + 'px';
-          var bpre = 'translate(-50%,-50%) rotate(' + bang + 'deg) ';
-          fxFinAnimate(bimg, [
-            { transform: bpre + 'scaleY(.3)', opacity: 0 },
-            { transform: bpre + 'scaleY(1)', opacity: 1, offset: 0.14 },
-            { transform: bpre + 'scaleY(.8)', opacity: 0.9, offset: 0.42 },
-            { transform: bpre + 'scaleY(1.1)', opacity: 1, offset: 0.66 },
-            { transform: bpre + 'scaleY(.9)', opacity: 0.95, offset: 0.85 },
-            { transform: bpre + 'scaleY(1)', opacity: 0 }
-          ], { duration: 1750, easing: 'ease-out', fill: 'forwards' });
           pixiAnim(1750, function(gfx, t, life){
             gfx.clear();
             var env = Math.min(1, t / 0.12) * (t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1);
-            var fl = 0.8 + 0.2 * Math.sin(life * 0.06) * Math.sin(life * 0.023 + 1.3);
-            var ux = bdx / (blen - 160), uy = bdy / (blen - 160);
-            var pxu = -uy, pyu = ux;
-            function beamLine(off, widthPx, col, alpha){
-              gfx.lineStyle(widthPx, col, alpha * env * fl);
-              gfx.moveTo(srcX + pxu * off, srcY + pyu * off);
-              gfx.lineTo(pcx + pxu * off, pcy + pyu * off);
+            var fl = 0.82 + 0.18 * Math.sin(life * 0.055) * Math.sin(life * 0.021 + 1.1);
+            function beam(s, tg, col){
+              var ex = tg.x + (tg.x - s.x) * 0.10, ey = tg.y + (tg.y - s.y) * 0.10;
+              gfx.lineStyle(Math.max(15, sdH * 0.62), col, 0.14 * env * fl);
+              gfx.moveTo(s.x, s.y); gfx.lineTo(ex, ey);
+              gfx.lineStyle(Math.max(8, sdH * 0.33), col, 0.42 * env * fl);
+              gfx.moveTo(s.x, s.y); gfx.lineTo(ex, ey);
+              gfx.lineStyle(Math.max(3, sdH * 0.12), 0xffffff, 0.9 * env * fl);
+              gfx.moveTo(s.x, s.y); gfx.lineTo(ex, ey);
             }
-            beamLine(0, Math.max(14, sdH * 0.62), 0xff7040, 0.13);
-            beamLine(9, Math.max(7, sdH * 0.3), 0xff4030, 0.4);
-            beamLine(-9, Math.max(7, sdH * 0.3), 0x4a90ff, 0.4);
-            beamLine(0, Math.max(3, sdH * 0.12), 0xffffff, 0.9);
+            beam(srcL, tgtL, 0xff4030);
+            beam(srcR, tgtR, 0x4a90ff);
           });
           fxFinAnimate(panelEl, [
             { transform: baseTx51 + 'translate(0px,0px)' }, { transform: baseTx51 + 'translate(-3px,1px)' },
@@ -4302,8 +4484,8 @@
           ], { duration: 480, iterations: 4 });
           fxQuake('fx-quake-sm', 480);
           pixiBurst(pcx, pcy, { count: 30, colors: [0xff5030, 0xffa04a, 0x5aa2ff, 0xffffff], power: 1.7 });
-        }, 2050);
-        [2650, 3250].forEach(function(ms){
+        }, 2150);
+        [2750, 3350].forEach(function(ms){
           later(function(){
             fxQuake('fx-quake-sm', 480);
             pixiBurst(pcx, pcy, { count: 20, colors: [0xff5030, 0xffa04a, 0x5aa2ff], power: 1.5 });
@@ -4323,63 +4505,104 @@
             { transform: 'translate(4px,7px) scale(1.02)', filter: 'brightness(1.2) sepia(.7)', opacity: 0.85, offset: 0.45 },
             { transform: 'translateY(20px) scale(.98)', filter: 'brightness(.5) blur(3px)', opacity: 0 }
           ], { duration: 1100, easing: 'ease-out', fill: 'forwards' });
-        }, 3850);
-        sdFadeOut(4450);
+        }, 3950);
+        sdFadeOut(4550);
       } else if (id === '39'){
-        /* セレスティア：攻撃側の陣地寄りに登場し、光柱がパネル上から降り注ぐ。
-           光柱の素材に描画の光柱・放射状の光・フラッシュ・光の粒子を重ねて
-           素材感を消し、パネルが光の粒に浄化される締めは維持する */
+        /* セレスティア：光の出所は彼女自身。両手に光が集まり、そこから
+           光の奔流（ビーム）が負け側パネルまで伸びて直撃し、パネルは光に
+           包まれて光の粒に浄化される。光柱は細く従として添えるだけ */
+        var handX = ax, handY = feetY - Math.round(sdH * 0.58); /* 両手の位置（SD中心の少し上） */
+        var bAngC = Math.atan2(pcy - handY, pcx - handX);
+        var bLenC = Math.sqrt((pcx - handX) * (pcx - handX) + (pcy - handY) * (pcy - handY));
+        /* 溜め：彼女自身が光り、両手の前に光の珠が育つ */
         later(function(){
           fxFinAnimate(sd, [
             { transform: sdT(0, 0, 1), filter: 'brightness(1)', opacity: 1 },
             { transform: sdT(0, -6, 1.04), filter: 'brightness(1.45) drop-shadow(0 0 20px rgba(255,233,168,.95))', opacity: 1, offset: 0.6 },
-            { transform: sdT(0, -8, 1.05), filter: 'brightness(1.6) drop-shadow(0 0 26px rgba(255,240,200,1))', opacity: 1 }
-          ], { duration: 800, easing: 'ease-in-out', fill: 'forwards' });
+            { transform: sdT(0, -8, 1.05), filter: 'brightness(1.65) drop-shadow(0 0 28px rgba(255,240,200,1))', opacity: 1 }
+          ], { duration: 850, easing: 'ease-in-out', fill: 'forwards' });
           pixiRing(ax, feetY - 4, { maxR: sdH * 0.95, dur: 800, color: 0xffe9a8 });
-          pixiBurst(ax, feetY - sdH * 0.4, { count: 16, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 0.9 });
+          var orb = sdFinNode('div', 'fx-sd-aura-orb');
+          var osz = Math.round(sdH * 0.52);
+          orb.style.left = handX + 'px'; orb.style.top = handY + 'px';
+          orb.style.width = osz + 'px'; orb.style.height = osz + 'px';
+          fxFinAnimate(orb, [
+            { transform: 'translate(-50%,-50%) scale(.15)', opacity: 0 },
+            { transform: 'translate(-50%,-50%) scale(.8)', opacity: 0.95, offset: 0.55 },
+            { transform: 'translate(-50%,-50%) scale(1.12)', opacity: 1, offset: 0.8 },
+            { transform: 'translate(-50%,-50%) scale(.92)', opacity: 1 }
+          ], { duration: 880, easing: 'ease-out', fill: 'forwards' });
+          later(function(){
+            fxFinAnimate(orb, [
+              { transform: 'translate(-50%,-50%) scale(.92)', opacity: 1 },
+              { transform: 'translate(-50%,-50%) scale(1.7)', opacity: 0 }
+            ], { duration: 220, easing: 'ease-in', fill: 'forwards' });
+          }, 900);
         }, 500);
+        [650, 950, 1220].forEach(function(ms){
+          later(function(){ pixiBurst(handX, handY, { count: 12, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 0.7 }); }, ms);
+        });
+        /* ビーム：両手からパネルへ。太い光の帯（DOM）＋描画の3層ライン
+           （外側グロー／中間／白い芯）を重ね、着弾点では光が弾ける */
         later(function(){
-          var pilH = Math.round(h + window.innerHeight * 0.36);
-          var pil = sdOverlay(conf.fx, { h: pilH }, pcx, r.bottom - pilH / 2 + 6);
-          fxFinAnimate(pil, [
-            { transform: 'translate(-50%,-50%) translateY(-46px)', opacity: 0 },
-            { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 1, offset: 0.22 },
-            { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 1, offset: 0.78 },
-            { transform: 'translate(-50%,-50%) translateY(6px)', opacity: 0 }
-          ], { duration: 2100, easing: 'ease-out', fill: 'forwards' });
-          /* 描画の光柱（3層＋光条）を素材の光柱に重ねる */
-          pixiBeamFx(pcx, 0, r.bottom + 4, Math.max(26, w * 0.34), [0xffe9a8, 0xfff3c4], 2100);
-          /* 放射状の光：パネル中心から光条が広がる */
-          pixiAnim(2100, function(gfx, t, life){
+          var bd = sdFinNode('div', 'fx-sd-beamdiv');
+          var bhC = Math.round(sdH * 0.36);
+          bd.style.left = handX + 'px'; bd.style.top = (handY - bhC / 2) + 'px';
+          bd.style.width = Math.round(bLenC + 30) + 'px'; bd.style.height = bhC + 'px';
+          bd.style.background = 'linear-gradient(180deg, rgba(255,215,106,0) 0%, rgba(255,215,106,.55) 30%, #fff6da 50%, rgba(255,215,106,.55) 70%, rgba(255,215,106,0) 100%)';
+          bd.style.transformOrigin = '0 50%';
+          var preC = 'rotate(' + (bAngC * 180 / Math.PI) + 'deg) ';
+          fxFinAnimate(bd, [
+            { transform: preC + 'scaleX(.04)', opacity: 0 },
+            { transform: preC + 'scaleX(1)', opacity: 1, offset: 0.16 },
+            { transform: preC + 'scaleX(1)', opacity: 0.92, offset: 0.55 },
+            { transform: preC + 'scaleX(1)', opacity: 1, offset: 0.8 },
+            { transform: preC + 'scaleX(1)', opacity: 0 }
+          ], { duration: 1500, easing: 'ease-out', fill: 'forwards' });
+          pixiAnim(1500, function(gfx, t, life){
             gfx.clear();
-            var env = Math.min(1, t / 0.16) * (t > 0.72 ? Math.max(0, 1 - (t - 0.72) / 0.28) : 1);
-            var rot = life * 0.00012;
-            for (var i = 0; i < 12; i++){
-              var a = (i / 12) * Math.PI * 2 + rot + (i % 2 ? 0.13 : 0);
-              var L = Math.max(w, h) * (i % 2 ? 0.85 : 1.25);
-              gfx.lineStyle(i % 2 ? 2 : 3.4, i % 2 ? 0xffe9a8 : 0xffffff, (i % 2 ? 0.4 : 0.62) * env);
-              gfx.moveTo(pcx + Math.cos(a) * 8, pcy + Math.sin(a) * 8);
-              gfx.lineTo(pcx + Math.cos(a) * L, pcy + Math.sin(a) * L);
-            }
+            var env = Math.min(1, t / 0.13) * (t > 0.78 ? Math.max(0, 1 - (t - 0.78) / 0.22) : 1);
+            var fl = 0.84 + 0.16 * Math.sin(life * 0.06);
+            gfx.lineStyle(Math.max(12, sdH * 0.55), 0xffd76a, 0.16 * env * fl);
+            gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
+            gfx.lineStyle(Math.max(7, sdH * 0.3), 0xffe9a8, 0.38 * env * fl);
+            gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
+            gfx.lineStyle(Math.max(3, sdH * 0.13), 0xffffff, 0.95 * env * fl);
+            gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
           });
-          pixiRing(pcx, r.bottom, { maxR: w * 0.95, dur: 850, color: 0xffffff });
+          pixiBurst(handX, handY, { count: 18, colors: [0xffffff, 0xffeeb0], power: 1.0 });
+          pixiBurst(pcx, pcy, { count: 26, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 });
+          fxFinFlash(0.5, 520);
           fxQuake('fx-quake-sm', 480);
-        }, 1000);
-        later(function(){ fxFinFlash(0.55, 520); }, 1450);
-        later(function(){ fxFinFlash(0.7, 600); pixiRing(pcx, pcy, { maxR: w * 1.05, dur: 800, color: 0xffffff }); }, 2350);
+          pixiRing(pcx, pcy, { maxR: w * 0.9, dur: 750, color: 0xffffff });
+        }, 1420);
+        /* 光柱（従）：細く半透明で添えるだけ */
+        later(function(){
+          var pilH = Math.round(h + window.innerHeight * 0.3);
+          var pil = sdOverlay(conf.fx, { h: pilH, w: Math.round(w * 0.34) }, pcx, r.bottom - pilH / 2 + 6);
+          fxFinAnimate(pil, [
+            { transform: 'translate(-50%,-50%) translateY(-40px)', opacity: 0 },
+            { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 0.5, offset: 0.25 },
+            { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 0.45, offset: 0.78 },
+            { transform: 'translate(-50%,-50%) translateY(6px)', opacity: 0 }
+          ], { duration: 1900, easing: 'ease-out', fill: 'forwards' });
+          pixiBeamFx(pcx, 0, r.bottom + 4, Math.max(13, w * 0.15), [0xffe9a8, 0xfff3c4], 1900);
+        }, 1600);
+        later(function(){ fxFinFlash(0.65, 600); pixiRing(pcx, pcy, { maxR: w * 1.05, dur: 800, color: 0xffffff }); }, 2500);
+        /* パネルが光に包まれ、光の粒になって浄化される */
         later(function(){
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
           var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
           fxFinAnimate(cl, [
-            { transform: 'translateY(0px)', filter: 'brightness(1)', opacity: 1 },
-            { transform: 'translateY(-4px)', filter: 'brightness(1.9)', opacity: 1, offset: 0.4 },
-            { transform: 'translateY(-30px)', filter: 'brightness(2.8) blur(3px)', opacity: 0 }
-          ], { duration: 1900, delay: 150, easing: 'ease-in', fill: 'forwards' });
-        }, 1300);
-        [1250, 1850, 2450, 3050].forEach(function(ms){
+            { transform: 'translateY(0px)', filter: 'brightness(1.6)', opacity: 1 },
+            { transform: 'translateY(-6px)', filter: 'brightness(2.2)', opacity: 1, offset: 0.4 },
+            { transform: 'translateY(-34px)', filter: 'brightness(3) blur(3px)', opacity: 0 }
+          ], { duration: 1700, easing: 'ease-in', fill: 'forwards' });
+        }, 2150);
+        [2250, 2750, 3250].forEach(function(ms){
           later(function(){ pixiBurst(pcx, pcy, { count: 26, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 }); }, ms);
         });
-        sdFadeOut(3550);
+        sdFadeOut(3750);
       } else if (id === '53ag'){
         /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて巨大な顎が
            横からスライドインし、パネルを覆って噛み砕く（飲み込まれて消える） */
@@ -9090,13 +9313,13 @@
        そのまま再生して確認できる。
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
-      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、光柱と放射光でパネルを浄化して消し去る' },
+      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、両手に集めた光をビームでパネルへ放ち、光の粒に浄化する（金のオーラ付き）' },
       { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後はパネル上で斬って消える' },
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖がパネル全体に被さり、闇の渦へ引きずり込む' },
-      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが力を集中させ、虚空から降り注ぐ紅蒼ビームでパネルを爆発させる' },
-      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、剣を円弧に振って混合ビームでパネルを真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが砂煙と風切りを残して上空へ消え、巨大な顎が横から現れてパネルを飲み込む' },
-      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスが一気に突進し、槍の一突きでドンッと止まって放射状のヒビを入れる' }
+      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスしてパネルを爆発させる' },
+      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、剣を頭上の上半円弧で大きく振って、一番派手な多層ビームでパネルを真っ二つに崩す' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して上空へ消え、巨大な顎が横から現れてパネルを飲み込む' },
+      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスが攻撃側から長い距離を一気に突進し、槍の一突きでドンッと止まって放射状のヒビを入れる' }
     ];
     function fxCheckPlayFinish(item){
       fxCheckClearStageCard();
