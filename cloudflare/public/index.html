@@ -412,7 +412,20 @@
       .leader-ability{font-size:11px; color:var(--ink-dim); line-height:1.45; margin-top:2px;}
       .leader-ability b{color:var(--gold-bright); font-weight:700;}
       .summoner-choice{margin:14px 0 4px; text-align:left;}
-      .summoner-grid{display:flex; flex-direction:column; gap:6px;}
+      /* 召喚士の選択：大きなカード並びから、丸型顔アイコン5個の横並びストリップへ。
+         顔画像が読めた場合だけバッジ内に重なり、読めない環境では従来の
+         記号＋色グラデーションのバッジがそのまま代替になる（summonerBadge側の仕組み）。 */
+      .summoner-grid{display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:4px;}
+      .sum-pick{flex:1 1 0; display:flex; align-items:center; justify-content:center; background:none; border:none; padding:4px 0; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+      .sum-pick .sum-badge{width:52px; height:52px; font-size:24px; transition:transform .15s ease, box-shadow .15s ease;}
+      .sum-pick.sel .sum-badge{transform:scale(1.14); box-shadow:0 0 0 2.5px var(--gold-bright), 0 0 14px rgba(236,205,126,.55);}
+      .sum-pick:active .sum-badge{transform:scale(1.05);}
+      .sum-pick.sel:active .sum-badge{transform:scale(1.14);}
+      /* 選択中の召喚士の名前＋能力はストリップの下に1行だけ（タップで詳細シート） */
+      .summoner-info{display:flex; align-items:center; gap:8px; width:100%; margin:8px 0 0; padding:7px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel2); color:var(--ink); font-size:12px; line-height:1.5; text-align:left; cursor:pointer;}
+      .summoner-info-text{flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+      .summoner-info-text b{color:var(--gold-bright);}
+      .summoner-info-more{flex:0 0 auto; font-size:11px; font-weight:700; color:var(--ink-dim); white-space:nowrap;}
       .sum-btn{display:flex; align-items:center; gap:9px; text-align:left; border:1px solid var(--line); background:var(--panel2); color:var(--ink); border-radius:10px; padding:8px 10px; width:100%;}
       .sum-btn .sum-btn-main{flex:1; min-width:0;}
       .sum-btn .sum-btn-name{font-size:13.5px; font-weight:800; line-height:1.3;}
@@ -1829,6 +1842,39 @@
       @media (prefers-reduced-motion: reduce){
         #titleBg{transition:none;}
         .title-emblem .emblem-rotor{animation:none;}
+        .sum-pick .sum-badge{transition:none;}
+      }
+      /* ===== タイトル画面コンパクト化 =====
+         目的はスマホ縦画面で主要モードボタン（対戦開始／勝ち抜き／アーケード／
+         デッキ編成／オンラインへ進む）がスクロールなしに見えること。
+         ロゴ帯は魔法陣＋ロゴの横並びにして縦幅を圧縮し、余白も詰める。
+         副次的な設定・入口は #titleMenu（☰メニュー）へ JS で移設する。
+         対象はタイトル画面だけで、対戦画面・他画面のレイアウトには触らない。 */
+      #startOverlay{padding:12px;}
+      #startOverlay .start-box{padding:18px 18px calc(18px + env(safe-area-inset-bottom));}
+      #startOverlay .first-choice{margin-top:10px;}
+      #startOverlay .summoner-choice{margin-top:10px;}
+      #startOverlay .seg-btn{padding:8px 4px;}
+      .title-brand{display:flex; align-items:center; justify-content:center; gap:13px;}
+      .title-brand .title-emblem{width:50px; height:50px; margin:0; flex:0 0 auto;}
+      .title-brand-text{text-align:left; min-width:0;}
+      .title-brand-text .title-logo-text{margin:0; font-size:clamp(23px, 6.6vw, 29px);}
+      .title-brand-text .title-logo-sub{margin:3px 0 0; justify-content:flex-start; font-size:10.5px; letter-spacing:.3em;}
+      .title-brand-text .title-logo-sub::before{display:none;}
+      .title-brand-text .title-logo-sub::after{flex-basis:30px;}
+      .title-brand-text .title-logo-sub .sub-text{margin-right:-.3em;}
+      /* --- ☰メニューパネル（タイトル画面専用） --- */
+      .title-menu-btn{letter-spacing:.04em;}
+      .title-menu{margin-top:9px; border:1px solid var(--line); border-radius:12px; background:rgba(10,13,22,.55); padding:2px 12px 12px; text-align:left;}
+      .title-menu[hidden]{display:none;}
+      .title-menu .first-choice{margin-top:12px;}
+      .title-menu .over-sub{text-align:left; margin:10px 0 0; font-size:12.5px;}
+      .title-menu .start-note{margin-top:12px;}
+      /* 縦の短い画面ではさらに一段詰める */
+      @media (max-height:720px){
+        .title-brand .title-emblem{width:42px; height:42px;}
+        .sum-pick .sum-badge{width:46px; height:46px; font-size:21px;}
+        #startOverlay .btn-play{padding:11px;}
       }
       /* ===== 長押しでブラウザメニューが出る問題への対策 =====
          ゲーム内のカード画像・カード要素（手札 .hcard／オンライン手札 .ov-hcard、
@@ -2141,6 +2187,7 @@
 
     <div class="overlay" id="startOverlay">
       <div class="start-box">
+        <div class="title-brand">
         <svg class="title-emblem" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
           <defs>
             <linearGradient id="emblemGold" x1="0" y1="0" x2="0" y2="1">
@@ -2167,8 +2214,11 @@
             <polygon points="60,50 70,60 60,70 50,60" fill="url(#emblemGold)" stroke="none" />
           </g>
         </svg>
-        <h1 class="title-logo-text">アーケインサモンΩ</h1>
-        <p class="title-logo-sub"><span class="sub-text">ARCANE SUMMON Ω</span></p>
+        <div class="title-brand-text">
+          <h1 class="title-logo-text">アーケインサモンΩ</h1>
+          <p class="title-logo-sub"><span class="sub-text">ARCANE SUMMON Ω</span></p>
+        </div>
+        </div>
         <div class="first-choice" style="margin-top:4px;">
           <p class="first-choice-label">対戦モード</p>
           <div class="seg" id="modeSeg" role="group" aria-label="対戦モードの選択">
@@ -2177,7 +2227,7 @@
           </div>
           <p class="seg-note" id="modeSegNote">CPUと対戦します。デッキ・召喚士は下で選べます。</p>
         </div>
-        <div class="first-choice" style="margin-top:4px;">
+        <div class="first-choice" id="seChoiceBlock" style="margin-top:4px;">
           <p class="first-choice-label">効果音（SE）</p>
           <button class="btn-sub" id="seToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700;" aria-pressed="true">効果音：ON</button>
           <p class="seg-note">召喚・攻撃・破壊・回復などの効果音です。設定はこの端末に保存されます。</p>
@@ -2191,9 +2241,10 @@
         <div class="summoner-choice">
           <p class="first-choice-label">召喚士の選択</p>
           <div class="summoner-grid" id="summonerGrid" role="group" aria-label="召喚士の選択"></div>
-          <p class="seg-note">選んだ召喚士は保存されます。CPUは対戦ごとに5人からランダムで1人を選びます。</p>
+          <button class="summoner-info" id="summonerInfo" type="button" aria-label="選択中の召喚士の詳細を見る"><span class="summoner-info-text" id="summonerInfoText"></span><span class="summoner-info-more">詳細 ›</span></button>
+          <p class="seg-note" id="summonerSaveNote">選んだ召喚士は保存されます。CPUは対戦ごとに5人からランダムで1人を選びます。</p>
         </div>
-        <div class="first-choice cpu-only-block">
+        <div class="first-choice cpu-only-block" id="firstChoiceBlock">
           <p class="first-choice-label">手番の選択</p>
           <div class="seg" id="firstSeg" role="group" aria-label="先攻後攻の選択">
             <button class="seg-btn" type="button" data-first-mode="first">先行</button>
@@ -2202,7 +2253,7 @@
           </div>
           <p class="seg-note" id="firstSegNote"></p>
         </div>
-        <div class="first-choice cpu-only-block">
+        <div class="first-choice cpu-only-block" id="cpuSourceBlock">
           <p class="first-choice-label">対戦相手のデッキ</p>
           <div class="seg" id="cpuSourceSeg" role="group" aria-label="対戦相手のデッキの選択">
             <button class="seg-btn" type="button" data-cpu-source="random">ランダム（7デッキ）</button>
@@ -2218,7 +2269,7 @@
           <p class="seg-note" id="cpuSourceNote"></p>
           <button class="btn-sub" id="viewOpponentDecksBtn" type="button" style="width:100%; margin-top:8px; padding:11px; font-size:14px;">相手デッキの内容を見る</button>
         </div>
-        <div class="first-choice cpu-only-block">
+        <div class="first-choice cpu-only-block" id="simSummonerBlock">
           <p class="first-choice-label">テストプレイの召喚士（保存デッキ側）</p>
           <div class="seg" id="simSummonerSeg" role="group" aria-label="テストプレイの召喚士固定">
             <button class="seg-btn" type="button" data-sim-summoner="random">ランダム</button>
@@ -2235,6 +2286,8 @@
         <button class="btn-sub" id="streakStartBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">勝ち抜きモード（CPU連戦）</button>
         <button class="btn-sub" id="arcadeStartBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">アーケードモード（召喚士5連戦）</button>
         <button class="btn-sub" id="openDeckBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">デッキ編成</button>
+        <button class="btn-sub menu-toggle title-menu-btn" id="titleMenuBtn" type="button" style="width:100%; margin-top:9px; padding:10px; font-size:13.5px;" aria-expanded="false" aria-controls="titleMenu">☰ メニュー（設定・図鑑・その他）</button>
+        <div class="title-menu" id="titleMenu" hidden></div>
         <button class="btn-sub cpu-only-block" id="testPlayBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">テストプレイ1000戦</button>
         <button class="btn-sub cpu-only-block" id="testPlayCustomBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px; display:none;">テストプレイ1000戦（カスタム相手）</button>
         <button class="btn-sub" id="galleryBtnStart" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">カード一覧</button>
@@ -2242,7 +2295,7 @@
         <button class="btn-sub" id="rulesBtnStart" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">ルール説明</button>
         <p class="sim-progress cpu-only-block" id="simProgress" aria-live="polite"></p>
         <button class="btn-sub cpu-only-block" id="simCancelBtn" type="button" style="width:100%; margin-top:8px; padding:11px; font-size:14px; display:none;">テストプレイを中断する</button>
-        <p class="start-note">対戦相手のデッキは「ランダム（7デッキ）／疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣／カスタム」の9択から選べます。個別のデッキを選ぶと、そのデッキで対戦が始まります。カスタムは、デッキ編成で相手用に組んだ20枚です。「相手デッキの内容を見る」から各デッキの20枚を確認でき、そのまま自分のアクティブなスロットへコピーして編成で微調整できます。自分のデッキは3つのスロットに保存でき、対戦とテストプレイはアクティブなスロットを使います。自分のデッキも相手のデッキも、全カードから同名3枚まで・合計20枚で組めます。テストプレイは、保存デッキ vs CPU7デッキを均等に約1000戦（カスタム選択時はカスタム相手と1000戦）を、先攻／後攻を交互に入れ替えて自動で回し、勝率などを表示します。1000戦は時間がかかるため、実行中は進捗が表示され、「テストプレイを中断する」ボタンでいつでも中断できます（中断時は結果を表示しません）。保存デッキ側の召喚士は上の「テストプレイの召喚士」でランダム／固定を選べ、結果には召喚士×対戦デッキのクロス集計も表示されます。</p>
+        <p class="start-note" id="startNote">対戦相手のデッキは「ランダム（7デッキ）／疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣／カスタム」の9択から選べます。個別のデッキを選ぶと、そのデッキで対戦が始まります。カスタムは、デッキ編成で相手用に組んだ20枚です。「相手デッキの内容を見る」から各デッキの20枚を確認でき、そのまま自分のアクティブなスロットへコピーして編成で微調整できます。自分のデッキは3つのスロットに保存でき、対戦とテストプレイはアクティブなスロットを使います。自分のデッキも相手のデッキも、全カードから同名3枚まで・合計20枚で組めます。テストプレイは、保存デッキ vs CPU7デッキを均等に約1000戦（カスタム選択時はカスタム相手と1000戦）を、先攻／後攻を交互に入れ替えて自動で回し、勝率などを表示します。1000戦は時間がかかるため、実行中は進捗が表示され、「テストプレイを中断する」ボタンでいつでも中断できます（中断時は結果を表示しません）。保存デッキ側の召喚士は上の「テストプレイの召喚士」でランダム／固定を選べ、結果には召喚士×対戦デッキのクロス集計も表示されます。</p>
       </div>
     </div>
     <div class="overlay" id="onlineOverlay">
@@ -8270,8 +8323,9 @@
       document.getElementById('sumAbility').textContent = data.ability || '';
       var pct = data.maxHp > 0 ? Math.max(0, data.hp) / data.maxHp * 100 : 0;
       document.getElementById('sumHpBar').style.width = pct + '%';
-      var chips = '<span class="stat-chip">ライフ <b>' + Math.max(0, data.hp) + '</b><small> / ' + data.maxHp + '</small></span>' +
-        '<span class="stat-chip">魔力 <b>' + data.pp + '</b><small> / ' + data.maxPp + '</small></span>';
+      var chips = '<span class="stat-chip">ライフ <b>' + Math.max(0, data.hp) + '</b><small> / ' + data.maxHp + '</small></span>';
+      /* 魔力チップは値がある時だけ（タイトル画面からの詳細表示では対戦状態が無いため null が来る） */
+      if (data.pp != null) chips += '<span class="stat-chip">魔力 <b>' + data.pp + '</b><small> / ' + data.maxPp + '</small></span>';
       if (data.hand != null) chips += '<span class="stat-chip">手札 <b>' + data.hand + '</b><small> 枚</small></span>';
       if (data.deck != null) chips += '<span class="stat-chip">山札 <b>' + data.deck + '</b><small> 枚</small></span>';
       if (data.board != null) chips += '<span class="stat-chip">場 <b>' + data.board + '</b><small> / 5</small></span>';
@@ -8728,6 +8782,36 @@
         if (b) b.addEventListener('click', closeBattleMenu);
       });
     }
+    /* ===== タイトル画面の☰メニュー（コンパクト化） =====
+       副次的な設定・入口（SE切替／手番／相手デッキ／テストプレイ／図鑑／
+       演出チェック／ルール／説明文）は、読み込み時にタイトル画面の
+       メニューパネルへ移設する。appendChild は要素の移設だけで、
+       ID・クラス・既存のイベントリスナーはそのまま効き続ける。
+       主要モードボタン（対戦開始／オンラインへ／勝ち抜き／アーケード／
+       デッキ編成）は移設せず、常時表示のまま残す。 */
+    var titleMenu = document.getElementById('titleMenu');
+    var titleMenuBtn = document.getElementById('titleMenuBtn');
+    function closeTitleMenu(){
+      if (!titleMenu || !titleMenuBtn) return;
+      titleMenu.hidden = true;
+      titleMenuBtn.setAttribute('aria-expanded', 'false');
+    }
+    if (titleMenu && titleMenuBtn){
+      ['startDeckInfo','titleSlotNote','seChoiceBlock','firstChoiceBlock','cpuSourceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) titleMenu.appendChild(el);
+      });
+      titleMenuBtn.addEventListener('click', function(){
+        var open = titleMenu.hidden;
+        titleMenu.hidden = !open;
+        titleMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      /* 全面モーダルへ移るボタンは、押したらメニューも閉じておく */
+      ['galleryBtnStart','fxCheckBtnStart','rulesBtnStart'].forEach(function(id){
+        var b = document.getElementById(id);
+        if (b) b.addEventListener('click', closeTitleMenu);
+      });
+    }
     document.getElementById('againBtn').addEventListener('click', function(){
       closeAllOverlays();
       newGame();
@@ -8836,22 +8920,45 @@
       ids.forEach(function(id){ m[id] = (m[id] || 0) + 1; });
       return m;
     }
+    /* 召喚士の選択は丸型顔アイコンの横並びストリップ。顔画像が読めない環境では
+       summonerBadge が従来の記号バッジを返すため、そのまま代替表示になる。
+       選択中の名前＋能力はストリップ下の1行（#summonerInfoText）にだけ出す。 */
     function renderSummonerGrid(){
       document.getElementById('summonerGrid').innerHTML = SUMMONERS.map(function(x){
-        return '<button class="sum-btn' + (x.id === playerSummonerId ? ' sel' : '') + '" type="button" data-summoner="' + x.id + '">' +
+        var sel = x.id === playerSummonerId;
+        return '<button class="sum-pick' + (sel ? ' sel' : '') + '" type="button" data-summoner="' + x.id + '" aria-pressed="' + (sel ? 'true' : 'false') + '" aria-label="' + escapeHtml(x.name) + '" title="' + escapeHtml(x.name) + '">' +
           summonerBadge(x.id, true) +
-          '<span class="sum-btn-main"><span class="sum-btn-name">' + escapeHtml(x.name) + '</span><br><span class="sum-btn-ability">' + escapeHtml(x.ability) + '</span></span>' +
         '</button>';
       }).join('');
+      var infoText = document.getElementById('summonerInfoText');
+      if (infoText){
+        var cur = SUMMONER_BY_ID[playerSummonerId] || SUMMONERS[0];
+        infoText.innerHTML = '<b>' + escapeHtml(cur.name) + '</b> ― ' + escapeHtml(cur.ability);
+      }
+    }
+    /* タイトル画面から召喚士詳細シートを開く（対戦中のアバタータップと同じシート）。
+       対戦状態は無いので、ライフは初期値20だけを示し、魔力・手札等は出さない。 */
+    function openTitleSummonerDetail(){
+      var def = SUMMONER_BY_ID[playerSummonerId] || SUMMONERS[0];
+      openSummonerSheet({
+        summonerId: def.id, name: def.name, ability: def.ability,
+        sideLabel: '選択中の召喚士',
+        hp: 20, maxHp: 20, pp: null, maxPp: null,
+        hand: null, deck: null, board: null
+      });
     }
     document.getElementById('summonerGrid').addEventListener('click', function(ev){
       var btn = ev.target.closest('[data-summoner]');
       if (!btn) return;
-      playerSummonerId = btn.getAttribute('data-summoner');
+      var id = btn.getAttribute('data-summoner');
+      /* 選択中のアイコンをもう一度タップしたら詳細シートを開く */
+      if (id === playerSummonerId){ openTitleSummonerDetail(); return; }
+      playerSummonerId = id;
       savePlayerSummoner();
       renderSummonerGrid();
       refreshStartInfo();
     });
+    document.getElementById('summonerInfo').addEventListener('click', openTitleSummonerDetail);
     function renderTitleSlots(){
       var seg = document.getElementById('titleSlotSeg');
       if (!seg || !deckSlots) return;
@@ -8933,6 +9040,7 @@
       if (titleBgEl2) titleBgEl2.classList.add('on');
       renderSummonerGrid();
       refreshStartInfo();
+      closeTitleMenu();
       startOverlay.classList.add('show');
       /* 表示し直した直後は必ず先頭から（前回の残り位置で固まって見えるのを防ぐ） */
       startOverlay.scrollTop = 0;
