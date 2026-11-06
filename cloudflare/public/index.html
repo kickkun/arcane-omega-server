@@ -399,6 +399,11 @@
       .deck-note{font-size:11.5px; color:var(--ink-faint); line-height:1.7; margin-top:14px;}
       .sum-badge{display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; font-size:14px; line-height:1; flex:0 0 auto; border:1.5px solid rgba(255,255,255,.55); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5);}
       .sum-badge.lg{width:34px; height:34px; font-size:18px;}
+      /* 召喚士の顔アイコン（同一オリジンの summoners/icon-<id>.webp、透過円形）。
+         バッジの中に画像を重ね、読めた場合だけ顔が表示される。読めない環境では
+         画像側が自分を消し、下の記号＋色グラデーション（従来表示）がそのまま残る。 */
+      .sum-badge{position:relative; overflow:hidden;}
+      .sum-badge .sum-face-img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; display:block;}
       .sum-chloe{background:radial-gradient(circle at 35% 30%,#b79af0,#6d3fc4);}
       .sum-garen{background:radial-gradient(circle at 35% 30%,#ffb066,#c93a1e);}
       .sum-bran{background:radial-gradient(circle at 35% 30%,#aebfd2,#546a84);}
@@ -692,6 +697,63 @@
         font-family:"Shippori Mincho B1",serif; font-size:44px; font-weight:800; letter-spacing:.06em;
         color:var(--gold-bright); margin:0 0 6px; line-height:1.2;
       }
+      #streakSummonerSeg{display:grid; grid-template-columns:repeat(5,1fr); gap:6px;}
+      #streakSummonerSeg .seg-btn{flex:none; padding:8px 2px; overflow-wrap:anywhere;}
+      .streak-lb-sum{display:inline-flex; align-items:center; gap:5px;}
+      /* ===== Ω追加：アーケードモード ===== */
+      #arcadeOverlay{flex-direction:column; align-items:center; justify-content:flex-start; padding:14px; z-index:84; overflow-y:auto; touch-action:pan-y;}
+      #arcadeOverlay.show{display:block;}
+      .arcade-box{width:100%; max-width:560px; margin:0 auto;}
+      .arcade-record{
+        text-align:center; border:1px solid var(--gold); border-radius:12px; background:rgba(201,162,75,.10);
+        padding:12px 10px; margin-top:6px;
+      }
+      .arcade-record-num{font-family:"Shippori Mincho B1",serif; font-size:34px; font-weight:800; color:var(--gold-bright); line-height:1.15;}
+      .arcade-record-label{font-size:12px; font-weight:700; color:var(--ink-dim); letter-spacing:.08em;}
+      .arcade-record-sums{margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; justify-content:center;}
+      .arcade-record-chip{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:var(--ink); background:var(--panel2); border:1px solid var(--line); border-radius:99px; padding:3px 10px 3px 4px;}
+      .arcade-stages{margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+      .arcade-stage-row{display:flex; align-items:center; gap:10px; padding:8px 12px; font-size:13.5px; background:var(--panel2); border-bottom:1px solid var(--line);}
+      .arcade-stage-row:last-child{border-bottom:none;}
+      .arcade-stage-row.done{opacity:.55;}
+      .arcade-stage-row.now{background:rgba(201,162,75,.16); font-weight:800;}
+      .arcade-stage-no{flex:0 0 58px; font-weight:900; color:var(--gold-bright); font-size:12px; letter-spacing:.05em;}
+      .arcade-stage-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+      .arcade-stage-deck{flex:0 0 auto; font-size:12px; color:var(--ink-dim);}
+      #arcadeSummonerSeg{display:grid; grid-template-columns:repeat(5,1fr); gap:6px;}
+      #arcadeSummonerSeg .seg-btn{flex:none; padding:8px 2px; overflow-wrap:anywhere;}
+      /* アーケード会話画面：立ち絵＋セリフ、タップで進む */
+      #arcadeTalkOverlay{z-index:88; flex-direction:column; align-items:center; justify-content:flex-end; padding:0; cursor:pointer;}
+      #arcadeTalkOverlay.show{display:flex;}
+      .arcade-talk-stage{
+        position:absolute; top:14px; left:0; right:0; text-align:center; z-index:2;
+        font-family:"Shippori Mincho B1",serif; font-size:15px; font-weight:800; letter-spacing:.22em; color:var(--gold-bright);
+        text-shadow:0 2px 8px rgba(0,0,0,.8);
+      }
+      .arcade-talk-fig{position:absolute; inset:0; display:flex; align-items:flex-start; justify-content:center; overflow:hidden;}
+      .arcade-talk-fig img{height:100%; max-width:none; object-fit:cover; object-position:top center;}
+      .arcade-talk-fallback{display:none; flex-direction:column; align-items:center; gap:14px; padding-top:16vh;}
+      .arcade-talk-fallback .sum-badge{width:132px; height:132px; font-size:62px; border-width:3px;}
+      .arcade-talk-fallback-name{font-family:"Shippori Mincho B1",serif; font-size:24px; font-weight:800; color:var(--ink); text-shadow:0 2px 8px rgba(0,0,0,.6);}
+      .arcade-talk-box{
+        position:relative; z-index:2; width:100%; max-width:640px; margin:0 auto;
+        background:linear-gradient(180deg, rgba(16,13,26,.82), rgba(16,13,26,.94));
+        border-top:1.5px solid var(--gold); padding:16px 18px calc(16px + env(safe-area-inset-bottom));
+      }
+      .arcade-talk-name{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:900; color:var(--gold-bright); margin-bottom:6px;}
+      .arcade-talk-line{font-size:16.5px; line-height:1.75; color:#f2ecdd; min-height:3.4em; margin:0;}
+      .arcade-talk-hint{margin-top:8px; font-size:11.5px; color:var(--ink-dim); text-align:right; letter-spacing:.08em; animation:arcadeHintPulse 1.6s ease-in-out infinite;}
+      @keyframes arcadeHintPulse{0%,100%{opacity:.45;}50%{opacity:1;}}
+      @media (prefers-reduced-motion: reduce){ .arcade-talk-hint{animation:none;} }
+      .arcade-talk-quit{
+        position:absolute; top:12px; right:12px; z-index:3; background:rgba(16,13,26,.72); color:var(--ink-dim);
+        border:1px solid var(--line); border-radius:99px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;
+      }
+      #arcadeClearOverlay{z-index:87;}
+      .arcade-clear-fig{display:flex; justify-content:center; margin:6px 0 2px;}
+      .arcade-clear-fig img{max-height:300px; max-width:100%; object-fit:contain; border-radius:12px;}
+      .arcade-clear-fallback{display:none; justify-content:center; margin:6px 0 2px;}
+      .arcade-clear-fallback .sum-badge{width:96px; height:96px; font-size:44px; border-width:3px;}
       .conn-pill{display:inline-block; font-size:12px; font-weight:900; border-radius:99px; padding:2px 10px; background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);}
       .conn-pill.on{color:#241a05; background:linear-gradient(180deg,#bfe8b0,#7fbf6a); border-color:#4c7a3d;}
       .conn-pill.wait{color:#241a05; background:linear-gradient(180deg,#f3d98b,#d9a94e); border-color:#8a6a25;}
@@ -2012,7 +2074,7 @@
         <div class="rules">
           <ul>
             <li><b>召喚士ライフ20</b>。相手の召喚士ライフを0にすれば勝ちです。手番はタイトル画面で<b>先行／後攻／ランダム</b>から選べます（デフォルトは先行）。</li>
-            <li><b>デッキ編成</b>：全カードから同名3枚まで、合計20枚でデッキを組めます（タイトル画面から）。相手のデッキも同じ画面で編集でき、タイトル画面で対戦相手を「カスタム」にするとそのデッキが相手になります。対戦相手は「ランダム（4デッキ）／疾風／巨塔／深淵／聖域／カスタム」の6択から選べます（デフォルトはランダム）。</li>
+            <li><b>デッキ編成</b>：全カードから同名3枚まで、合計20枚でデッキを組めます（タイトル画面から）。相手のデッキも同じ画面で編集でき、タイトル画面で対戦相手を「カスタム」にするとそのデッキが相手になります。対戦相手は「ランダム（7デッキ）／疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣／カスタム」の9択から選べます（デフォルトはランダム）。</li>
             <li><b>後攻補償</b>：先攻は初期手札4枚で、最初のターンはドローしません。後攻は初期手札5枚に加え、専用カード<b>「追い上げコイン」</b>（0コスト：そのターンだけ魔力+1、使い切り）を1枚持ちます。あなたが後攻の時はCPUが先攻で動き、コインはあなたが手札から使えます。</li>
             <li>自分のターン開始時に<b>最大魔力+1（上限10）＆ 魔力全回復</b>、カードを1枚引きます（先攻の初ターンのみドローなし）。デッキ切れで引くときは代わりに自分の召喚士が1ダメージ。</li>
             <li>場に出せるユニットは<b>最大5体</b>。ユニットは<b>出したターンには攻撃できません</b>（速攻持ちを除く）。攻撃は1体につきターンに1回まで（「3回攻撃」を持つユニットは3回まで）。</li>
@@ -2143,11 +2205,14 @@
         <div class="first-choice cpu-only-block">
           <p class="first-choice-label">対戦相手のデッキ</p>
           <div class="seg" id="cpuSourceSeg" role="group" aria-label="対戦相手のデッキの選択">
-            <button class="seg-btn" type="button" data-cpu-source="random">ランダム（4デッキ）</button>
+            <button class="seg-btn" type="button" data-cpu-source="random">ランダム（7デッキ）</button>
             <button class="seg-btn" type="button" data-cpu-source="shippu">疾風</button>
             <button class="seg-btn" type="button" data-cpu-source="kyotou">巨塔</button>
             <button class="seg-btn" type="button" data-cpu-source="shinen">深淵</button>
             <button class="seg-btn" type="button" data-cpu-source="seiei">聖域</button>
+            <button class="seg-btn" type="button" data-cpu-source="seiyari">聖槍</button>
+            <button class="seg-btn" type="button" data-cpu-source="kokuryu">黒竜</button>
+            <button class="seg-btn" type="button" data-cpu-source="seiken">聖剣</button>
             <button class="seg-btn" type="button" data-cpu-source="custom">カスタム</button>
           </div>
           <p class="seg-note" id="cpuSourceNote"></p>
@@ -2168,6 +2233,7 @@
         <button class="btn-play cpu-only-block" id="startBattleBtn" type="button" style="width:100%; margin-top:10px;">対戦開始</button>
         <button class="btn-play" id="onlineStartBtn" type="button" style="width:100%; margin-top:10px; display:none;">オンライン対戦へ進む</button>
         <button class="btn-sub" id="streakStartBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">勝ち抜きモード（CPU連戦）</button>
+        <button class="btn-sub" id="arcadeStartBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">アーケードモード（召喚士5連戦）</button>
         <button class="btn-sub" id="openDeckBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">デッキ編成</button>
         <button class="btn-sub cpu-only-block" id="testPlayBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">テストプレイ1000戦</button>
         <button class="btn-sub cpu-only-block" id="testPlayCustomBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px; display:none;">テストプレイ1000戦（カスタム相手）</button>
@@ -2176,7 +2242,7 @@
         <button class="btn-sub" id="rulesBtnStart" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">ルール説明</button>
         <p class="sim-progress cpu-only-block" id="simProgress" aria-live="polite"></p>
         <button class="btn-sub cpu-only-block" id="simCancelBtn" type="button" style="width:100%; margin-top:8px; padding:11px; font-size:14px; display:none;">テストプレイを中断する</button>
-        <p class="start-note">対戦相手のデッキは「ランダム（4デッキ）／疾風／巨塔／深淵／聖域／カスタム」の6択から選べます。個別のデッキを選ぶと、そのデッキで対戦が始まります。カスタムは、デッキ編成で相手用に組んだ20枚です。「相手デッキの内容を見る」から各デッキの20枚を確認でき、そのまま自分のアクティブなスロットへコピーして編成で微調整できます。自分のデッキは3つのスロットに保存でき、対戦とテストプレイはアクティブなスロットを使います。自分のデッキも相手のデッキも、全カードから同名3枚まで・合計20枚で組めます。テストプレイは、保存デッキ vs CPU4デッキ各250戦＝合計1000戦（カスタム選択時はカスタム相手と1000戦）を、先攻／後攻を交互に入れ替えて自動で回し、勝率などを表示します。1000戦は時間がかかるため、実行中は進捗が表示され、「テストプレイを中断する」ボタンでいつでも中断できます（中断時は結果を表示しません）。保存デッキ側の召喚士は上の「テストプレイの召喚士」でランダム／固定を選べ、結果には召喚士×対戦デッキのクロス集計も表示されます。</p>
+        <p class="start-note">対戦相手のデッキは「ランダム（7デッキ）／疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣／カスタム」の9択から選べます。個別のデッキを選ぶと、そのデッキで対戦が始まります。カスタムは、デッキ編成で相手用に組んだ20枚です。「相手デッキの内容を見る」から各デッキの20枚を確認でき、そのまま自分のアクティブなスロットへコピーして編成で微調整できます。自分のデッキは3つのスロットに保存でき、対戦とテストプレイはアクティブなスロットを使います。自分のデッキも相手のデッキも、全カードから同名3枚まで・合計20枚で組めます。テストプレイは、保存デッキ vs CPU7デッキを均等に約1000戦（カスタム選択時はカスタム相手と1000戦）を、先攻／後攻を交互に入れ替えて自動で回し、勝率などを表示します。1000戦は時間がかかるため、実行中は進捗が表示され、「テストプレイを中断する」ボタンでいつでも中断できます（中断時は結果を表示しません）。保存デッキ側の召喚士は上の「テストプレイの召喚士」でランダム／固定を選べ、結果には召喚士×対戦デッキのクロス集計も表示されます。</p>
       </div>
     </div>
     <div class="overlay" id="onlineOverlay">
@@ -2257,7 +2323,7 @@
       <div class="start-box streak-box">
         <p class="start-title" style="font-size:27px;">勝ち抜きモード</p>
         <p class="start-sub">CPU連戦＆ランキング</p>
-        <p class="start-note" style="text-align:left;">デッキと召喚士を固定してCPUと連戦し、負けるまでの連勝数を競います。相手のデッキは4テーマ（疾風／巨塔／深淵／聖域）から毎試合ランダム、相手の召喚士もランダムです。勝つたびに連勝数がサーバーへ登録され、ランキングに反映されます。</p>
+        <p class="start-note" style="text-align:left;">デッキと召喚士を固定してCPUと連戦し、負けるまでの連勝数を競います。相手のデッキは7テーマ（疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣）から毎試合ランダム、相手の召喚士もランダムです。勝つたびに連勝数がサーバーへ登録され、ランキングに反映されます。</p>
         <div class="streak-best">
           <div class="streak-best-label">あなたの自己ベスト</div>
           <div class="streak-best-num" id="streakMyBest">―</div>
@@ -2296,6 +2362,70 @@
         <p class="over-sub" id="streakResultSub" style="white-space:pre-line;"></p>
         <button class="btn-play" id="streakRetryBtn" type="button" style="width:100%;">もう一度挑戦</button>
         <button class="btn-close" id="streakResultTitleBtn" type="button" style="width:100%; margin-top:9px; padding:12px; flex:none;">タイトルへ</button>
+      </div>
+    </div>
+    <div class="overlay" id="arcadeOverlay">
+      <div class="start-box arcade-box">
+        <p class="start-title" style="font-size:27px;">アーケードモード</p>
+        <p class="start-sub">召喚士5連戦・固定ラダー</p>
+        <p class="start-note" style="text-align:left;">デッキと召喚士を固定して、5人の召喚士と決まった順番で戦います。オルガ（黒竜）→ ミア（聖域）→ ブラン（聖槍）→ ガレン（聖剣）→ クロエ（疾風）。ライフは毎試合20、負けたらラン終了で最初からやり直しです。全員倒すと制覇です。</p>
+        <div class="arcade-record">
+          <div class="arcade-record-label">アーケード制覇</div>
+          <div class="arcade-record-num" id="arcadeClearCount">制覇 0回</div>
+          <div class="arcade-record-label" id="arcadeAttemptCount" style="margin-top:4px;">挑戦 0回</div>
+          <div class="arcade-record-sums" id="arcadeClearSums"></div>
+        </div>
+        <div class="first-choice" style="margin-top:14px; text-align:left;">
+          <p class="first-choice-label">ステージ</p>
+          <div class="arcade-stages" id="arcadeStageList"></div>
+        </div>
+        <div class="first-choice" style="text-align:left;">
+          <p class="first-choice-label">使うデッキ（保存スロット）</p>
+          <div class="seg" id="arcadeSlotSeg" role="group" aria-label="アーケードで使うデッキスロット"></div>
+          <p class="seg-note" id="arcadeSlotNote"></p>
+        </div>
+        <div class="first-choice" style="text-align:left;">
+          <p class="first-choice-label">召喚士</p>
+          <div class="seg" id="arcadeSummonerSeg" role="group" aria-label="アーケードの召喚士"></div>
+          <p class="seg-note" id="arcadeSummonerNote"></p>
+        </div>
+        <button class="btn-play" id="arcadeRunStartBtn" type="button" style="width:100%; margin-top:10px;">アーケード開始</button>
+        <button class="btn-sub" id="arcadeBackBtn" type="button" style="width:100%; margin-top:10px; padding:12px; font-size:14px;">タイトルに戻る</button>
+      </div>
+    </div>
+    <div class="overlay" id="arcadeTalkOverlay">
+      <p class="arcade-talk-stage" id="arcadeTalkStage"></p>
+      <button class="arcade-talk-quit" id="arcadeTalkQuitBtn" type="button">ランを中断</button>
+      <div class="arcade-talk-fig">
+        <img id="arcadeTalkImg" alt="">
+        <div class="arcade-talk-fallback" id="arcadeTalkFallback">
+          <span id="arcadeTalkFallbackBadge"></span>
+          <span class="arcade-talk-fallback-name" id="arcadeTalkFallbackName"></span>
+        </div>
+      </div>
+      <div class="arcade-talk-box">
+        <p class="arcade-talk-name" id="arcadeTalkName"></p>
+        <p class="arcade-talk-line" id="arcadeTalkLine"></p>
+        <p class="arcade-talk-hint">タップで進む ▼</p>
+      </div>
+    </div>
+    <div class="overlay" id="arcadeClearOverlay">
+      <div class="over-box">
+        <p class="over-title win">アーケード制覇！</p>
+        <div class="arcade-clear-fig"><img id="arcadeClearImg" alt=""></div>
+        <div class="arcade-clear-fallback" id="arcadeClearFallback"><span id="arcadeClearFallbackBadge"></span></div>
+        <p class="over-sub" id="arcadeClearSub" style="white-space:pre-line;"></p>
+        <button class="btn-play" id="arcadeClearAgainBtn" type="button" style="width:100%;">アーケード画面へ</button>
+        <button class="btn-close" id="arcadeClearTitleBtn" type="button" style="width:100%; margin-top:9px; padding:12px; flex:none;">タイトルへ</button>
+      </div>
+    </div>
+    <div class="overlay" id="arcadeLoseOverlay">
+      <div class="over-box">
+        <p class="over-title lose">ラン終了</p>
+        <p class="over-sub" id="arcadeLoseSub" style="white-space:pre-line;"></p>
+        <button class="btn-play" id="arcadeLoseRetryBtn" type="button" style="width:100%;">リトライ</button>
+        <button class="btn-sub" id="arcadeLoseChangeBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">デッキ・召喚士を変える</button>
+        <button class="btn-close" id="arcadeLoseTitleBtn" type="button" style="width:100%; margin-top:9px; padding:12px; flex:none;">タイトルへ</button>
       </div>
     </div>
     <div class="deck-overlay" id="deckOverlay">
@@ -2381,12 +2511,15 @@
     <div class="overlay" id="opponentDeckOverlay">
       <div class="sim-box">
         <h3>相手デッキの内容</h3>
-        <p class="sim-note">プリセット（疾風／巨塔／深淵／聖域）とカスタムの20枚を確認できます。カードのイラストをタップすると、効果の全文が読める詳細が開きます。カスタムは現在の相手用カスタムデッキの内容です。</p>
-        <div class="seg" id="oppDeckSeg" role="group" aria-label="見る相手デッキの選択" style="margin-top:12px;">
+        <p class="sim-note">プリセット（疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣）とカスタムの20枚を確認できます。カードのイラストをタップすると、効果の全文が読める詳細が開きます。カスタムは現在の相手用カスタムデッキの内容です。</p>
+        <div class="seg" id="oppDeckSeg" role="group" aria-label="見る相手デッキの選択" style="margin-top:12px; flex-wrap:wrap;">
           <button class="seg-btn" type="button" data-opp-view="shippu">疾風</button>
           <button class="seg-btn" type="button" data-opp-view="kyotou">巨塔</button>
           <button class="seg-btn" type="button" data-opp-view="shinen">深淵</button>
           <button class="seg-btn" type="button" data-opp-view="seiei">聖域</button>
+          <button class="seg-btn" type="button" data-opp-view="seiyari">聖槍</button>
+          <button class="seg-btn" type="button" data-opp-view="kokuryu">黒竜</button>
+          <button class="seg-btn" type="button" data-opp-view="seiken">聖剣</button>
           <button class="seg-btn" type="button" data-opp-view="custom">カスタム</button>
         </div>
         <div class="opp-summary" id="oppDeckSummary"></div>
@@ -2451,7 +2584,7 @@
         <ul>
           <li>全カードから<b>同名カードは3枚まで</b>、<b>合計20枚</b>でデッキを組めます（タイトル画面の「デッキ編成」から）。</li>
           <li>自分のデッキは<b>3つのスロット</b>に保存でき、名前も付けられます。対戦とテストプレイは<b>アクティブなスロット</b>の内容を使い、アクティブなスロットはタイトル画面に表示されます。</li>
-          <li>対戦相手のデッキも同じ画面で編集できます（「相手のデッキ」に切り替え）。タイトル画面で対戦相手を「カスタム」にすると、そのデッキが相手になります。タイトル画面では「疾風」「巨塔」「深淵」「聖域」を個別に選んで対戦することもできます。また「相手デッキの内容を見る」から各デッキの20枚を確認でき、自分のアクティブなスロットへコピーもできます。</li>
+          <li>対戦相手のデッキも同じ画面で編集できます（「相手のデッキ」に切り替え）。タイトル画面で対戦相手を「カスタム」にすると、そのデッキが相手になります。タイトル画面では「疾風」「巨塔」「深淵」「聖域」「聖槍」「黒竜」「聖剣」を個別に選んで対戦することもできます。また「相手デッキの内容を見る」から各デッキの20枚を確認でき、自分のアクティブなスロットへコピーもできます。</li>
         </ul>
         <h4>神話カード</h4>
         <ul>
@@ -2846,13 +2979,14 @@
       try { localStorage.setItem(CPU_DECK_KEY, JSON.stringify(ids)); } catch (e) {}
     }
     var cpuDeck = loadCpuDeck();
-    /* 対戦相手デッキの出所：'random'（4デッキからランダム）／'shippu'（疾風）／'kyotou'（巨塔）／
-       'shinen'（深淵）／'seiei'（聖域）／'custom'（編成した相手デッキ）。
+    /* 対戦相手デッキの出所：'random'（7デッキからランダム）／'shippu'（疾風）／'kyotou'（巨塔）／
+       'shinen'（深淵）／'seiei'（聖域）／'seiyari'（聖槍）／'kokuryu'（黒竜）／'seiken'（聖剣）／
+       'custom'（編成した相手デッキ）。
        デフォルトはランダム。選択はこの端末に保存する。旧保存値 'balance' は許可値から
        外れているため、初期値の 'random' として読み替えられる。CPUの召喚士は常にランダムのまま。 */
     var CPU_SOURCE_KEY = 'cardbattle.cpuDeckSource.v1';
-    var CPU_SOURCE_VALUES = ['random','shippu','kyotou','shinen','seiei','custom'];
-    var CPU_PRESET_BY_SOURCE = { shippu: 0, kyotou: 1, shinen: 2, seiei: 3 };
+    var CPU_SOURCE_VALUES = ['random','shippu','kyotou','shinen','seiei','seiyari','kokuryu','seiken','custom'];
+    var CPU_PRESET_BY_SOURCE = { shippu: 0, kyotou: 1, shinen: 2, seiei: 3, seiyari: 4, kokuryu: 5, seiken: 6 };
     var cpuDeckSource = 'random';
     try {
       var savedCpuSource = localStorage.getItem(CPU_SOURCE_KEY);
@@ -2881,11 +3015,14 @@
       { name: '疾風デッキ',     ids: [46,46,46,2,2,2,23,23,23,12,12,13,13,14,14,11,11,1,1,15] },
       { name: '巨塔デッキ',     ids: [41,41,41,3,3,4,4,4,22,22,5,5,6,6,7,7,51,51,51,16] },
       { name: '深淵デッキ',     ids: [48,48,48,18,18,18,12,12,13,13,20,20,25,25,4,4,5,5,26,7] },
-      { name: '聖域デッキ',     ids: [39,39,39,40,40,40,41,41,41,42,42,42,43,43,44,44,3,3,45,16] }
+      { name: '聖域デッキ',     ids: [39,39,39,40,40,40,41,41,41,42,42,42,43,43,44,44,3,3,45,16] },
+      { name: '聖槍デッキ',     ids: [54,54,54,2,2,2,23,23,23,34,34,12,12,12,13,13,13,17,17,17] },
+      { name: '黒竜デッキ',     ids: [53,53,53,40,40,40,41,41,41,2,2,2,23,23,23,34,34,12,12,12] },
+      { name: '聖剣デッキ',     ids: [52,52,52,17,17,17,11,11,11,13,13,13,12,12,8,8,8,3,3,3] }
     ];
     /* 相手デッキ閲覧・コピー用：キーから「名前＋解決済み20枚」を返す。
        カスタムは現在の相手用カスタムデッキをそのまま返す。 */
-    var OPP_VIEW_KEYS = ['shippu','kyotou','shinen','seiei','custom'];
+    var OPP_VIEW_KEYS = ['shippu','kyotou','shinen','seiei','seiyari','kokuryu','seiken','custom'];
     function opponentDeckDefByKey(key){
       if (key === 'custom') return { key:'custom', name:'カスタムデッキ', ids: cpuDeck.slice() };
       var idx2 = CPU_PRESET_BY_SOURCE[key];
@@ -2922,10 +3059,34 @@
     ];
     var SUMMONER_BY_ID = {};
     SUMMONERS.forEach(function(x){ SUMMONER_BY_ID[x.id] = x; });
+    /* 顔アイコンは fx 素材と同じ方式で、JSで先読みして「読めた場合だけ」バッジに重ねる。
+       読めない環境では画像要素自体を出さず、従来の記号バッジのままになる。 */
+    var SUMMONER_ICON_STATE = {}; /* id -> 1:読めた / 2:読めなかった */
+    function summonerIconSrc(id){ return 'summoners/icon-' + id + '.webp'; }
+    SUMMONERS.forEach(function(x){
+      var im = new Image();
+      im.onload = function(){ SUMMONER_ICON_STATE[x.id] = 1; refreshSummonerIcons(); };
+      im.onerror = function(){ SUMMONER_ICON_STATE[x.id] = 2; };
+      im.src = summonerIconSrc(x.id);
+    });
+    /* 先読み完了後に表示中のバッジ類を描き直し、顔アイコンへ差し替える */
+    function refreshSummonerIcons(){
+      try {
+        if (document.getElementById('startOverlay').classList.contains('show') && typeof renderSummonerGrid === 'function') renderSummonerGrid();
+        if (typeof S !== 'undefined' && S && !HEADLESS && typeof render === 'function') render();
+      } catch (e) {}
+    }
     function summonerBadge(id, lg){
       var d = SUMMONER_BY_ID[id] || SUMMONERS[0];
-      return '<span class="sum-badge ' + d.cls + (lg ? ' lg' : '') + '" aria-hidden="true">' + d.mark + '</span>';
+      var face = SUMMONER_ICON_STATE[d.id] === 1
+        ? '<img class="sum-face-img" src="' + summonerIconSrc(d.id) + '" alt="" onerror="this.style.display=\'none\'">'
+        : '';
+      return '<span class="sum-badge ' + d.cls + (lg ? ' lg' : '') + '" aria-hidden="true">' + d.mark + face + '</span>';
     }
+    /* 召喚士の立ち絵パス（アーケード会話画面用。同一オリジンの外部配置前提） */
+    function summonerFullSrc(id){ return 'summoners/full-' + id + '.webp'; }
+    /* 負け顔の表情差分（プレイヤー勝利後の敗北セリフ表示時だけ使う） */
+    function summonerFullLoseSrc(id){ return 'summoners/full-' + id + '-lose.webp'; }
     var SUMMONER_KEY = 'cardbattle.summoner.v1';
     var playerSummonerId = 'chloe';
     try {
@@ -5055,7 +5216,7 @@
     try { pixiReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
     /* 詳細シートやタイトル等の全面画面が開いている間はキャンバスを隠す
        （オンライン対戦画面は盤面そのものなので対象外） */
-    var PIXI_BLOCK_OVERLAYS = ['detailOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','streakOverlay','streakNextOverlay','streakResultOverlay'];
+    var PIXI_BLOCK_OVERLAYS = ['detailOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','streakOverlay','streakNextOverlay','streakResultOverlay','arcadeOverlay','arcadeTalkOverlay','arcadeClearOverlay','arcadeLoseOverlay'];
     function pixiInit(){
       if (HEADLESS) return;
       if (typeof window.PIXI === 'undefined') return; /* 読み込み失敗：無効化して従来動作 */
@@ -5834,7 +5995,7 @@
        HEADLESS（テストプレイ）では生成も表示もしない。 */
     var stagePeds = { cpu: null, ov: null };
     var stagePedObserverReady = false;
-    var STAGE_PED_HIDE_OVERLAYS = ['startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay'];
+    var STAGE_PED_HIDE_OVERLAYS = ['startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay','arcadeOverlay','arcadeTalkOverlay','arcadeClearOverlay','arcadeLoseOverlay'];
     function stagePedEnsure(scope){
       if (HEADLESS) return null;
       var ped = stagePeds[scope];
@@ -6503,6 +6664,8 @@
         if (document.getElementById('deckOverlay').classList.contains('show')) return;
         /* 勝ち抜きモードのラン中は、通常の勝敗画面ではなく勝ち抜き側の画面を出す */
         if (typeof streakOnMatchEnd === 'function' && streakOnMatchEnd(win)) return;
+        /* アーケードモードのラン中も同様に、アーケード側の決着処理へ渡す */
+        if (typeof arcadeOnMatchEnd === 'function' && arcadeOnMatchEnd(win)) return;
         document.getElementById('overOverlay').classList.add('show');
       }, overDelay);
     }
@@ -8657,7 +8820,7 @@
        スクロール不具合対策：画面遷移のたびに、開いているモーダルを
        すべて確実に閉じてから次の画面を1つだけ開く。
        閉じ忘れたモーダルが残ると、見えないままタッチとスクロールを奪う。 */
-    var ALL_OVERLAY_IDS = ['detailOverlay','summonerOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','onlineOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay'];
+    var ALL_OVERLAY_IDS = ['detailOverlay','summonerOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','onlineOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay','arcadeOverlay','arcadeTalkOverlay','arcadeClearOverlay','arcadeLoseOverlay'];
     function closeAllOverlays(){
       ALL_OVERLAY_IDS.forEach(function(id){
         var el = document.getElementById(id);
@@ -8721,14 +8884,14 @@
       else txt += 'あなたは先行で、CPUは後攻補償（手札5枚＋追い上げコイン）を持ちます。';
       if (cpuDeckSource === 'custom') txt += '対戦相手はカスタムデッキ（相手用に編成した20枚）です。';
       else if (isPresetCpuSource(cpuDeckSource)) txt += '対戦相手は' + presetCpuDeckName(cpuDeckSource) + 'です。';
-      else txt += '対戦相手はランダム（4デッキ）です。';
+      else txt += '対戦相手はランダム（' + CPU_DECKS.length + 'デッキ）です。';
       document.getElementById('startDeckInfo').textContent = txt;
       var cpuSegBtns = document.querySelectorAll('#cpuSourceSeg .seg-btn');
       cpuSegBtns.forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-cpu-source') === cpuDeckSource); });
       document.getElementById('cpuSourceNote').textContent =
         cpuDeckSource === 'custom' ? 'カスタム：デッキ編成で「相手のデッキ」として組んだ20枚と対戦します。CPUの召喚士はランダムのままです。'
         : isPresetCpuSource(cpuDeckSource) ? presetCpuDeckName(cpuDeckSource) + '：CPUは' + presetCpuDeckName(cpuDeckSource) + 'で対戦します。CPUの召喚士はランダムのままです。'
-        : 'ランダム：CPUは「疾風」「巨塔」「深淵」「聖域」の4デッキから対戦ごとに1つを選びます。CPUの召喚士はランダムのままです。';
+        : 'ランダム：CPUは「' + CPU_DECKS.map(function(d){ return d.name.replace(/デッキ$/, ''); }).join('」「') + '」の' + CPU_DECKS.length + 'デッキから対戦ごとに1つを選びます。CPUの召喚士はランダムのままです。';
       document.getElementById('testPlayCustomBtn').style.display = cpuDeckSource === 'custom' ? '' : 'none';
       var simSegBtns = document.querySelectorAll('#simSummonerSeg .seg-btn');
       simSegBtns.forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-sim-summoner') === simSummonerId); });
@@ -9076,7 +9239,7 @@
     });
 
     /* ================= テストプレイ（自動対戦シミュレーション） =================
-       保存デッキ vs CPU4デッキを各250戦、先攻／後攻を交互に入れ替えて計1000戦。
+       保存デッキ vs CPUプリセット全デッキを均等に、先攻／後攻を交互に入れ替えて計約1000戦。
        カスタム相手の場合はカスタムデッキと1000戦。
        実行ごとにランダムなシードを使い、対面対戦の状態は退避して復元する。
        1000戦は時間がかかるため、一定試合ごとに await で UI に処理を返し、
@@ -9186,7 +9349,7 @@
       var savedUid = uidSeq;
       var savedRandom = Math.random;
       var simSeed = makeSimSeed();
-      /* classic：CPUプリセット全デッキと均等に1000戦（4デッキなら各250戦）。custom：カスタムデッキと1000戦 */
+      /* classic：CPUプリセット全デッキと均等に約1000戦（7デッキなら各142戦）。custom：カスタムデッキと1000戦 */
       var deckDefs = mode === 'custom' ? [customCpuDeckDef()] : CPU_DECKS;
       var gamesPerDeck = mode === 'custom' ? totalGames : Math.floor(totalGames / deckDefs.length);
       /* 実行開始時点の固定設定を確定させる（実行中の切り替えは次回から効く） */
@@ -9262,7 +9425,7 @@
       document.getElementById('simMeta').textContent =
         (mode === 'custom'
           ? '保存デッキ vs カスタムデッキ（相手用に編成したデッキ）1000戦、先攻／後攻は交互。'
-          : '保存デッキ vs CPU4デッキ（疾風／巨塔／深淵／聖域）各250戦・合計1000戦、先攻／後攻は交互。')
+          : '保存デッキ vs CPU' + deckDefs.length + 'デッキ（' + deckDefs.map(function(d){ return d.name.replace(/デッキ$/, ''); }).join('／') + '）を均等に対戦・合計' + stats.total + '戦、先攻／後攻は交互。')
         + sumSentence + '後攻補償は対面対戦と同一。シード：' + simSeed + '（実行ごとにランダムなため、回すたびに結果が変わります）。両者ともCPUと同じ考え方で操作しています。';
       document.getElementById('simSummonerSectionNote').textContent = fixedDef
         ? '保存デッキ側の召喚士を「' + fixedDef.name + '」に固定して回したため、その召喚士に全試合が集まっています。CPU側の召喚士はランダムです。'
@@ -9274,7 +9437,7 @@
         kpi('先攻側の勝率', pct(stats.firstWins, stats.total) + '%', stats.firstWins + '勝 / ' + stats.total + '戦') +
         kpi('後攻側の勝率', pct(stats.secondWins, stats.total) + '%', stats.secondWins + '勝 / ' + stats.total + '戦') +
         kpi('平均決着ターン数', (Math.round(stats.totalRounds / Math.max(1, stats.total) * 10) / 10) + '', '引き分け ' + stats.draws + '戦（上限100ターン・残り体力判定）') +
-        kpi('保存デッキの勝率', pct(Object.keys(stats.byDeck).reduce(function(a,k){ return a + stats.byDeck[k].meWins; }, 0), stats.total) + '%', mode === 'custom' ? 'カスタムデッキ1000戦' : 'CPU4デッキ合計1000戦');
+        kpi('保存デッキの勝率', pct(Object.keys(stats.byDeck).reduce(function(a,k){ return a + stats.byDeck[k].meWins; }, 0), stats.total) + '%', mode === 'custom' ? 'カスタムデッキ1000戦' : 'CPU' + deckDefs.length + 'デッキ合計' + stats.total + '戦');
       var sumRows = SUMMONERS.map(function(x){
         var ss2 = stats.bySummoner[x.id] || { total:0, wins:0, draws:0 };
         return { def:x, total:ss2.total, wins:ss2.wins, draws:ss2.draws, rate: pct(ss2.wins, ss2.total) };
@@ -9867,7 +10030,7 @@
 
     /* ================= Ω：CPU勝ち抜きモード =================
        デッキと召喚士を固定してCPUと連戦し、負けるまでの連勝数を競うモード。
-       相手デッキは4テーマ（疾風／巨塔／深淵／聖域）から毎試合ランダム、
+       相手デッキは7テーマ（疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣）から毎試合ランダム、
        相手召喚士もランダム。難易度は上げない（ライフは毎試合20、相手の強化なし）。
        勝つたびに POST /api/streak で即時登録し、順位・ベストは
        GET /api/leaderboard で取得する。通信に失敗してもモード自体は遊べる。
@@ -9945,7 +10108,7 @@
       var slotDef = deckSlots.slots[streak.slot];
       streakEl('streakSlotNote').textContent = 'スロット' + (streak.slot + 1) + '「' + slotDef.name + '」（' + slotDef.ids.length + '枚）で挑みます。ラン中はデッキと召喚士は固定されます。';
       streakEl('streakSummonerSeg').innerHTML = SUMMONERS.map(function(s){
-        return '<button class="seg-btn' + (s.id === streak.summonerSel ? ' sel' : '') + '" type="button" data-streak-summoner="' + s.id + '">' + escapeHtml(s.short) + '</button>';
+        return '<button class="seg-btn' + (s.id === streak.summonerSel ? ' sel' : '') + '" type="button" data-streak-summoner="' + s.id + '">' + summonerBadge(s.id) + '<br>' + escapeHtml(s.short) + '</button>';
       }).join('');
       var cur = SUMMONER_BY_ID[streak.summonerSel];
       streakEl('streakSummonerNote').textContent = cur ? (cur.name + '：' + cur.ability) : '';
@@ -9974,7 +10137,7 @@
         return '<div class="streak-lb-row">' +
           '<span class="streak-lb-rank">' + (i + 1) + '位</span>' +
           '<span class="streak-lb-name">' + escapeHtml(e.name || '名無し') + '</span>' +
-          '<span class="streak-lb-sum">' + (sum ? escapeHtml(sum.short) : '') + '</span>' +
+          '<span class="streak-lb-sum">' + (sum ? summonerBadge(sum.id) + ' ' + escapeHtml(sum.short) : '') + '</span>' +
           '<span class="streak-lb-num">' + e.streak + ' 連勝</span>' +
         '</div>';
       }).join('');
@@ -10027,7 +10190,7 @@
       var parts = [];
       if (typeof streak.best === 'number') parts.push('自己ベスト ' + streak.best + ' 連勝');
       if (typeof streak.rank === 'number') parts.push('現在 ' + streak.rank + ' 位');
-      streakEl('streakNextSub').textContent = (parts.length ? parts.join('・') + '。' : '') + '次の相手も4テーマからランダムで選ばれます。';
+      streakEl('streakNextSub').textContent = (parts.length ? parts.join('・') + '。' : '') + '次の相手も7テーマからランダムで選ばれます。';
     }
     function streakRenderResult(){
       var lines = ['最終連勝数：' + streak.count + ' 連勝'];
@@ -10089,6 +10252,259 @@
         streakRenderResult();
         streakEl('streakResultOverlay').classList.add('show');
         streakFetchLeaderboard(function(){ streakRenderResult(); });
+      }, true);
+    }
+
+    /* ================= Ω：アーケードモード =================
+       デッキと召喚士を固定して、5人の召喚士と固定順で戦うラダー。
+       ステージ：1 オルガ（黒竜）→ 2 ミア（聖域）→ 3 ブラン（聖槍）→ 4 ガレン（聖剣）→ 5 クロエ（疾風）。
+       ライフは毎試合20で、難易度の盛りはなし。各試合の前後に、相手の立ち絵と
+       セリフの会話画面（タップで進む）を挟む。負けたらラン終了で最初から。
+       全5戦勝利で制覇し、制覇回数と制覇に使った召喚士を端末に保存する。
+       対戦中の投了・離脱はラン終了として扱う。HEADLESSではランを開始しない。 */
+    var ARCADE_STAGES = [
+      { summoner: 'olga',  deckKey: 'kokuryu' },
+      { summoner: 'mia',   deckKey: 'seiei' },
+      { summoner: 'bran',  deckKey: 'seiyari' },
+      { summoner: 'garen', deckKey: 'seiken' },
+      { summoner: 'chloe', deckKey: 'shippu' }
+    ];
+    /* セリフ：intro＝登場、cpuWin＝相手が勝った時（プレイヤー敗北時）、
+       cpuLose＝プレイヤーが勝った時（相手の敗北セリフ） */
+    var ARCADE_LINES = {
+      olga:  { intro: 'ふふ、黒竜の卵よ。孵す価値があるか見せてちょうだい', cpuWin: 'あら、もう終わり？ わたしはまだ本の途中なのだけど', cpuLose: 'まあ…わたしの計算の外ね。悪くないわ' },
+      mia:   { intro: '雨は恵み。でも、ここでは容赦しないよ', cpuWin: 'よく頑張ったね。はい、回復してあげる', cpuLose: 'すごい…！ わたしの雨雲、晴れちゃった' },
+      bran:  { intro: 'この壁と槍、越えられるかな。…いや、越えさせない', cpuWin: '堅いだけじゃない。…ふふ、健闘した方だよ', cpuLose: '見事だ。その力、認めよう' },
+      garen: { intro: '相手は聖剣だと？ 上等だ、燃やし尽くしてやる！', cpuWin: 'はっ、焼け石に水だったな！', cpuLose: 'ぐっ…！ この俺が押し切られるとはな…！' },
+      chloe: { intro: '懲りもせずまた来たんだ…今日もボコボコにしちゃおー♡', cpuWin: 'はい、あたしの勝ち。時間切れ、ってね', cpuLose: 'うえぇん…！ ひどいよぉ…こんなのってない…あたし、負けるなんてぇ…（泣）' }
+    };
+    var ARCADE_RECORD_KEY = 'arcaneOmega.arcade.v1';
+    var arcadeRecord = { clears: 0, bySummoner: {}, attempts: 0 };
+    try {
+      var savedArcadeRec = JSON.parse(localStorage.getItem(ARCADE_RECORD_KEY) || 'null');
+      if (savedArcadeRec && typeof savedArcadeRec.clears === 'number') arcadeRecord.clears = savedArcadeRec.clears;
+      if (savedArcadeRec && savedArcadeRec.bySummoner && typeof savedArcadeRec.bySummoner === 'object') arcadeRecord.bySummoner = savedArcadeRec.bySummoner;
+      if (savedArcadeRec && typeof savedArcadeRec.attempts === 'number') arcadeRecord.attempts = savedArcadeRec.attempts;
+    } catch (e) {}
+    function arcadeSaveRecord(){
+      try { localStorage.setItem(ARCADE_RECORD_KEY, JSON.stringify(arcadeRecord)); } catch (e) {}
+    }
+    var arcade = {
+      active: false,        /* ラン進行中か */
+      stage: 0,             /* 現在のステージ（0〜4） */
+      slot: 0,              /* アーケード画面で選択中のデッキスロット */
+      summonerSel: 'chloe', /* アーケード画面で選択中の召喚士 */
+      deckIds: null,        /* ラン開始時に固定したデッキ（20枚） */
+      summonerId: null,     /* ラン開始時に固定した召喚士 */
+      thisAttempt: 0,       /* このランが通算何回目の挑戦か */
+      talkNext: null        /* 会話画面を閉じた後に実行する処理 */
+    };
+    var arcadeOverlay = document.getElementById('arcadeOverlay');
+    var arcadeTalkOverlay = document.getElementById('arcadeTalkOverlay');
+    function arcadeEl(id){ return document.getElementById(id); }
+    function arcadeStageDeckDef(st){ return presetCpuDeckDef(st.deckKey); }
+    function arcadeRenderSetup(){
+      arcadeEl('arcadeClearCount').textContent = '制覇 ' + arcadeRecord.clears + '回';
+      arcadeEl('arcadeAttemptCount').textContent = '挑戦 ' + arcadeRecord.attempts + '回';
+      var clearedSums = SUMMONERS.filter(function(s){ return arcadeRecord.bySummoner[s.id]; });
+      arcadeEl('arcadeClearSums').innerHTML = clearedSums.length
+        ? clearedSums.map(function(s){
+            return '<span class="arcade-record-chip">' + summonerBadge(s.id) + escapeHtml(s.short) + ' ×' + arcadeRecord.bySummoner[s.id] + '</span>';
+          }).join('')
+        : '<span class="arcade-record-label">制覇に使った召喚士はここに記録されます</span>';
+      arcadeEl('arcadeStageList').innerHTML = ARCADE_STAGES.map(function(st, i){
+        var sd = SUMMONER_BY_ID[st.summoner];
+        var dd = arcadeStageDeckDef(st);
+        return '<div class="arcade-stage-row">' +
+          '<span class="arcade-stage-no">STAGE ' + (i + 1) + '</span>' +
+          summonerBadge(st.summoner, true) +
+          '<span class="arcade-stage-name">' + escapeHtml(sd ? sd.name : st.summoner) + '</span>' +
+          '<span class="arcade-stage-deck">' + escapeHtml(dd ? dd.name : '') + '</span>' +
+        '</div>';
+      }).join('');
+      arcadeEl('arcadeSlotSeg').innerHTML = deckSlots.slots.map(function(s, i){
+        return '<button class="seg-btn' + (i === arcade.slot ? ' sel' : '') + '" type="button" data-arcade-slot="' + i + '">' + escapeHtml(s.name) + '</button>';
+      }).join('');
+      var slotDef = deckSlots.slots[arcade.slot];
+      arcadeEl('arcadeSlotNote').textContent = 'スロット' + (arcade.slot + 1) + '「' + slotDef.name + '」（' + slotDef.ids.length + '枚）で挑みます。ラン中はデッキと召喚士は固定されます。';
+      arcadeEl('arcadeSummonerSeg').innerHTML = SUMMONERS.map(function(s){
+        return '<button class="seg-btn' + (s.id === arcade.summonerSel ? ' sel' : '') + '" type="button" data-arcade-summoner="' + s.id + '">' + summonerBadge(s.id) + '<br>' + escapeHtml(s.short) + '</button>';
+      }).join('');
+      var cur = SUMMONER_BY_ID[arcade.summonerSel];
+      arcadeEl('arcadeSummonerNote').textContent = cur ? (cur.name + '：' + cur.ability) : '';
+    }
+    function openArcade(){
+      arcade.slot = activeDeckSlot;
+      arcade.summonerSel = playerSummonerId;
+      arcadeRenderSetup();
+      closeAllOverlays();
+      arcadeOverlay.classList.add('show');
+      arcadeOverlay.scrollTop = 0;
+    }
+    arcadeEl('arcadeStartBtn').addEventListener('click', openArcade);
+    arcadeEl('arcadeBackBtn').addEventListener('click', function(){ showStart(); });
+    arcadeEl('arcadeSlotSeg').addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-arcade-slot]');
+      if (!btn) return;
+      arcade.slot = Number(btn.getAttribute('data-arcade-slot'));
+      arcadeRenderSetup();
+    });
+    arcadeEl('arcadeSummonerSeg').addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-arcade-summoner]');
+      if (!btn) return;
+      arcade.summonerSel = btn.getAttribute('data-arcade-summoner');
+      arcadeRenderSetup();
+    });
+    /* 会話画面：相手の立ち絵（summoners/full-<id>.webp）とセリフを出し、タップで進む。
+       立ち絵が読めない環境では、顔バッジ＋名前の表示にフォールバックする。 */
+    function arcadeShowTalk(kind, onDone){
+      var st = ARCADE_STAGES[arcade.stage];
+      var sd = SUMMONER_BY_ID[st.summoner] || SUMMONERS[0];
+      var lines = ARCADE_LINES[st.summoner] || {};
+      arcade.talkNext = onDone || null;
+      arcadeEl('arcadeTalkStage').textContent = 'STAGE ' + (arcade.stage + 1) + ' / ' + ARCADE_STAGES.length;
+      var img = arcadeEl('arcadeTalkImg');
+      var fb = arcadeEl('arcadeTalkFallback');
+      img.style.display = '';
+      fb.style.display = 'none';
+      /* 敗北セリフ（cpuLose）の時だけ負け顔の立ち絵を使う。負け顔が読めなければ
+         通常立ち絵に、それも読めなければ顔バッジ＋名前の表示にフォールバックする */
+      img.onerror = function(){
+        if (kind === 'cpuLose' && img.src.indexOf('-lose.webp') >= 0){
+          img.src = summonerFullSrc(st.summoner);
+          return;
+        }
+        img.style.display = 'none';
+        fb.style.display = 'flex';
+      };
+      img.src = kind === 'cpuLose' ? summonerFullLoseSrc(st.summoner) : summonerFullSrc(st.summoner);
+      arcadeEl('arcadeTalkFallbackBadge').innerHTML = summonerBadge(st.summoner, true);
+      arcadeEl('arcadeTalkFallbackName').textContent = sd.name;
+      arcadeEl('arcadeTalkName').innerHTML = summonerBadge(st.summoner) + '<span>' + escapeHtml(sd.name) + '</span>';
+      arcadeEl('arcadeTalkLine').textContent = lines[kind] || '';
+      arcadeTalkOverlay.classList.add('show');
+    }
+    function arcadeAdvanceTalk(){
+      if (!arcadeTalkOverlay.classList.contains('show')) return;
+      arcadeTalkOverlay.classList.remove('show');
+      var next = arcade.talkNext;
+      arcade.talkNext = null;
+      if (next) next();
+    }
+    arcadeTalkOverlay.addEventListener('click', function(ev){
+      if (ev.target.closest && ev.target.closest('#arcadeTalkQuitBtn')) return;
+      arcadeAdvanceTalk();
+    });
+    arcadeEl('arcadeTalkQuitBtn').addEventListener('click', function(ev){
+      ev.stopPropagation();
+      /* 会話画面からの中断もラン終了として扱い、アーケード画面へ戻す */
+      arcade.active = false;
+      arcade.talkNext = null;
+      openArcade();
+    });
+    function arcadeStartMatch(){
+      var st = ARCADE_STAGES[arcade.stage];
+      var def = arcadeStageDeckDef(st);
+      closeAllOverlays();
+      newGame({
+        cpuDeckDef: def ? { name: def.name, ids: def.ids ? def.ids.slice() : null } : null,
+        summonerMe: arcade.summonerId,
+        summonerCpu: st.summoner,
+        playerDeckIds: arcade.deckIds.slice()
+      });
+    }
+    /* ランの開始：デッキと召喚士をここで固定し、ステージ1の登場会話から始める */
+    function arcadeBeginRun(){
+      if (HEADLESS) return;
+      arcade.active = true;
+      arcade.stage = 0;
+      arcade.deckIds = deckSlots.slots[arcade.slot].ids.slice();
+      arcade.summonerId = arcade.summonerSel;
+      /* ラン開始（リトライ含む）のたびに挑戦回数を加算して端末に保存する */
+      arcadeRecord.attempts += 1;
+      arcadeSaveRecord();
+      arcade.thisAttempt = arcadeRecord.attempts;
+      closeAllOverlays();
+      arcadeShowTalk('intro', arcadeStartMatch);
+    }
+    arcadeEl('arcadeRunStartBtn').addEventListener('click', arcadeBeginRun);
+    /* finishGame から呼ばれるアーケード側の決着処理。ラン中でなければ false を返し、
+       通常の勝敗画面に任せる。勝利：相手の敗北セリフを見せてから、最終ステージなら
+       制覇を記録して制覇画面へ、それ以外は次のステージの登場会話→試合へ。
+       敗北：相手の勝利セリフを見せてから敗北時のラン終了画面（リトライ／組み換え／タイトル）。 */
+    function arcadeOnMatchEnd(win){
+      if (HEADLESS || !arcade.active) return false;
+      if (win){
+        if (arcade.stage >= ARCADE_STAGES.length - 1){
+          arcade.active = false;
+          arcadeRecord.clears += 1;
+          arcadeRecord.bySummoner[arcade.summonerId] = (arcadeRecord.bySummoner[arcade.summonerId] || 0) + 1;
+          arcadeSaveRecord();
+          arcadeShowTalk('cpuLose', arcadeShowClear);
+        } else {
+          arcadeShowTalk('cpuLose', function(){
+            arcade.stage += 1;
+            arcadeShowTalk('intro', arcadeStartMatch);
+          });
+        }
+      } else {
+        arcadeShowTalk('cpuWin', function(){
+          arcade.active = false;
+          arcadeShowDefeat();
+        });
+      }
+      return true;
+    }
+    /* 敗北時のラン終了画面：到達ステージと挑戦回数を表示し、リトライ
+       （同じデッキ・召喚士で即再挑戦）／組み換え／タイトルへの選択肢を出す */
+    function arcadeShowDefeat(){
+      var reached = arcade.stage + 1;
+      arcadeEl('arcadeLoseSub').textContent =
+        '挑戦 ' + arcade.thisAttempt + '回目／到達ステージ ' + reached + '\n' +
+        'STAGE ' + reached + ' で敗北しました。\nもう一度挑みますか？';
+      closeAllOverlays();
+      arcadeEl('arcadeLoseOverlay').classList.add('show');
+    }
+    arcadeEl('arcadeLoseRetryBtn').addEventListener('click', function(){
+      /* リトライ：敗北したランと同じデッキ・召喚士でステージ1から再挑戦。
+         ラン中は arcade.slot / arcade.summonerSel が変わらないため、そのまま開始すれば同じ構成になる */
+      arcadeBeginRun();
+    });
+    arcadeEl('arcadeLoseChangeBtn').addEventListener('click', function(){ openArcade(); });
+    arcadeEl('arcadeLoseTitleBtn').addEventListener('click', function(){ showStart(); });
+    /* 制覇画面：クロエ撃破後の流れのまま、クロエの立ち絵と結果を表示する */
+    function arcadeShowClear(){
+      var sd = SUMMONER_BY_ID[arcade.summonerId] || SUMMONERS[0];
+      var img = arcadeEl('arcadeClearImg');
+      var fb = arcadeEl('arcadeClearFallback');
+      img.style.display = '';
+      fb.style.display = 'none';
+      img.onerror = function(){ img.style.display = 'none'; fb.style.display = 'flex'; };
+      img.src = summonerFullSrc('chloe');
+      arcadeEl('arcadeClearFallbackBadge').innerHTML = summonerBadge('chloe', true);
+      arcadeEl('arcadeClearSub').textContent =
+        arcade.thisAttempt + '回目の挑戦で制覇！\n5人の召喚士をすべて倒しました！\n制覇回数：' + arcadeRecord.clears + ' 回\n制覇に使った召喚士：' + sd.name;
+      closeAllOverlays();
+      arcadeEl('arcadeClearOverlay').classList.add('show');
+    }
+    arcadeEl('arcadeClearAgainBtn').addEventListener('click', function(){ openArcade(); });
+    arcadeEl('arcadeClearTitleBtn').addEventListener('click', function(){ showStart(); });
+    /* 対戦中の投了・離脱はラン終了。戦闘メニューの「タイトル」は通常リスナー
+       （showStart）に任せつつラン状態だけを畳む。「最初から」はラン中だけ
+       捕捉フェーズで止め、アーケード画面へ戻す（勝ち抜きと同じ扱い）。 */
+    document.getElementById('titleBtn').addEventListener('click', function(){
+      if (arcade.active) arcade.active = false;
+    });
+    if (battleMenuEl){
+      battleMenuEl.addEventListener('click', function(ev){
+        if (!arcade.active || HEADLESS) return;
+        if (!S || S.over) return;
+        if (!ev.target.closest || !ev.target.closest('#restartBtn')) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        arcade.active = false;
+        if (typeof closeBattleMenu === 'function') closeBattleMenu();
+        openArcade();
       }, true);
     }
 
@@ -10274,7 +10690,7 @@
         return '<button class="seg-btn' + (i === ov.slot ? ' sel' : '') + '" type="button" data-ov-slot="' + i + '">' + escapeHtml(s.name) + '</button>';
       }).join('');
       ovEl('ovSummonerSeg').innerHTML = SUMMONERS.map(function(s){
-        return '<button class="seg-btn' + (s.id === ov.summoner ? ' sel' : '') + '" type="button" data-ov-summoner="' + s.id + '">' + escapeHtml(s.short) + '</button>';
+        return '<button class="seg-btn' + (s.id === ov.summoner ? ' sel' : '') + '" type="button" data-ov-summoner="' + s.id + '">' + summonerBadge(s.id) + '<br>' + escapeHtml(s.short) + '</button>';
       }).join('');
       var cur = SUMMONER_BY_ID[ov.summoner];
       ovEl('ovSummonerNote').textContent = cur ? (cur.name + '：' + cur.ability) : '';
