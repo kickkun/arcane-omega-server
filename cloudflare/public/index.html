@@ -669,6 +669,29 @@
       #onlineOverlay{flex-direction:column; align-items:center; justify-content:flex-start; padding:14px; z-index:84; overflow-y:auto; touch-action:pan-y;}
       #onlineOverlay.show{display:block;}
       .online-box{width:100%; max-width:560px; margin:0 auto;}
+      /* ===== Ω追加：CPU勝ち抜きモード ===== */
+      #streakOverlay{flex-direction:column; align-items:center; justify-content:flex-start; padding:14px; z-index:84; overflow-y:auto; touch-action:pan-y;}
+      #streakOverlay.show{display:block;}
+      .streak-box{width:100%; max-width:560px; margin:0 auto;}
+      .streak-best{
+        text-align:center; border:1px solid var(--gold); border-radius:12px; background:rgba(201,162,75,.10);
+        padding:12px 10px; margin-top:6px;
+      }
+      .streak-best-num{font-family:"Shippori Mincho B1",serif; font-size:34px; font-weight:800; color:var(--gold-bright); line-height:1.15;}
+      .streak-best-label{font-size:12px; font-weight:700; color:var(--ink-dim); letter-spacing:.08em;}
+      .streak-lb{margin-top:6px; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+      .streak-lb-row{display:flex; align-items:center; gap:10px; padding:8px 12px; font-size:13.5px; background:var(--panel2); border-bottom:1px solid var(--line);}
+      .streak-lb-row:last-child{border-bottom:none;}
+      .streak-lb-row.me{background:rgba(201,162,75,.16); font-weight:800;}
+      .streak-lb-rank{flex:0 0 34px; font-weight:900; color:var(--gold-bright); text-align:center;}
+      .streak-lb-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+      .streak-lb-sum{flex:0 0 auto; font-size:12px; color:var(--ink-dim);}
+      .streak-lb-num{flex:0 0 auto; font-weight:900;}
+      .streak-lb-empty{padding:12px; font-size:13px; color:var(--ink-dim); text-align:center; background:var(--panel2); line-height:1.6;}
+      .streak-count{
+        font-family:"Shippori Mincho B1",serif; font-size:44px; font-weight:800; letter-spacing:.06em;
+        color:var(--gold-bright); margin:0 0 6px; line-height:1.2;
+      }
       .conn-pill{display:inline-block; font-size:12px; font-weight:900; border-radius:99px; padding:2px 10px; background:var(--panel2); border:1px solid var(--line); color:var(--ink-dim);}
       .conn-pill.on{color:#241a05; background:linear-gradient(180deg,#bfe8b0,#7fbf6a); border-color:#4c7a3d;}
       .conn-pill.wait{color:#241a05; background:linear-gradient(180deg,#f3d98b,#d9a94e); border-color:#8a6a25;}
@@ -2144,6 +2167,7 @@
         </div>
         <button class="btn-play cpu-only-block" id="startBattleBtn" type="button" style="width:100%; margin-top:10px;">対戦開始</button>
         <button class="btn-play" id="onlineStartBtn" type="button" style="width:100%; margin-top:10px; display:none;">オンライン対戦へ進む</button>
+        <button class="btn-sub" id="streakStartBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">勝ち抜きモード（CPU連戦）</button>
         <button class="btn-sub" id="openDeckBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">デッキ編成</button>
         <button class="btn-sub cpu-only-block" id="testPlayBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">テストプレイ1000戦</button>
         <button class="btn-sub cpu-only-block" id="testPlayCustomBtn" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px; display:none;">テストプレイ1000戦（カスタム相手）</button>
@@ -2227,6 +2251,51 @@
         </div>
 
         <button class="btn-sub" id="ovBackBtn" type="button" style="width:100%; margin-top:14px; padding:12px; font-size:14px;">タイトルに戻る</button>
+      </div>
+    </div>
+    <div class="overlay" id="streakOverlay">
+      <div class="start-box streak-box">
+        <p class="start-title" style="font-size:27px;">勝ち抜きモード</p>
+        <p class="start-sub">CPU連戦＆ランキング</p>
+        <p class="start-note" style="text-align:left;">デッキと召喚士を固定してCPUと連戦し、負けるまでの連勝数を競います。相手のデッキは4テーマ（疾風／巨塔／深淵／聖域）から毎試合ランダム、相手の召喚士もランダムです。勝つたびに連勝数がサーバーへ登録され、ランキングに反映されます。</p>
+        <div class="streak-best">
+          <div class="streak-best-label">あなたの自己ベスト</div>
+          <div class="streak-best-num" id="streakMyBest">―</div>
+          <div class="streak-best-label" id="streakMyRank"></div>
+        </div>
+        <div class="first-choice" style="margin-top:14px; text-align:left;">
+          <p class="first-choice-label">ランキング（上位10）</p>
+          <div class="streak-lb" id="streakLbList"><div class="streak-lb-empty">読み込み中…</div></div>
+          <p class="seg-note" id="streakLbNote" style="display:none;" aria-live="polite"></p>
+        </div>
+        <div class="first-choice" style="text-align:left;">
+          <p class="first-choice-label">使うデッキ（保存スロット）</p>
+          <div class="seg" id="streakSlotSeg" role="group" aria-label="勝ち抜きで使うデッキスロット"></div>
+          <p class="seg-note" id="streakSlotNote"></p>
+        </div>
+        <div class="first-choice" style="text-align:left;">
+          <p class="first-choice-label">召喚士</p>
+          <div class="seg" id="streakSummonerSeg" role="group" aria-label="勝ち抜きの召喚士"></div>
+          <p class="seg-note" id="streakSummonerNote"></p>
+        </div>
+        <button class="btn-play" id="streakRunStartBtn" type="button" style="width:100%; margin-top:10px;">勝ち抜き開始</button>
+        <button class="btn-sub" id="streakBackBtn" type="button" style="width:100%; margin-top:10px; padding:12px; font-size:14px;">タイトルに戻る</button>
+      </div>
+    </div>
+    <div class="overlay" id="streakNextOverlay">
+      <div class="over-box">
+        <p class="streak-count" id="streakNextCount">1連勝中！</p>
+        <p class="over-sub" id="streakNextSub"></p>
+        <button class="btn-play" id="streakNextBtn" type="button" style="width:100%;">次の試合へ</button>
+        <button class="btn-close" id="streakQuitBtn" type="button" style="width:100%; margin-top:9px; padding:12px; flex:none;">ここでやめる</button>
+      </div>
+    </div>
+    <div class="overlay" id="streakResultOverlay">
+      <div class="over-box">
+        <p class="over-title lose">ラン終了</p>
+        <p class="over-sub" id="streakResultSub" style="white-space:pre-line;"></p>
+        <button class="btn-play" id="streakRetryBtn" type="button" style="width:100%;">もう一度挑戦</button>
+        <button class="btn-close" id="streakResultTitleBtn" type="button" style="width:100%; margin-top:9px; padding:12px; flex:none;">タイトルへ</button>
       </div>
     </div>
     <div class="deck-overlay" id="deckOverlay">
@@ -4986,7 +5055,7 @@
     try { pixiReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
     /* 詳細シートやタイトル等の全面画面が開いている間はキャンバスを隠す
        （オンライン対戦画面は盤面そのものなので対象外） */
-    var PIXI_BLOCK_OVERLAYS = ['detailOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay'];
+    var PIXI_BLOCK_OVERLAYS = ['detailOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','streakOverlay','streakNextOverlay','streakResultOverlay'];
     function pixiInit(){
       if (HEADLESS) return;
       if (typeof window.PIXI === 'undefined') return; /* 読み込み失敗：無効化して従来動作 */
@@ -5765,7 +5834,7 @@
        HEADLESS（テストプレイ）では生成も表示もしない。 */
     var stagePeds = { cpu: null, ov: null };
     var stagePedObserverReady = false;
-    var STAGE_PED_HIDE_OVERLAYS = ['startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay'];
+    var STAGE_PED_HIDE_OVERLAYS = ['startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay'];
     function stagePedEnsure(scope){
       if (HEADLESS) return null;
       var ped = stagePeds[scope];
@@ -6432,6 +6501,8 @@
         if (!S.over) return;
         if (document.getElementById('startOverlay').classList.contains('show')) return;
         if (document.getElementById('deckOverlay').classList.contains('show')) return;
+        /* 勝ち抜きモードのラン中は、通常の勝敗画面ではなく勝ち抜き側の画面を出す */
+        if (typeof streakOnMatchEnd === 'function' && streakOnMatchEnd(win)) return;
         document.getElementById('overOverlay').classList.add('show');
       }, overDelay);
     }
@@ -8586,7 +8657,7 @@
        スクロール不具合対策：画面遷移のたびに、開いているモーダルを
        すべて確実に閉じてから次の画面を1つだけ開く。
        閉じ忘れたモーダルが残ると、見えないままタッチとスクロールを奪う。 */
-    var ALL_OVERLAY_IDS = ['detailOverlay','summonerOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','onlineOverlay','fxOverlay'];
+    var ALL_OVERLAY_IDS = ['detailOverlay','summonerOverlay','overOverlay','startOverlay','deckOverlay','galleryOverlay','rulesOverlay','simOverlay','opponentDeckOverlay','onlineOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay'];
     function closeAllOverlays(){
       ALL_OVERLAY_IDS.forEach(function(id){
         var el = document.getElementById(id);
@@ -9793,6 +9864,233 @@
       renderDeckEditor();
       deckCodeNote('読み込み完了：スロット' + (activeDeckSlot + 1) + 'を「' + newName + '」（20枚）に反映しました。', false);
     });
+
+    /* ================= Ω：CPU勝ち抜きモード =================
+       デッキと召喚士を固定してCPUと連戦し、負けるまでの連勝数を競うモード。
+       相手デッキは4テーマ（疾風／巨塔／深淵／聖域）から毎試合ランダム、
+       相手召喚士もランダム。難易度は上げない（ライフは毎試合20、相手の強化なし）。
+       勝つたびに POST /api/streak で即時登録し、順位・ベストは
+       GET /api/leaderboard で取得する。通信に失敗してもモード自体は遊べる。
+       HEADLESS（テストプレイ）ではAPIを一切呼ばず、ランも開始しない。 */
+    var streak = {
+      active: false,        /* ラン進行中か */
+      count: 0,             /* 現在の連勝数 */
+      slot: 0,              /* 勝ち抜き画面で選択中のデッキスロット */
+      summonerSel: 'chloe', /* 勝ち抜き画面で選択中の召喚士 */
+      deckIds: null,        /* ラン開始時に固定したデッキ（20枚） */
+      summonerId: null,     /* ラン開始時に固定した召喚士 */
+      best: null,           /* 自己ベスト連勝数（サーバー由来。未取得は null） */
+      rank: null,           /* 現在の順位（サーバー由来。未取得は null） */
+      lbTop: [], lbMe: null, lbFailed: false
+    };
+    var streakOverlay = document.getElementById('streakOverlay');
+    function streakEl(id){ return document.getElementById(id); }
+    /* プレイヤー識別はオンライン対戦と共用：端末保存のゲストIDと名前を使う。
+       ゲストIDが無ければオンライン側と同じ保存キーへ生成して保存する
+       （オンライン接続時にそのまま hello で送られ、サーバーに引き継がれる）。 */
+    function streakGuestId(){
+      var gid = null;
+      try { gid = localStorage.getItem(OMEGA_GUEST_KEY); } catch (e) {}
+      if (!gid){
+        gid = 'g-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+        try { localStorage.setItem(OMEGA_GUEST_KEY, gid); } catch (e) {}
+      }
+      return gid;
+    }
+    function streakPlayerName(){
+      var nm = '';
+      try { nm = localStorage.getItem(OMEGA_NAME_KEY) || ''; } catch (e) {}
+      return nm.trim();
+    }
+    /* 連勝の即時登録。失敗しても例外にせず、ランはそのまま続行する */
+    function streakPostResult(){
+      if (HEADLESS) return;
+      var body = { guestId: streakGuestId(), name: streakPlayerName(), streak: streak.count, summoner: streak.summonerId };
+      fetch('/api/streak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.ok){
+            if (typeof d.best === 'number') streak.best = d.best;
+            if (typeof d.rank === 'number') streak.rank = d.rank;
+            streakRenderNextSub();
+          }
+        })
+        .catch(function(){ /* 送信失敗は無視して続行 */ });
+    }
+    /* ランキング取得。成功時は streak.best / streak.rank も最新化する */
+    function streakFetchLeaderboard(onDone){
+      if (HEADLESS){ if (onDone) onDone(false); return; }
+      fetch('/api/leaderboard?pid=' + encodeURIComponent(streakGuestId()))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || !d.ok) throw new Error('leaderboard unavailable');
+          streak.lbTop = Array.isArray(d.top) ? d.top : [];
+          streak.lbMe = d.me || null;
+          streak.lbFailed = false;
+          if (streak.lbMe){
+            if (typeof streak.lbMe.streak === 'number') streak.best = streak.lbMe.streak;
+            if (typeof streak.lbMe.rank === 'number') streak.rank = streak.lbMe.rank;
+          }
+          if (onDone) onDone(true);
+        })
+        .catch(function(){
+          streak.lbFailed = true;
+          if (onDone) onDone(false);
+        });
+    }
+    function streakRenderSetup(){
+      streakEl('streakSlotSeg').innerHTML = deckSlots.slots.map(function(s, i){
+        return '<button class="seg-btn' + (i === streak.slot ? ' sel' : '') + '" type="button" data-streak-slot="' + i + '">' + escapeHtml(s.name) + '</button>';
+      }).join('');
+      var slotDef = deckSlots.slots[streak.slot];
+      streakEl('streakSlotNote').textContent = 'スロット' + (streak.slot + 1) + '「' + slotDef.name + '」（' + slotDef.ids.length + '枚）で挑みます。ラン中はデッキと召喚士は固定されます。';
+      streakEl('streakSummonerSeg').innerHTML = SUMMONERS.map(function(s){
+        return '<button class="seg-btn' + (s.id === streak.summonerSel ? ' sel' : '') + '" type="button" data-streak-summoner="' + s.id + '">' + escapeHtml(s.short) + '</button>';
+      }).join('');
+      var cur = SUMMONER_BY_ID[streak.summonerSel];
+      streakEl('streakSummonerNote').textContent = cur ? (cur.name + '：' + cur.ability) : '';
+    }
+    function streakRenderBoard(){
+      streakEl('streakMyBest').textContent = typeof streak.best === 'number' ? streak.best + ' 連勝' : '―';
+      streakEl('streakMyRank').textContent =
+        streak.lbMe && typeof streak.rank === 'number' ? '現在 ' + streak.rank + ' 位'
+        : streak.lbFailed ? ''
+        : 'まだランキングに記録がありません';
+      var list = streakEl('streakLbList');
+      var note = streakEl('streakLbNote');
+      if (streak.lbFailed){
+        list.innerHTML = '<div class="streak-lb-empty">ランキングは表示できません</div>';
+        note.style.display = '';
+        note.textContent = 'ランキングを取得できませんでした。通信環境を確認してください（勝ち抜き自体はこのまま遊べます）。';
+        return;
+      }
+      note.style.display = 'none';
+      if (!streak.lbTop.length){
+        list.innerHTML = '<div class="streak-lb-empty">まだ登録がありません。最初の記録を作りましょう。</div>';
+        return;
+      }
+      list.innerHTML = streak.lbTop.slice(0, 10).map(function(e, i){
+        var sum = SUMMONER_BY_ID[e.summoner];
+        return '<div class="streak-lb-row">' +
+          '<span class="streak-lb-rank">' + (i + 1) + '位</span>' +
+          '<span class="streak-lb-name">' + escapeHtml(e.name || '名無し') + '</span>' +
+          '<span class="streak-lb-sum">' + (sum ? escapeHtml(sum.short) : '') + '</span>' +
+          '<span class="streak-lb-num">' + e.streak + ' 連勝</span>' +
+        '</div>';
+      }).join('');
+    }
+    function openStreak(){
+      streak.slot = activeDeckSlot;
+      streak.summonerSel = playerSummonerId;
+      streakRenderSetup();
+      streak.lbTop = []; streak.lbMe = null; streak.lbFailed = false;
+      streakRenderBoard();
+      streakEl('streakLbList').innerHTML = '<div class="streak-lb-empty">読み込み中…</div>';
+      closeAllOverlays();
+      streakOverlay.classList.add('show');
+      streakOverlay.scrollTop = 0;
+      streakFetchLeaderboard(function(){ streakRenderBoard(); });
+    }
+    streakEl('streakStartBtn').addEventListener('click', openStreak);
+    streakEl('streakBackBtn').addEventListener('click', function(){ showStart(); });
+    streakEl('streakSlotSeg').addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-streak-slot]');
+      if (!btn) return;
+      streak.slot = Number(btn.getAttribute('data-streak-slot'));
+      streakRenderSetup();
+    });
+    streakEl('streakSummonerSeg').addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-streak-summoner]');
+      if (!btn) return;
+      streak.summonerSel = btn.getAttribute('data-streak-summoner');
+      streakRenderSetup();
+    });
+    /* ランの開始：デッキと召喚士をここで固定し、あとは通常のCPU対戦を回す */
+    function streakBeginRun(){
+      streak.active = true;
+      streak.count = 0;
+      streak.deckIds = deckSlots.slots[streak.slot].ids.slice();
+      streak.summonerId = streak.summonerSel;
+      streakStartMatch();
+    }
+    function streakStartMatch(){
+      closeAllOverlays();
+      var def = CPU_DECKS[Math.floor(Math.random() * CPU_DECKS.length)];
+      newGame({
+        cpuDeckDef: { name: def.name, ids: def.ids ? def.ids.slice() : null },
+        summonerMe: streak.summonerId,
+        playerDeckIds: streak.deckIds.slice()
+      });
+    }
+    streakEl('streakRunStartBtn').addEventListener('click', streakBeginRun);
+    function streakRenderNextSub(){
+      var parts = [];
+      if (typeof streak.best === 'number') parts.push('自己ベスト ' + streak.best + ' 連勝');
+      if (typeof streak.rank === 'number') parts.push('現在 ' + streak.rank + ' 位');
+      streakEl('streakNextSub').textContent = (parts.length ? parts.join('・') + '。' : '') + '次の相手も4テーマからランダムで選ばれます。';
+    }
+    function streakRenderResult(){
+      var lines = ['最終連勝数：' + streak.count + ' 連勝'];
+      lines.push('自己ベスト：' + (typeof streak.best === 'number' ? streak.best + ' 連勝' : '―'));
+      lines.push('現在の順位：' + (typeof streak.rank === 'number' ? streak.rank + ' 位' : '―'));
+      streakEl('streakResultSub').textContent = lines.join('\n');
+    }
+    /* finishGame から呼ばれる勝ち抜き側の決着処理。ラン中でなければ false を返し、
+       通常の勝敗画面に任せる。勝利：連勝+1＆即時登録して試合間画面へ。
+       敗北：ラン終了として結果画面を出す。 */
+    function streakOnMatchEnd(win){
+      if (HEADLESS || !streak.active) return false;
+      if (win){
+        streak.count += 1;
+        streakPostResult();
+        streakEl('streakNextCount').textContent = streak.count + '連勝中！';
+        streakRenderNextSub();
+        streakEl('streakNextOverlay').classList.add('show');
+      } else {
+        streak.active = false;
+        streakRenderResult();
+        streakEl('streakResultOverlay').classList.add('show');
+        streakFetchLeaderboard(function(){ streakRenderResult(); });
+      }
+      return true;
+    }
+    streakEl('streakNextBtn').addEventListener('click', function(){
+      if (!streak.active) return;
+      streakStartMatch();
+    });
+    streakEl('streakQuitBtn').addEventListener('click', function(){
+      /* ベストは勝利のたびに登録済みなので、そのままランを終えて勝ち抜き画面へ */
+      streak.active = false;
+      openStreak();
+    });
+    streakEl('streakRetryBtn').addEventListener('click', function(){
+      streakBeginRun();
+    });
+    streakEl('streakResultTitleBtn').addEventListener('click', function(){
+      streak.active = false;
+      showStart();
+    });
+    /* 対戦中の投了＝ラン終了。戦闘メニューの「タイトル」は通常リスナー（showStart）に
+       任せつつ、ラン状態だけを確実に畳む。「最初から」は連敗回避に使われないよう
+       ラン中だけ捕捉フェーズで止め、結果画面を出す。 */
+    document.getElementById('titleBtn').addEventListener('click', function(){
+      if (streak.active) streak.active = false;
+    });
+    var battleMenuEl = document.getElementById('battleMenu');
+    if (battleMenuEl){
+      battleMenuEl.addEventListener('click', function(ev){
+        if (!streak.active || HEADLESS) return;
+        if (!S || S.over) return;
+        if (!ev.target.closest || !ev.target.closest('#restartBtn')) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        streak.active = false;
+        if (typeof closeBattleMenu === 'function') closeBattleMenu();
+        streakRenderResult();
+        streakEl('streakResultOverlay').classList.add('show');
+        streakFetchLeaderboard(function(){ streakRenderResult(); });
+      }, true);
+    }
 
     /* ================= Ω：オンライン対戦 =================
        サーバーURLはこの定数1か所だけに置く。デプロイ時に実際のURLへ差し替える。
