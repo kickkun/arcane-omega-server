@@ -1094,6 +1094,53 @@
         position:fixed; z-index:92; pointer-events:none; border-radius:999px;
         filter:blur(1px); will-change:transform,opacity;
       }
+      /* ===== 神話SDフィニッシュ第5弾：共通の外枠（レターボックス＋暗転／決めセリフ） =====
+         暗転レイヤーは z-index 90：盤面・オーバーレイ画面（〜85）より上、
+         SDキャラ／演出レイヤー／パネル破壊クローン（91〜94）より下に置く。
+         そのため盤面全体は少し暗くなるが、SDと演出と対象パネル（クローン）
+         は明るいまま残る。黒帯は 97、決めセリフは 98 で最前面に出す。
+         位置・出現／退場の動きは JS（mythicSdFinishFx 内の sdFinFrame）が
+         WAAPI で付ける。モーション低減時は JS 側が従来演出へフォールバック
+         するため、この CSS は念のための二重防御 */
+      /* 暗転は「対象パネルの矩形だけをくり抜く」方式：要素自体はパネル矩形に
+         置き、巨大な box-shadow でその外側だけを暗くする。対象パネルは
+         演出開始から破壊（クローン）まで一貫して明るいまま残る */
+      .fx-fin-dimlayer{
+        position:fixed; z-index:90; pointer-events:none; opacity:0;
+        border-radius:12px; box-shadow:0 0 0 200vmax rgba(3,3,10,.55);
+        will-change:opacity;
+      }
+      .fx-fin-letterbox{
+        position:fixed; left:0; right:0; height:7vh; min-height:32px;
+        background:#000; z-index:97; pointer-events:none; will-change:transform;
+      }
+      .fx-fin-letterbox.top{top:0; box-shadow:0 3px 16px rgba(0,0,0,.65);}
+      .fx-fin-letterbox.bottom{bottom:0; box-shadow:0 -3px 16px rgba(0,0,0,.65);}
+      /* 決めセリフ：細いプレーンな文字にしない。太い明朝体（800）＋広い字間、
+         濃い縁取り（背後のストローク層）＋テーマカラーのグロー（drop-shadow）、
+         顔は白→金系グラデーション（キャラ色を含む）を background-clip で抜く。
+         出現は JS が叩きつけるようなスケールインを付ける */
+      .fx-fin-line{
+        position:fixed; left:0; right:0; top:35%; z-index:98; pointer-events:none;
+        text-align:center; padding:0 10px; box-sizing:border-box;
+        font-family:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+        font-weight:800; letter-spacing:.13em; line-height:1.3; white-space:nowrap;
+      }
+      .fx-line-wrap{
+        position:relative; display:inline-block; will-change:transform,opacity;
+        filter:drop-shadow(0 0 18px var(--fx-line-glow, rgba(255,215,106,.85))) drop-shadow(0 0 42px var(--fx-line-glow, rgba(255,215,106,.45))) drop-shadow(0 4px 10px rgba(0,0,0,.75));
+      }
+      .fx-line-stroke{
+        position:absolute; left:0; top:0; width:100%; text-align:center;
+        color:#150c02; -webkit-text-stroke:.15em #150c02;
+      }
+      .fx-line-face{
+        position:relative; color:transparent; -webkit-text-fill-color:transparent;
+        -webkit-background-clip:text; background-clip:text;
+      }
+      @media (prefers-reduced-motion: reduce){
+        .fx-fin-letterbox,.fx-fin-dimlayer,.fx-fin-line{display:none;}
+      }
       /* 演出チェック画面：フィニッシュ確認用のダミー召喚士パネルと見出し。
          ステージ内では対戦画面と同じ通常フロー配置（全幅・transformなし）で
          置き、大きさ・距離感が実戦と揃うようにする */
@@ -3170,6 +3217,92 @@
         }
       } catch (e) {}
     }
+    /* ===== 神話SDフィニッシュ専用SE（第5弾） =====
+       既存の WebAudio 合成基盤（seTone／seNoise）と SE オン/オフ設定
+       （seEnabled）をそのまま使う。演出の各拍に同期して mythicSdFinishFx
+       側のキュー表から呼ばれる。通常SEとは別の名前空間にし、連打間引きは
+       かけない（キュー自体が疎なため）。HEADLESS／生成前／suspended 時は無音 */
+    function seFinRumble(durSec){
+      /* ビームの持続轟音：低い鋸波＋三角波を重ねて唸らせる */
+      seTone(46, 36, durSec, 'sawtooth', 0.10);
+      seTone(69, 52, durSec, 'triangle', 0.085, 0.04);
+      seTone(92, 60, durSec * 0.7, 'sawtooth', 0.04, 0.1);
+    }
+    function seFin(name){
+      if (HEADLESS || !seEnabled || !seCtx || seCtx.state !== 'running') return;
+      try {
+        switch (name){
+          case 'finStart': /* レターボックスと同期：短い「締まる」音＋低い溜め */
+            seNoise(0.07, 0.11, 0, 2800);
+            seTone(130, 58, 0.16, 'sine', 0.15);
+            seTone(55, 116, 0.95, 'sawtooth', 0.045, 0.05);
+            seTone(82, 165, 0.95, 'triangle', 0.055, 0.08);
+            break;
+          case 'finLine': /* 決めセリフの叩きつけ：低いドンッ＋空気の締まり */
+            seTone(190, 82, 0.17, 'triangle', 0.11);
+            seNoise(0.05, 0.06, 0, 2600);
+            break;
+          case 'finBeam': /* ビーム放出：放出音＋持続する轟音 */
+            seTone(170, 1350, 0.26, 'sawtooth', 0.06);
+            seNoise(0.45, 0.09, 0, 950);
+            seFinRumble(1.15);
+            break;
+          case 'finBeamLong': /* ティアマト用：放出音＋長めの轟音 */
+            seTone(150, 1150, 0.3, 'sawtooth', 0.06);
+            seNoise(0.5, 0.09, 0, 900);
+            seFinRumble(1.7);
+            break;
+          case 'finSlash': /* 斬撃：風切りの連なり */
+            seNoise(0.15, 0.085, 0, 3400);
+            seTone(880, 2300, 0.13, 'sine', 0.028);
+            seNoise(0.15, 0.075, 0.09, 3000);
+            seTone(990, 2600, 0.13, 'sine', 0.024, 0.09);
+            seNoise(0.18, 0.09, 0.18, 3600);
+            break;
+          case 'finRush': /* ロンギヌスの突進：風切り */
+            seNoise(0.24, 0.115, 0, 1700);
+            seTone(280, 920, 0.2, 'sine', 0.045);
+            break;
+          case 'finImpactHeavy': /* ロンギヌスの着弾：重い衝撃音 */
+            seTone(155, 32, 0.44, 'sine', 0.21);
+            seNoise(0.3, 0.13, 0, 520);
+            seTone(90, 40, 0.3, 'square', 0.05, 0.01);
+            break;
+          case 'finChains': /* ダーククイーン：鎖の金属音＋引きずり込む低い音 */
+            [0, 0.07, 0.15, 0.24, 0.36].forEach(function(d, i){
+              seTone(2300 + (i % 3) * 420, 1750, 0.05, 'square', 0.026, d);
+              seTone(3400, 2600, 0.04, 'sine', 0.02, d + 0.02);
+            });
+            seTone(96, 42, 1.15, 'sawtooth', 0.065, 0.18);
+            seNoise(0.8, 0.035, 0.2, 420);
+            break;
+          case 'finRoar': /* アギト：咆哮風のうなり */
+            seTone(72, 46, 0.72, 'sawtooth', 0.125);
+            seTone(108, 58, 0.72, 'sawtooth', 0.075, 0.03);
+            seTone(54, 38, 0.8, 'square', 0.05, 0.02);
+            seNoise(0.62, 0.075, 0, 320);
+            break;
+          case 'finCrunch': /* アギト：噛み砕く音 */
+            seNoise(0.26, 0.15, 0, 720);
+            seTone(215, 38, 0.3, 'sine', 0.15);
+            seNoise(0.2, 0.11, 0.13, 900);
+            seTone(150, 34, 0.26, 'sine', 0.11, 0.13);
+            break;
+          case 'finBreak': /* 共通：パネル破壊の爆発・崩壊音 */
+            seNoise(0.5, 0.14, 0, 640);
+            seTone(165, 29, 0.52, 'sine', 0.17);
+            seNoise(0.32, 0.065, 0.16, 1500);
+            seTone(300, 55, 0.3, 'sawtooth', 0.045, 0.02);
+            break;
+          case 'finPurify': /* セレスティア：澄んだ残響音 */
+            seTone(1568, 1568, 0.7, 'sine', 0.05);
+            seTone(2093, 2093, 0.85, 'sine', 0.042, 0.09);
+            seTone(2637, 2637, 1.0, 'sine', 0.034, 0.18);
+            seTone(3136, 3136, 0.9, 'sine', 0.02, 0.3);
+            break;
+        }
+      } catch (e) {}
+    }
     function renderSeToggle(){
       var btn = document.getElementById('seToggleBtn');
       if (!btn) return;
@@ -3322,11 +3455,29 @@
       try {
         var a = el.animate(frames, opt);
         if (a && a.finished && a.finished.catch) a.finished.catch(function(){});
+        if (a){
+          if (fxFinRateScale !== 1){ try { a.playbackRate = fxFinRateScale; } catch (e) {} }
+          fxFinAnims.push(a);
+          if (fxFinAnims.length > 500) fxFinAnims = fxFinAnims.filter(function(x){ return x.playState !== 'finished' && x.playState !== 'idle'; });
+        }
         return a;
       } catch (e) { return null; }
     }
+    /* フィニッシュ演出全体の再生速度（第5弾：スローモーション／ヒットストップ用）。
+       1 が通常速度。WAAPI（fxFinAnimate 経由のアニメーション）と Pixi
+       （pixiTick の dt）にだけ効かせ、タイマー進行・総尺・ゲームロジックには
+       一切触れない。スロー中／ヒットストップ中に新規作成されたアニメーションも
+       fxFinAnimate 側で現在の倍率を引き継ぐ */
+    var fxFinRateScale = 1;
+    var fxFinAnims = [];
+    function fxFinSetRate(scale){
+      fxFinRateScale = scale;
+      fxFinAnims = fxFinAnims.filter(function(x){ return x.playState !== 'finished' && x.playState !== 'idle'; });
+      fxFinAnims.forEach(function(x){ try { x.playbackRate = scale; } catch (e) {} });
+    }
     /* 神話フィニッシュの後片付け：複製要素をすべて撤去し、隠した実パネルを戻す */
     function mythicFxCleanup(){
+      fxFinSetRate(1); /* 第5弾：スロー／ヒットストップの倍率を必ず通常へ戻す */
       if (fxMythicExtraCleanup){ var fxc = fxMythicExtraCleanup; fxMythicExtraCleanup = null; try { fxc(); } catch (e) {} }
       fxMythicFxNodes.forEach(function(n){ if (n.parentNode) n.parentNode.removeChild(n); });
       fxMythicFxNodes = [];
@@ -3685,8 +3836,13 @@
        流れ：SDキャラが召喚時と同じ登場演出（台座の点灯＋魔法陣）で現れる
        → キャラごとのアクション → 既存のパネル破壊演出で締める。総尺は
        キャラ別（SD_FIN_MS：4〜5.5秒、アギトのみ現行の約2.5秒）。
+       第5弾で共通の外枠を追加：開始と同時にレターボックス（上下の黒帯）と
+       暗転が入り、決めセリフ（太い明朝体＋縁取り＋グロー）を大きく表示し、
+       フィニッシュ専用SEを各拍に同期させ、着弾の前後にスローモーションと
+       ヒットストップを入れる。破壊後は黒帯が引いて明るさが戻る。
        大きさは頭基準で統一：ミラージュの表示高さを基準に、各キャラの頭が
-       全体に占める割合（SD_FIN.head）で割り戻して表示高さを決める。
+       全体に占める割合（SD_FIN.head）で割り戻して表示高さを決める
+       （アギトのみ統一から外し、大きめに表示する）。
        遠距離系（EX-キャリバー／セレスティア／ダーククイーン／ティアマト）と
        ロンギヌス／黒のアギトは召喚台ではなく攻撃側の陣地寄りに現れ、
        そこから敗れた側のパネルへ効果を放つ／向かう（ミラージュのみ召喚台）。
@@ -3704,14 +3860,17 @@
       '48':   { sd: 'fx/sd-darkqueen.webp', fx: 'fx/fx-chains.webp',    color: '#b07dff', head: 0.366, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
       '51':   { sd: 'fx/sd-tiamat.webp',    fx: 'fx/fx-breath.webp',    color: '#ff8a5c', head: 0.305, aura: ['#ff4030', '#4a90ff'], auraN: [0xff4030, 0x4a90ff, 0xffffff] },
       '52ex': { sd: 'fx/sd-excalibur.webp', fx: 'fx/fx-lightwave.webp', color: '#ffe27a', head: 0.230, aura: ['#ffd76a', '#fff3c4'], auraN: [0xffd76a, 0xfff3c4, 0xffffff], rainbow: true },
-      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff', head: 0.655, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
+      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff', head: 0.45, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
       '54':   { sd: 'fx/sd-longinus.webp',  fx: 'fx/fx-spear.webp',     color: '#f2e7bd', head: 0.410, aura: ['#e8ecf5', '#ff4a3c', '#ffd9d2'], auraN: [0xe8ecf5, 0xff4a3c, 0xffffff] }
     };
     /* head：頭の高さがSD素材全体の高さに占める割合（髪を含み頭頂から顎までを
        画像測定した実測値。前回の目視見積もりは誤差が大きかったため差し替え）。
        表示サイズはミラージュ（0.388）の現在の表示高さを基準に
        「頭の表示高さが全員そろう」よう head で割り戻して決める。
-       アギトもSD本体だけはこの統一に含める（顎・振り付け・タイミングは不変）。
+       アギトだけはこの統一から外す（第5弾）：龍は大きい方が映え、主役は
+       顎演出のため、head は実測値 0.655 ではなく第3弾時点の大きさに
+       相当する 0.45 を使い、他のキャラより大きく表示する
+       （顎のサイズ・動き・タイミングは従来どおり不変）。
        SD_FIN_MS：キャラ別の演出総尺（ms）。リッチ化で 4〜5.5 秒まで伸ばした。
        アギトは現行の 2500 のまま（対象外）。 */
     var SD_FIN_MS = { '39': 4700, '46': 4600, '48': 4000, '51': 5400, '52ex': 4600, '53ag': 2500, '54': 4100 };
@@ -3789,6 +3948,109 @@
       function later(fn, ms){ setTimeout(function(){ if (gen === fxMythicGen) fn(); }, ms); }
       var FIN_MS = SD_FIN_MS[id] || 2500; /* キャラ別の演出総尺（アギトは現行どおり2500） */
       later(function(){ mythicFxCleanup(); }, FIN_MS);
+
+      /* ===== 第5弾：共通の外枠（レターボックス＋暗転／決めセリフ／専用SE／スロー＆ヒットストップ） =====
+         開始と同時に画面上下へ黒帯（各・画面高の約7%）がスライドインし、
+         暗転レイヤー（z-index 90）で盤面全体が少し暗くなる。暗転は対象
+         パネルの矩形だけをくり抜き、SD・演出レイヤー・破壊クローン
+         （91〜94）も暗転より上にあるため、対象パネルと演出は明るいまま残る。決めセリフは約1秒表示してアクション開始と
+         ともにフェードアウトする。スロー／ヒットストップは fxFinSetRate
+         で演出全体（WAAPI＋Pixi）の速度だけを落とし／止めるもので、
+         タイマー進行・総尺・結果表示の遅延には触れない。
+         パネル破壊後は黒帯がスライドアウトし、明るさが戻ってから
+         （実戦では）結果表示へ移る。演出チェック画面でも同じ外枠で再生する */
+      var SD_FIN_LINE = {
+        '39': '光の中へ還りなさい', '46': '遅い。もう斬った後だよ', '48': 'ふふ、いただくわ',
+        '51': '紅と蒼に、燃え尽きなさい', '52ex': 'この一閃で、終わらせる', '53ag': '喰らいつくす', '54': 'その壁ごと、貫く'
+      };
+      /* slow：[開始, 終了]（着弾直前だけ速度を落とす）／stop：[着弾時刻, 静止ms]／
+         destroy：パネル破壊SEの時刻／se：キャラ別の主音キュー [時刻, 音名]。
+         時刻はすべてこの関数（＝フィニッシュ開始）からの相対msで、
+         各キャラの既存の振り付けの拍に合わせてある */
+      var SD_FIN_CUES = {
+        '39':   { slow: [1850, 2150], stop: [2150, 130], destroy: 2150, se: [[1420, 'finBeam'], [2150, 'finPurify']] },
+        '46':   { slow: [2000, 2230], stop: [2230, 120], destroy: 2480, se: [[1480, 'finSlash'], [1760, 'finSlash'], [2230, 'finSlash']] },
+        '48':   { slow: [820, 1000],  stop: [1000, 120], destroy: 1000, se: [[550, 'finChains']] },
+        '51':   { slow: [3700, 3950], stop: [3950, 150], destroy: 3950, se: [[2150, 'finBeamLong']] },
+        '52ex': { slow: [2780, 3050], stop: [3050, 150], destroy: 3050, se: [[2230, 'finSlash'], [2480, 'finBeam']] },
+        /* アギトは顎の動き・タイミングが不変条件のためスローは入れず、
+           噛み砕きの瞬間のヒットストップだけで締める。
+           ロンギヌスのスローは突進（200ms）の終盤だけに絞り、着弾の拍を崩さない */
+        '53ag': { stop: [1700, 150], destroy: 1700, se: [[1120, 'finRoar'], [1700, 'finCrunch']] },
+        '54':   { slow: [790, 850],   stop: [850, 160],  destroy: 2050, se: [[640, 'finRush'], [850, 'finImpactHeavy']] }
+      };
+      (function sdFinFrame(){
+        var cues = SD_FIN_CUES[id] || {};
+        /* --- レターボックス＋暗転 --- */
+        var dimEl = document.createElement('div');
+        dimEl.className = 'fx-fin-dimlayer'; dimEl.setAttribute('aria-hidden', 'true');
+        /* 暗転のくり抜き：対象パネルの矩形（関数冒頭で実測した r）に合わせ、
+           パネルだけを暗転から外す（破壊クローンは元々 z-index 92 で上） */
+        dimEl.style.left = r.left + 'px'; dimEl.style.top = r.top + 'px';
+        dimEl.style.width = r.width + 'px'; dimEl.style.height = r.height + 'px';
+        document.body.appendChild(dimEl); fxMythicFxNodes.push(dimEl);
+        var barT = document.createElement('div');
+        barT.className = 'fx-fin-letterbox top'; barT.setAttribute('aria-hidden', 'true');
+        var barB = document.createElement('div');
+        barB.className = 'fx-fin-letterbox bottom'; barB.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(barT); document.body.appendChild(barB);
+        fxMythicFxNodes.push(barT); fxMythicFxNodes.push(barB);
+        fxFinAnimate(dimEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out', fill: 'forwards' });
+        fxFinAnimate(barT, [{ transform: 'translateY(-104%)' }, { transform: 'translateY(0)' }], { duration: 400, easing: 'cubic-bezier(.22,.8,.3,1)', fill: 'forwards' });
+        fxFinAnimate(barB, [{ transform: 'translateY(104%)' }, { transform: 'translateY(0)' }], { duration: 400, easing: 'cubic-bezier(.22,.8,.3,1)', fill: 'forwards' });
+        seFin('finStart');
+        /* --- 決めセリフ（太い明朝体＋濃い縁取り＋テーマカラーのグロー＋金系グラデーション） --- */
+        var lineTxt = SD_FIN_LINE[id];
+        var lineEl = null;
+        if (lineTxt){
+          later(function(){
+            lineEl = document.createElement('div');
+            lineEl.className = 'fx-fin-line'; lineEl.setAttribute('aria-hidden', 'true');
+            /* 長いセリフでも画面幅に収まるよう、文字数から大きさを決める */
+            var fs = Math.max(23, Math.min(50, Math.floor(window.innerWidth * 0.94 / (lineTxt.length * 1.18))));
+            lineEl.style.fontSize = fs + 'px';
+            lineEl.innerHTML = '<span class="fx-line-wrap"><span class="fx-line-stroke"></span><span class="fx-line-face"></span></span>';
+            var wrapEl = lineEl.firstChild;
+            wrapEl.style.setProperty('--fx-line-glow', conf.color);
+            wrapEl.childNodes[0].textContent = lineTxt;
+            var faceEl = wrapEl.childNodes[1];
+            faceEl.textContent = lineTxt;
+            faceEl.style.backgroundImage = 'linear-gradient(180deg, #ffffff 0%, #fff6da 30%, ' + conf.color + ' 76%, ' + conf.color + ' 100%)';
+            document.body.appendChild(lineEl); fxMythicFxNodes.push(lineEl);
+            /* 叩きつけるようなスケールイン＋小さな画面の震え */
+            fxFinAnimate(wrapEl, [
+              { transform: 'scale(2.7)', opacity: 0 },
+              { transform: 'scale(.93)', opacity: 1, offset: 0.55 },
+              { transform: 'scale(1.03)', opacity: 1, offset: 0.78 },
+              { transform: 'scale(1)', opacity: 1 }
+            ], { duration: 330, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+            fxQuake('fx-quake-sm', 300);
+            seFin('finLine');
+          }, id === '53ag' ? 200 : 320);
+          later(function(){
+            if (lineEl) fxFinAnimate(lineEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 380, easing: 'ease-in', fill: 'forwards' });
+          }, id === '53ag' ? 900 : 1280);
+        }
+        /* --- キャラ別SEキュー＋共通のパネル破壊音 --- */
+        if (cues.se) cues.se.forEach(function(c){ later(function(){ seFin(c[1]); }, c[0]); });
+        if (cues.destroy != null) later(function(){ seFin('finBreak'); }, cues.destroy);
+        /* --- スローモーション→ヒットストップ --- */
+        if (cues.slow){
+          later(function(){ fxFinSetRate(0.35); }, cues.slow[0]);
+          if (!cues.stop || cues.stop[0] !== cues.slow[1]) later(function(){ fxFinSetRate(1); }, cues.slow[1]);
+        }
+        if (cues.stop){
+          later(function(){ fxFinSetRate(0.05); }, cues.stop[0]);
+          later(function(){ fxFinSetRate(1); }, cues.stop[0] + cues.stop[1]);
+        }
+        /* --- 終了：黒帯がスライドアウトし、明るさが戻る --- */
+        later(function(){
+          fxFinAnimate(barT, [{ transform: 'translateY(0)' }, { transform: 'translateY(-104%)' }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
+          fxFinAnimate(barB, [{ transform: 'translateY(0)' }, { transform: 'translateY(104%)' }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
+          fxFinAnimate(dimEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
+          fxFinSetRate(1);
+        }, Math.max(0, FIN_MS - 360));
+      })();
 
       /* --- 登場：召喚台を神話仕様に点灯させ、魔法陣とともにSDキャラが現れる --- */
       /* 大きさ：場のカード幅の約1.15倍（旧仕様は画面高さ基準で大きすぎた）。
@@ -5195,7 +5457,7 @@
     }
     function pixiTick(){
       if (!pixiFx.app) return;
-      var dt = Math.min(50, pixiFx.app.ticker.deltaMS);
+      var dt = Math.min(50, pixiFx.app.ticker.deltaMS) * fxFinRateScale; /* 第5弾：フィニッシュのスロー／ヒットストップに Pixi 演出も連動させる */
       var now = fxNow();
       /* 全面画面（詳細・タイトル等）が開いている間はキャンバスごと隠す */
       pixiFx.lastVisCheck += dt;
