@@ -3699,16 +3699,17 @@
     /* aura／auraN：オーラパッケージのテーマカラー（CSS色／Pixi色）。
        ティアマトは紅と蒼の2色、ロンギヌスは銀と赤、EXは金＋虹（rainbow） */
     var SD_FIN = {
-      '39':   { sd: 'fx/sd-celestia.webp',  fx: 'fx/fx-pillar.webp',    color: '#ffe9a8', head: 0.33, aura: ['#ffd76a', '#fff3c4', '#ffedb5'], auraN: [0xffd76a, 0xfff3c4, 0xffffff] },
-      '46':   { sd: 'fx/sd-mirage.webp',    fx: 'fx/fx-slash.webp',     color: '#ff7a5c', head: 0.38, aura: ['#ff3b30', '#ff7a5c', '#ffb0a0'], auraN: [0xff3b30, 0xff7a5c, 0xffffff] },
-      '48':   { sd: 'fx/sd-darkqueen.webp', fx: 'fx/fx-chains.webp',    color: '#b07dff', head: 0.30, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
-      '51':   { sd: 'fx/sd-tiamat.webp',    fx: 'fx/fx-breath.webp',    color: '#ff8a5c', head: 0.23, aura: ['#ff4030', '#4a90ff'], auraN: [0xff4030, 0x4a90ff, 0xffffff] },
-      '52ex': { sd: 'fx/sd-excalibur.webp', fx: 'fx/fx-lightwave.webp', color: '#ffe27a', head: 0.30, aura: ['#ffd76a', '#fff3c4'], auraN: [0xffd76a, 0xfff3c4, 0xffffff], rainbow: true },
-      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff', head: 0.45, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
-      '54':   { sd: 'fx/sd-longinus.webp',  fx: 'fx/fx-spear.webp',     color: '#f2e7bd', head: 0.27, aura: ['#e8ecf5', '#ff4a3c', '#ffd9d2'], auraN: [0xe8ecf5, 0xff4a3c, 0xffffff] }
+      '39':   { sd: 'fx/sd-celestia.webp',  fx: 'fx/fx-pillar.webp',    color: '#ffe9a8', head: 0.403, aura: ['#ffd76a', '#fff3c4', '#ffedb5'], auraN: [0xffd76a, 0xfff3c4, 0xffffff] },
+      '46':   { sd: 'fx/sd-mirage.webp',    fx: 'fx/fx-slash.webp',     color: '#ff7a5c', head: 0.388, aura: ['#ff3b30', '#ff7a5c', '#ffb0a0'], auraN: [0xff3b30, 0xff7a5c, 0xffffff] },
+      '48':   { sd: 'fx/sd-darkqueen.webp', fx: 'fx/fx-chains.webp',    color: '#b07dff', head: 0.366, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
+      '51':   { sd: 'fx/sd-tiamat.webp',    fx: 'fx/fx-breath.webp',    color: '#ff8a5c', head: 0.305, aura: ['#ff4030', '#4a90ff'], auraN: [0xff4030, 0x4a90ff, 0xffffff] },
+      '52ex': { sd: 'fx/sd-excalibur.webp', fx: 'fx/fx-lightwave.webp', color: '#ffe27a', head: 0.230, aura: ['#ffd76a', '#fff3c4'], auraN: [0xffd76a, 0xfff3c4, 0xffffff], rainbow: true },
+      '53ag': { sd: 'fx/sd-agito.webp',     fx: 'fx/agito-jaw.webp',    color: '#a678ff', head: 0.655, aura: ['#a678ff', '#7a3cff', '#d6bcff'], auraN: [0xa678ff, 0x7a3cff, 0xd6bcff] },
+      '54':   { sd: 'fx/sd-longinus.webp',  fx: 'fx/fx-spear.webp',     color: '#f2e7bd', head: 0.410, aura: ['#e8ecf5', '#ff4a3c', '#ffd9d2'], auraN: [0xe8ecf5, 0xff4a3c, 0xffffff] }
     };
-    /* head：頭の高さがSD素材全体の高さに占める割合（目視見積もり）。
-       表示サイズはミラージュ（0.38）の現在の表示高さを基準に
+    /* head：頭の高さがSD素材全体の高さに占める割合（髪を含み頭頂から顎までを
+       画像測定した実測値。前回の目視見積もりは誤差が大きかったため差し替え）。
+       表示サイズはミラージュ（0.388）の現在の表示高さを基準に
        「頭の表示高さが全員そろう」よう head で割り戻して決める。
        アギトもSD本体だけはこの統一に含める（顎・振り付け・タイミングは不変）。
        SD_FIN_MS：キャラ別の演出総尺（ms）。リッチ化で 4〜5.5 秒まで伸ばした。
@@ -3818,7 +3819,7 @@
       var mirProbe = sdImgEls[SD_FIN['46'].sd];
       var mirAsp = (mirProbe && mirProbe.naturalWidth > 0) ? (mirProbe.naturalHeight / mirProbe.naturalWidth) : sdAsp;
       var mirageH = cardW * 1.15 * mirAsp;
-      var sdH = Math.max(56, Math.round(mirageH * 0.38 / (conf.head || 0.38)));
+      var sdH = Math.max(56, Math.round(mirageH * 0.388 / (conf.head || 0.388)));
       sdH = Math.min(sdH, Math.round(window.innerHeight * 0.62));
       var anchor = sdFinAnchor();
       if (id === '52ex' || id === '39' || id === '48' || id === '51' || id === '54' || id === '53ag'){
@@ -4111,60 +4112,99 @@
         [620, 980, 1340].forEach(function(ms){
           later(function(){ pixiBurst(ax, feetY - sdH * 0.35, { count: 14, rise: true, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 0.8 }); }, ms);
         });
-        /* 剣の円弧スイング：剣スプライトがSDを中心に「上半分」の円弧を
-           大きく描く（左端→天頂→右端）。剣の向きは円弧の進行方向（接線）に
-           合わせ、刃（素材は刃下向き）が常に進む先を向くように回す。
-           描画の弧トレイルも重ねて、上半円の軌跡そのものが読めるようにする。
-           SD本体は沈まずに振りへ乗り、振りかぶりで足元に砂煙、弧に風切り */
+        /* 剣の円弧スイング：勢い重視の作りに変更。まず短い「引き」（剣を
+           左端からさらに後ろへ引く溜め）で間を作り、そこから一気に振り抜く。
+           振り抜きは約340ms（従来の等速690msから大幅短縮）で、キーフレームの
+           配分自体を「最初は少しだけ進み、終盤に角度の大半を消化する」加速型に
+           して爆発的な速さを出す。振り抜き中は弧の上に剣の残像（3枚）と
+           風切りの線を残し、描画の弧トレイルも同じ加速カーブで伸ばす。
+           剣の向きは円弧の進行方向（接線）に合わせ、刃（素材は刃下向き）が
+           常に進む先を向くように回す。SD本体も引きで沈んでから振りへ乗る */
         later(function(){
           sdDust(ax, feetY, false);
-          sdWind(ax, sdCy - sdH * 0.2, dxP >= 0 ? 0 : 180, sdH * 1.1, 0xffe9a8);
           fxFinAnimate(sd, [
             { transform: sdT(0, 3, 1.03), opacity: 1 },
-            { transform: sdT(0, -7, 1.05, -5), opacity: 1, offset: 0.35 },
-            { transform: sdT(0, -4, 1.04, 5), opacity: 1, offset: 0.68 },
+            { transform: sdT(0, 7, 1.01, -8), opacity: 1, offset: 0.5 },
+            { transform: sdT(0, -2, 1.05, -2), opacity: 1, offset: 0.7 },
+            { transform: sdT(0, -6, 1.06, 6), opacity: 1, offset: 0.88 },
             { transform: sdT(0, 2, 1.01), opacity: 1 }
           ], { duration: 700, easing: 'ease-in-out', fill: 'forwards' });
           var arcR = sdH * 0.52;
-          pixiAnim(720, function(gfx, t){
+          /* 弧トレイル：引きの間（t<0.5）は描かず、振り抜きに合わせて加速しながら伸びる */
+          pixiAnim(760, function(gfx, t){
             gfx.clear();
-            var prog = Math.min(1, t / 0.82);
-            var fade = t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1;
-            gfx.lineStyle(Math.max(7, sdH * 0.15), 0xffd76a, 0.32 * fade);
+            var prog = Math.min(1, Math.pow(Math.max(0, (t - 0.5) / 0.42), 1.4));
+            var fade = t > 0.88 ? Math.max(0, 1 - (t - 0.88) / 0.12) : 1;
+            if (prog <= 0) return;
+            gfx.lineStyle(Math.max(8, sdH * 0.17), 0xffd76a, 0.36 * fade);
             gfx.arc(sdCx, sdCy, arcR, -Math.PI, -Math.PI + Math.PI * prog);
-            gfx.lineStyle(Math.max(2.5, sdH * 0.05), 0xffffff, 0.85 * fade);
+            gfx.lineStyle(Math.max(3, sdH * 0.06), 0xffffff, 0.9 * fade);
             gfx.arc(sdCx, sdCy, arcR, -Math.PI, -Math.PI + Math.PI * prog);
           });
           if (sdImgState['fx/fx-sword.webp'] === 1){
             var sw = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.45) }, ax, sdCy);
-            var swordFrames = [];
-            var steps = 10;
-            for (var si = 0; si <= steps; si++){
-              var ft = si / steps;
-              var angR = (1 - ft) * Math.PI; /* 左端(π)→天頂(π/2)→右端(0) の上半円弧 */
-              var rotT = Math.round(Math.atan2(Math.cos(angR), Math.sin(angR)) * 180 / Math.PI - 90);
-              swordFrames.push({
-                transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(angR) * arcR) + 'px,' + Math.round(-Math.sin(angR) * arcR) + 'px) rotate(' + rotT + 'deg) scale(1)',
-                opacity: si === 0 ? 0 : 1, offset: ft
-              });
-            }
-            fxFinAnimate(sw, swordFrames, { duration: 690, easing: 'cubic-bezier(.45,.05,.6,1)', fill: 'forwards' });
+            var SWA = Math.PI + 0.42; /* 引きで左端（π）からさらに後ろへ引いた角度 */
+            /* off：全体700msに対する位置。0.52（約364ms）までが引き、
+               以降が振り抜き。振り抜き区間の角度配分を終盤寄りにして加速感を出す */
+            var swKeys = [
+              { off: 0,    a: Math.PI,  op: 0 },
+              { off: 0.06, a: Math.PI,  op: 1 },
+              { off: 0.52, a: SWA,      op: 1 },
+              { off: 0.68, a: SWA * 0.80, op: 1 },
+              { off: 0.82, a: SWA * 0.48, op: 1 },
+              { off: 0.93, a: SWA * 0.18, op: 1 },
+              { off: 1,    a: 0,        op: 1 }
+            ];
+            var swordFrames = swKeys.map(function(k){
+              var rotT = Math.round(Math.atan2(Math.cos(k.a), Math.sin(k.a)) * 180 / Math.PI - 90);
+              return {
+                transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(k.a) * arcR) + 'px,' + Math.round(-Math.sin(k.a) * arcR) + 'px) rotate(' + rotT + 'deg) scale(1)',
+                opacity: k.op, offset: k.off
+              };
+            });
+            fxFinAnimate(sw, swordFrames, { duration: 700, easing: 'cubic-bezier(.55,.06,.75,.25)', fill: 'forwards' });
+            /* 剣の残像：振り抜きの軌跡上に3枚、薄く光らせてすぐ消す */
+            [ { ms: 500, a: SWA * 0.74 }, { ms: 585, a: SWA * 0.47 }, { ms: 645, a: SWA * 0.22 } ].forEach(function(g){
+              later(function(){
+                var gh = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.45) }, ax, sdCy);
+                var gr = Math.round(Math.atan2(Math.cos(g.a), Math.sin(g.a)) * 180 / Math.PI - 90);
+                var gtr = 'translate(-50%,-50%) translate(' + Math.round(Math.cos(g.a) * arcR) + 'px,' + Math.round(-Math.sin(g.a) * arcR) + 'px) rotate(' + gr + 'deg) scale(1)';
+                gh.style.filter = 'drop-shadow(0 0 10px rgba(255,215,106,.9)) brightness(1.6)';
+                fxFinAnimate(gh, [
+                  { transform: gtr, opacity: 0.42 },
+                  { transform: gtr, opacity: 0 }
+                ], { duration: 250, easing: 'ease-out', fill: 'forwards' });
+              }, g.ms);
+            });
+            /* 風切り：振り抜きの接線方向へ、弧上の3点から線を流す */
+            [ { ms: 480, a: SWA * 0.78 }, { ms: 570, a: SWA * 0.50 }, { ms: 635, a: SWA * 0.25 } ].forEach(function(wn){
+              later(function(){
+                var tang = Math.atan2(Math.cos(wn.a), Math.sin(wn.a)) * 180 / Math.PI;
+                sdWind(ax + Math.cos(wn.a) * arcR, sdCy - Math.sin(wn.a) * arcR, tang, sdH * 0.95, 0xffe9a8);
+              }, wn.ms);
+            });
             later(function(){
               fxFinAnimate(sw, [
                 { transform: 'translate(-50%,-50%) translate(' + Math.round(arcR) + 'px,0px) rotate(0deg) scale(1)', opacity: 1 },
                 { transform: 'translate(-50%,-50%) translate(' + Math.round(arcR) + 'px,0px) rotate(0deg) scale(1)', opacity: 0 }
-              ], { duration: 160, easing: 'ease-in', fill: 'forwards' });
-            }, 670);
+              ], { duration: 130, easing: 'ease-in', fill: 'forwards' });
+            }, 692);
           }
         }, 1750);
-        /* 混合ビーム：全神話フィニッシュで一番派手にする。素材の光波を
-           大幅に太くし、ぼかしの光帯＋描画の多層ライン（外側グロー／虹の
-           煌めき／中間／白い芯）を重ね、粒子・フラッシュ・揺れも強める */
+        /* 混合ビーム：全神話フィニッシュで一番派手にする。円弧の終端で
+           ビームが放たれる瞬間に強いフラッシュ＋揺れ＋銃口状のバーストを入れ、
+           太さはパネル付近で画面高さの半分近くを覆うほど大胆に取る（ぼかしの
+           光帯＋描画の多層ライン＝外側グロー／中間／虹の煌めき／白い芯の
+           4層構造は維持したまま全体をスケールアップ）。素材の光波も太くする */
         later(function(){
+          fxFinFlash(0.92, 560);
+          fxQuake('fx-quake-md', 520);
+          pixiBurst(sdCx, sdCy, { count: 26, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 1.6 });
+          var beamThick = Math.round(Math.min(window.innerHeight * 0.48, Math.max(sdH * 1.6, h * 2.3)));
           var bd = sdFinNode('div', 'fx-sd-beamdiv');
-          bd.style.left = sdCx + 'px'; bd.style.top = (sdCy - Math.round(sdH * 0.45)) + 'px';
+          bd.style.left = sdCx + 'px'; bd.style.top = (sdCy - Math.round(beamThick / 2)) + 'px';
           bd.style.width = Math.round(Math.sqrt(dxP * dxP + dyP * dyP) + sdH * 0.4) + 'px';
-          bd.style.height = Math.round(sdH * 0.9) + 'px';
+          bd.style.height = beamThick + 'px';
           bd.style.background = 'linear-gradient(180deg, rgba(255,215,106,0) 0%, rgba(255,215,106,.5) 32%, rgba(255,246,218,.85) 50%, rgba(255,215,106,.5) 68%, rgba(255,215,106,0) 100%)';
           bd.style.filter = 'blur(7px)';
           bd.style.transformOrigin = '0 50%';
@@ -4175,27 +4215,27 @@
             { transform: bpre2 + 'scaleX(1)', opacity: 0.7, offset: 0.6 },
             { transform: bpre2 + 'scaleX(1)', opacity: 0 }
           ], { duration: 1150, easing: 'ease-out', fill: 'forwards' });
-          sdBeam(conf.fx, Math.round(sdH * 1.0), 1150, true);
+          sdBeam(conf.fx, Math.round(sdH * 1.35), 1150, true);
           var rainbowCols = [0xff5a5a, 0xffa04a, 0xffe27a, 0x7dff8a, 0x5aa2ff, 0xb07dff];
           pixiAnim(1150, function(gfx, t, life){
             gfx.clear();
             var env = Math.min(1, t / 0.13) * (t > 0.68 ? Math.max(0, 1 - (t - 0.68) / 0.32) : 1);
             var fl = 0.84 + 0.16 * Math.sin(life * 0.055);
-            gfx.lineStyle(Math.max(14, sdH * 0.88), 0xffd76a, 0.16 * env * fl);
+            gfx.lineStyle(Math.max(22, sdH * 1.5), 0xffd76a, 0.16 * env * fl);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(9, sdH * 0.52), 0xffe9a8, 0.36 * env * fl);
+            gfx.lineStyle(Math.max(15, sdH * 0.92), 0xffe9a8, 0.36 * env * fl);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(6, sdH * 0.33), rainbowCols[Math.floor(life / 110) % rainbowCols.length], 0.30 * env);
+            gfx.lineStyle(Math.max(10, sdH * 0.56), rainbowCols[Math.floor(life / 110) % rainbowCols.length], 0.30 * env);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(3.5, sdH * 0.19), 0xffffff, 0.95 * env * fl);
+            gfx.lineStyle(Math.max(6, sdH * 0.33), 0xffffff, 0.95 * env * fl);
             gfx.moveTo(sdCx, sdCy); gfx.lineTo(pcx, pcy);
           });
         }, 2480);
         later(function(){
           sdImpact(true, [0xffffff, 0xffd76a, 0xfff3c4]);
           fxFinFlash(0.95, 720);
-          pixiBurst(pcx, pcy, { count: 55, colors: [0xffffff, 0xffd76a, 0xfff3c4, 0xffa04a], power: 2.3, size: 1.25 });
-          pixiRing(pcx, pcy, { maxR: w * 1.3, dur: 800, color: 0xffffff });
+          pixiBurst(pcx, pcy, { count: 78, colors: [0xffffff, 0xffd76a, 0xfff3c4, 0xffa04a], power: 2.7, size: 1.35 });
+          pixiRing(pcx, pcy, { maxR: w * 1.5, dur: 800, color: 0xffffff });
           pixiCrackFx(pcx, pcy, Math.max(w, h) * 1.15, 1500, 8);
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
           var halves = fxFinPieces(panelEl, mk.wrap, 2, 1);
@@ -4468,11 +4508,11 @@
             var fl = 0.82 + 0.18 * Math.sin(life * 0.055) * Math.sin(life * 0.021 + 1.1);
             function beam(s, tg, col){
               var ex = tg.x + (tg.x - s.x) * 0.10, ey = tg.y + (tg.y - s.y) * 0.10;
-              gfx.lineStyle(Math.max(15, sdH * 0.62), col, 0.14 * env * fl);
+              gfx.lineStyle(Math.max(22, sdH * 1.0), col, 0.14 * env * fl);
               gfx.moveTo(s.x, s.y); gfx.lineTo(ex, ey);
-              gfx.lineStyle(Math.max(8, sdH * 0.33), col, 0.42 * env * fl);
+              gfx.lineStyle(Math.max(13, sdH * 0.58), col, 0.42 * env * fl);
               gfx.moveTo(s.x, s.y); gfx.lineTo(ex, ey);
-              gfx.lineStyle(Math.max(3, sdH * 0.12), 0xffffff, 0.9 * env * fl);
+              gfx.lineStyle(Math.max(5, sdH * 0.22), 0xffffff, 0.9 * env * fl);
               gfx.moveTo(s.x, s.y); gfx.lineTo(ex, ey);
             }
             beam(srcL, tgtL, 0xff4030);
@@ -4543,10 +4583,11 @@
           later(function(){ pixiBurst(handX, handY, { count: 12, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 0.7 }); }, ms);
         });
         /* ビーム：両手からパネルへ。太い光の帯（DOM）＋描画の3層ライン
-           （外側グロー／中間／白い芯）を重ね、着弾点では光が弾ける */
+           （外側グロー／中間／白い芯）を重ね、着弾点では光が弾ける。
+           太さは従来（帯0.36／グロー0.55）から明確に太くした */
         later(function(){
           var bd = sdFinNode('div', 'fx-sd-beamdiv');
-          var bhC = Math.round(sdH * 0.36);
+          var bhC = Math.round(sdH * 0.66);
           bd.style.left = handX + 'px'; bd.style.top = (handY - bhC / 2) + 'px';
           bd.style.width = Math.round(bLenC + 30) + 'px'; bd.style.height = bhC + 'px';
           bd.style.background = 'linear-gradient(180deg, rgba(255,215,106,0) 0%, rgba(255,215,106,.55) 30%, #fff6da 50%, rgba(255,215,106,.55) 70%, rgba(255,215,106,0) 100%)';
@@ -4563,16 +4604,16 @@
             gfx.clear();
             var env = Math.min(1, t / 0.13) * (t > 0.78 ? Math.max(0, 1 - (t - 0.78) / 0.22) : 1);
             var fl = 0.84 + 0.16 * Math.sin(life * 0.06);
-            gfx.lineStyle(Math.max(12, sdH * 0.55), 0xffd76a, 0.16 * env * fl);
+            gfx.lineStyle(Math.max(18, sdH * 0.98), 0xffd76a, 0.16 * env * fl);
             gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(7, sdH * 0.3), 0xffe9a8, 0.38 * env * fl);
+            gfx.lineStyle(Math.max(11, sdH * 0.55), 0xffe9a8, 0.38 * env * fl);
             gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
-            gfx.lineStyle(Math.max(3, sdH * 0.13), 0xffffff, 0.95 * env * fl);
+            gfx.lineStyle(Math.max(5, sdH * 0.24), 0xffffff, 0.95 * env * fl);
             gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
           });
           pixiBurst(handX, handY, { count: 18, colors: [0xffffff, 0xffeeb0], power: 1.0 });
-          pixiBurst(pcx, pcy, { count: 26, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 });
-          fxFinFlash(0.5, 520);
+          pixiBurst(pcx, pcy, { count: 34, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.8 });
+          fxFinFlash(0.62, 520);
           fxQuake('fx-quake-sm', 480);
           pixiRing(pcx, pcy, { maxR: w * 0.9, dur: 750, color: 0xffffff });
         }, 1420);
