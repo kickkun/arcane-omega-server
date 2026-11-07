@@ -171,11 +171,26 @@
       .dmg-pop{
         position:absolute; left:50%; top:34%; transform:translate(-50%,-50%); z-index:5;
         font-size:24px; font-weight:900; color:#ff6a55; text-shadow:0 2px 0 #5c130c,0 0 10px rgba(0,0,0,.8);
-        pointer-events:none; animation:popUp .85s ease-out forwards;
+        pointer-events:none; animation:popUp .85s ease-out forwards, popGlow .34s ease-out;
       }
-      .dmg-pop.heal{color:#7ed492; text-shadow:0 2px 0 #17401f,0 0 10px rgba(0,0,0,.8);}
-      .dmg-pop.buff{color:#8be0c8; font-size:19px; text-shadow:0 2px 0 #0d3830,0 0 10px rgba(0,0,0,.8);}
+      .dmg-pop.heal{color:#7ed492; text-shadow:0 2px 0 #17401f,0 0 10px rgba(0,0,0,.8); animation:popUp .85s ease-out forwards, popGlowHeal .34s ease-out;}
+      .dmg-pop.buff{color:#8be0c8; font-size:19px; text-shadow:0 2px 0 #0d3830,0 0 10px rgba(0,0,0,.8); animation:popUp .85s ease-out forwards;}
       .leader .dmg-pop{font-size:30px;}
+      /* ===== 数字ポップ第2弾：出現時の発光＋大きさの段階表現 =====
+         出現直後の一瞬だけ filter で強く光らせる（ダメージ=暖色／回復=緑）。
+         transform は popUp 側が担うため、こちらは filter のみを動かす。
+         段階（pop-t1〜t3）は JS（popTierCls）が数値の大きさから付ける：
+         大きいダメージほど数字が大きく、縁のグローも強くなる。
+         可読性の土台（濃い縁取りの text-shadow）は全段階で維持する。
+         フィニッシュ特大数字（.finish）は後段の専用ルールが優先される */
+      @keyframes popGlow{0%{filter:brightness(2.5) drop-shadow(0 0 11px rgba(255,138,64,.95));}100%{filter:brightness(1) drop-shadow(0 0 0 rgba(255,138,64,0));}}
+      @keyframes popGlowHeal{0%{filter:brightness(2.3) drop-shadow(0 0 11px rgba(110,231,150,.95));}100%{filter:brightness(1) drop-shadow(0 0 0 rgba(110,231,150,0));}}
+      .dmg-pop.pop-t2{font-size:28px; text-shadow:0 2px 0 #5c130c,0 0 10px rgba(0,0,0,.8),0 0 13px rgba(255,110,55,.55);}
+      .dmg-pop.pop-t2.heal{text-shadow:0 2px 0 #17401f,0 0 10px rgba(0,0,0,.8),0 0 13px rgba(110,231,150,.5);}
+      .dmg-pop.pop-t3{font-size:34px; letter-spacing:.02em; text-shadow:0 2px 0 #5c130c,0 0 12px rgba(0,0,0,.85),0 0 20px rgba(255,96,40,.85),0 0 7px rgba(255,190,110,.8);}
+      .dmg-pop.pop-t3.heal{text-shadow:0 2px 0 #17401f,0 0 12px rgba(0,0,0,.85),0 0 20px rgba(80,220,130,.8),0 0 7px rgba(190,255,210,.75);}
+      .leader .dmg-pop.pop-t2{font-size:34px;}
+      .leader .dmg-pop.pop-t3{font-size:42px;}
       @keyframes popUp{0%{opacity:0; transform:translate(-50%,-30%) scale(.6);}18%{opacity:1; transform:translate(-50%,-60%) scale(1.15);}100%{opacity:0; transform:translate(-50%,-150%) scale(1);}}
       .banner{
         border-radius:10px; padding:9px 12px; font-size:13.5px; font-weight:700; line-height:1.5;
@@ -917,7 +932,12 @@
       .fx-hit{animation:fxHitReact .38s ease;}
       .fx-ghost{position:fixed; z-index:88; pointer-events:none; margin:0; animation:fxGhostFade .45s ease-out forwards;}
       @keyframes fxGhostFade{0%{opacity:1;}100%{opacity:0; transform:scale(.82) translateY(8px); filter:brightness(1.7);}}
-      .dmg-pop.fx-fixed{position:fixed; z-index:89; animation:popUpFixed .85s ease-out forwards;}
+      /* 破壊の残像：本体ゴーストの背後に、少し大きく滲んだ複製を遅れて
+         フェードさせる（消え方に重みを持たせる。合計時間は従来と同程度） */
+      .fx-ghost-after{z-index:87; animation:fxGhostAfter .6s ease-out .05s both;}
+      @keyframes fxGhostAfter{0%{opacity:.5; transform:scale(1.03); filter:blur(1.5px) brightness(1.6);}100%{opacity:0; transform:scale(.9) translateY(10px); filter:blur(3px) brightness(1.9);}}
+      .dmg-pop.fx-fixed{position:fixed; z-index:89; animation:popUpFixed .85s ease-out forwards, popGlow .34s ease-out;}
+      .dmg-pop.fx-fixed.heal{animation:popUpFixed .85s ease-out forwards, popGlowHeal .34s ease-out;}
       @keyframes popUpFixed{0%{opacity:0; transform:translate(-50%,-20%) scale(.6);}18%{opacity:1; transform:translate(-50%,-60%) scale(1.15);}100%{opacity:0; transform:translate(-50%,-170%) scale(1);}}
       .ov-player{position:relative;}
       /* 神話カード：手札・場のどちらでも枠の金色グローが穏やかに脈打つ。
@@ -930,7 +950,7 @@
       }
       .hcard.mythic,.ov-hcard.mythic{animation:fxMythicPulseHand 2.4s ease-in-out infinite;}
       @keyframes fxMythicPulse{0%,100%{opacity:.4;}50%{opacity:1;}}
-      @keyframes fxMythicPulseHand{0%,100%{box-shadow:0 0 6px rgba(236,205,126,.35), inset 0 0 0 1px rgba(236,205,126,.55);}50%{box-shadow:0 0 16px rgba(236,205,126,.85), inset 0 0 0 1px rgba(255,233,168,.95);}}
+      @keyframes fxMythicPulseHand{0%,100%{box-shadow:0 0 10px rgba(236,205,126,.55), 0 0 26px rgba(236,205,126,.22), inset 0 0 0 1.5px rgba(255,233,168,.75);}50%{box-shadow:0 0 22px rgba(236,205,126,.95), 0 0 48px rgba(236,205,126,.42), inset 0 0 0 1.5px rgba(255,243,196,.95);}}
       @media (prefers-reduced-motion: reduce){
         .fx-spawn,.fx-spawn-mythic,.fx-lunge-up,.fx-lunge-down,.fx-hit{animation-duration:.01s;}
         .fx-spawn-mythic::before{animation:none; opacity:0;}
@@ -948,26 +968,26 @@
         animation:fxRainbowFrame 5s linear infinite;
       }
       @keyframes fxRainbowFrame{
-        0%{border-color:#ff5a5a; box-shadow:0 0 14px rgba(255,90,90,.85), inset 0 0 0 1px rgba(255,90,90,.8);}
-        17%{border-color:#ff9d3c; box-shadow:0 0 14px rgba(255,157,60,.85), inset 0 0 0 1px rgba(255,157,60,.8);}
-        33%{border-color:#ffe14d; box-shadow:0 0 14px rgba(255,225,77,.85), inset 0 0 0 1px rgba(255,225,77,.8);}
-        50%{border-color:#5ad66e; box-shadow:0 0 14px rgba(90,214,110,.85), inset 0 0 0 1px rgba(90,214,110,.8);}
-        67%{border-color:#4da6ff; box-shadow:0 0 14px rgba(77,166,255,.85), inset 0 0 0 1px rgba(77,166,255,.8);}
-        83%{border-color:#b45aff; box-shadow:0 0 14px rgba(180,90,255,.85), inset 0 0 0 1px rgba(180,90,255,.8);}
-        100%{border-color:#ff5a5a; box-shadow:0 0 14px rgba(255,90,90,.85), inset 0 0 0 1px rgba(255,90,90,.8);}
+        0%{border-color:#ff5a5a; box-shadow:0 0 24px rgba(255,90,90,.92), 0 0 54px rgba(255,90,90,.4), inset 0 0 0 1.5px rgba(255,90,90,.85);}
+        17%{border-color:#ff9d3c; box-shadow:0 0 24px rgba(255,157,60,.92), 0 0 54px rgba(255,157,60,.4), inset 0 0 0 1.5px rgba(255,157,60,.85);}
+        33%{border-color:#ffe14d; box-shadow:0 0 24px rgba(255,225,77,.92), 0 0 54px rgba(255,225,77,.4), inset 0 0 0 1.5px rgba(255,225,77,.85);}
+        50%{border-color:#5ad66e; box-shadow:0 0 24px rgba(90,214,110,.92), 0 0 54px rgba(90,214,110,.4), inset 0 0 0 1.5px rgba(90,214,110,.85);}
+        67%{border-color:#4da6ff; box-shadow:0 0 24px rgba(77,166,255,.92), 0 0 54px rgba(77,166,255,.4), inset 0 0 0 1.5px rgba(77,166,255,.85);}
+        83%{border-color:#b45aff; box-shadow:0 0 24px rgba(180,90,255,.92), 0 0 54px rgba(180,90,255,.4), inset 0 0 0 1.5px rgba(180,90,255,.85);}
+        100%{border-color:#ff5a5a; box-shadow:0 0 24px rgba(255,90,90,.92), 0 0 54px rgba(255,90,90,.4), inset 0 0 0 1.5px rgba(255,90,90,.85);}
       }
       .follower.rainbow::after,.ov-unit.rainbow::after{
         content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:3;
         animation:fxRainbowRing 5s linear infinite;
       }
       @keyframes fxRainbowRing{
-        0%{box-shadow:inset 0 0 0 2px rgba(255,90,90,.95), inset 0 0 18px rgba(255,90,90,.55);}
-        17%{box-shadow:inset 0 0 0 2px rgba(255,157,60,.95), inset 0 0 18px rgba(255,157,60,.55);}
-        33%{box-shadow:inset 0 0 0 2px rgba(255,225,77,.95), inset 0 0 18px rgba(255,225,77,.55);}
-        50%{box-shadow:inset 0 0 0 2px rgba(90,214,110,.95), inset 0 0 18px rgba(90,214,110,.55);}
-        67%{box-shadow:inset 0 0 0 2px rgba(77,166,255,.95), inset 0 0 18px rgba(77,166,255,.55);}
-        83%{box-shadow:inset 0 0 0 2px rgba(180,90,255,.95), inset 0 0 18px rgba(180,90,255,.55);}
-        100%{box-shadow:inset 0 0 0 2px rgba(255,90,90,.95), inset 0 0 18px rgba(255,90,90,.55);}
+        0%{box-shadow:inset 0 0 0 2.5px rgba(255,90,90,.95), inset 0 0 26px rgba(255,90,90,.65);}
+        17%{box-shadow:inset 0 0 0 2.5px rgba(255,157,60,.95), inset 0 0 26px rgba(255,157,60,.65);}
+        33%{box-shadow:inset 0 0 0 2.5px rgba(255,225,77,.95), inset 0 0 26px rgba(255,225,77,.65);}
+        50%{box-shadow:inset 0 0 0 2.5px rgba(90,214,110,.95), inset 0 0 26px rgba(90,214,110,.65);}
+        67%{box-shadow:inset 0 0 0 2.5px rgba(77,166,255,.95), inset 0 0 26px rgba(77,166,255,.65);}
+        83%{box-shadow:inset 0 0 0 2.5px rgba(180,90,255,.95), inset 0 0 26px rgba(180,90,255,.65);}
+        100%{box-shadow:inset 0 0 0 2.5px rgba(255,90,90,.95), inset 0 0 26px rgba(255,90,90,.65);}
       }
       /* 攻撃可能などの状態表示が付いた時は、状態側の枠を優先して邪魔しない */
       .follower.rainbow.can-attack{animation:fxRainbowFrame 5s linear infinite, pulseGold 1.4s ease-in-out infinite;}
@@ -984,8 +1004,8 @@
         animation:fxAgitoFrame 2.6s ease-in-out infinite;
       }
       @keyframes fxAgitoFrame{
-        0%,100%{box-shadow:0 0 10px rgba(124,58,237,.55), inset 0 0 0 1px rgba(167,139,250,.75);}
-        50%{box-shadow:0 0 22px rgba(147,51,234,.95), inset 0 0 0 1.5px rgba(196,181,253,.95);}
+        0%,100%{box-shadow:0 0 16px rgba(124,58,237,.78), 0 0 40px rgba(88,28,135,.5), inset 0 0 0 1.5px rgba(196,181,253,.9);}
+        50%{box-shadow:0 0 30px rgba(147,51,234,1), 0 0 66px rgba(147,51,234,.58), inset 0 0 0 2px rgba(233,213,255,1);}
       }
       .follower.agito::after,.ov-unit.agito::after{
         content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:3;
@@ -2072,6 +2092,389 @@
         .fx-cracks{animation:none;}
         body.fx-quake-sm #app, body.fx-quake-sm #onlineOverlay .online-box, body.fx-quake-sm #fxOverlay .fxcheck-box,
         body.fx-quake-md #app, body.fx-quake-md #onlineOverlay .online-box, body.fx-quake-md #fxOverlay .fxcheck-box{animation:none;}
+      }
+      /* ===== パネル質感の格上げ：ファンタジーの銘板（Ωオリジナル意匠） =====
+         対象は戦闘中の召喚士パネル（.leader）と盤面パネル類、オンラインの
+         パネル類、タイトル画面のパネル・ボタン類。半透明の平らな板から、
+         金属の縁取り＋厚み＋質感グラデーション＋角の鋲を持つ「銘板」へ
+         差し替える。仕組みはすべて CSS の重ね背景（background の複数レイヤー）：
+         ・最下層に金属グラデーションを border-box で敷き、1〜2px の
+           border（transparent）の範囲だけを金属の縁として見せる
+         ・その上に半透明の地色を padding-box で重ねる。対戦背景の絵は
+           従来どおり透けて見え、可読性は地色の濃さと文字色で確保する
+         ・角の鋲（リベット）は radial-gradient の小さな点として4隅に打つ
+         ・厚みは box-shadow の inset（上面の受光／下面の影／内側の彫り線）と
+           外側の落影で作る
+         レイアウト・配置・寸法には一切触らない。フィニッシュ演出のパネル
+         複製（.fx-fin-clone／.fx-fin-piece）は同じクラスを引き継ぐため、
+         この質感のまま破壊される（処理側との競合はない） */
+      /* --- 召喚士パネル（メダリオン銘板）：自分=鋼、相手=銅の金属縁 --- */
+      .leader{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(52,64,90,.80), rgba(23,29,44,.84) 55%, rgba(15,19,30,.86)) padding-box,
+          linear-gradient(165deg, #e8cd85 0%, #9a7a2e 34%, #5f4a16 58%, #c9a24b 82%, #7d6220 100%) border-box;
+        box-shadow:
+          inset 0 1px 0 rgba(255,246,214,.22),
+          inset 0 -10px 15px rgba(0,0,0,.34),
+          inset 0 0 0 1px rgba(5,7,12,.5),
+          0 3px 9px rgba(0,0,0,.45);
+      }
+      .leader.me{
+        border-color:transparent;
+        background:
+          linear-gradient(180deg, rgba(46,66,94,.80), rgba(21,32,50,.84) 55%, rgba(13,20,34,.86)) padding-box,
+          linear-gradient(165deg, #cfe2f6 0%, #6d90b5 34%, #33506e 58%, #84a9cf 82%, #46688c 100%) border-box;
+      }
+      .leader.enemy{
+        border-color:transparent;
+        background:
+          linear-gradient(180deg, rgba(84,50,54,.80), rgba(43,25,31,.84) 55%, rgba(26,16,22,.86)) padding-box,
+          linear-gradient(165deg, #f0b3aa 0%, #a35c54 34%, #63322e 58%, #cd857c 82%, #7c443e 100%) border-box;
+      }
+      /* ターンチップも小さな金縁の銘板に */
+      .turn-chip{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(52,62,86,.92), rgba(26,33,50,.94)) padding-box,
+          linear-gradient(165deg, #d8b96a, #7d6220 55%, #b18c3a) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,246,214,.18), inset 0 -5px 8px rgba(0,0,0,.3), 0 2px 4px rgba(0,0,0,.35);
+      }
+      /* --- 盤面パネル：四隅に鋲を打った鋼板。相手側は銅、自分の側は鋼青 --- */
+      .board-zone{
+        border:1px solid transparent;
+        background:
+          radial-gradient(circle at 7px 7px, rgba(255,236,180,.95) 0, rgba(255,236,180,.95) 1.4px, rgba(43,32,4,.9) 1.4px, rgba(43,32,4,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at calc(100% - 7px) 7px, rgba(255,236,180,.95) 0, rgba(255,236,180,.95) 1.4px, rgba(43,32,4,.9) 1.4px, rgba(43,32,4,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at 7px calc(100% - 7px), rgba(255,236,180,.95) 0, rgba(255,236,180,.95) 1.4px, rgba(43,32,4,.9) 1.4px, rgba(43,32,4,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), rgba(255,236,180,.95) 0, rgba(255,236,180,.95) 1.4px, rgba(43,32,4,.9) 1.4px, rgba(43,32,4,.9) 2.1px, transparent 2.8px),
+          linear-gradient(180deg, rgba(30,40,60,.66), rgba(16,22,34,.72)) padding-box,
+          linear-gradient(165deg, #93a7c6 0%, #4b5a75 36%, #232d42 60%, #7186a6 84%, #3a4a63 100%) border-box;
+        box-shadow:
+          inset 0 1px 0 rgba(238,224,186,.14),
+          inset 0 -12px 18px rgba(0,0,0,.30),
+          inset 0 0 0 1px rgba(5,7,12,.45),
+          0 3px 9px rgba(0,0,0,.4);
+      }
+      .board-zone.enemy-zone{
+        background:
+          radial-gradient(circle at 7px 7px, rgba(255,220,200,.95) 0, rgba(255,220,200,.95) 1.4px, rgba(43,20,4,.9) 1.4px, rgba(43,20,4,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at calc(100% - 7px) 7px, rgba(255,220,200,.95) 0, rgba(255,220,200,.95) 1.4px, rgba(43,20,4,.9) 1.4px, rgba(43,20,4,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at 7px calc(100% - 7px), rgba(255,220,200,.95) 0, rgba(255,220,200,.95) 1.4px, rgba(43,20,4,.9) 1.4px, rgba(43,20,4,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), rgba(255,220,200,.95) 0, rgba(255,220,200,.95) 1.4px, rgba(43,20,4,.9) 1.4px, rgba(43,20,4,.9) 2.1px, transparent 2.8px),
+          linear-gradient(180deg, rgba(56,36,44,.62), rgba(26,19,29,.68)) padding-box,
+          linear-gradient(165deg, #d99a92 0%, #7c4a45 36%, #3c2326 60%, #a06a63 84%, #5a3436 100%) border-box;
+      }
+      .board-zone.mine-zone{
+        background:
+          radial-gradient(circle at 7px 7px, rgba(220,238,255,.95) 0, rgba(220,238,255,.95) 1.4px, rgba(4,26,43,.9) 1.4px, rgba(4,26,43,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at calc(100% - 7px) 7px, rgba(220,238,255,.95) 0, rgba(220,238,255,.95) 1.4px, rgba(4,26,43,.9) 1.4px, rgba(4,26,43,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at 7px calc(100% - 7px), rgba(220,238,255,.95) 0, rgba(220,238,255,.95) 1.4px, rgba(4,26,43,.9) 1.4px, rgba(4,26,43,.9) 2.1px, transparent 2.8px),
+          radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), rgba(220,238,255,.95) 0, rgba(220,238,255,.95) 1.4px, rgba(4,26,43,.9) 1.4px, rgba(4,26,43,.9) 2.1px, transparent 2.8px),
+          linear-gradient(180deg, rgba(30,52,80,.62), rgba(17,28,45,.68)) padding-box,
+          linear-gradient(165deg, #a9c8e8 0%, #51769c 36%, #22364e 60%, #7798bc 84%, #3c5d7d 100%) border-box;
+      }
+      /* 空きスロットは鋼板に彫り込んだ窪みとして見せる */
+      .slot{
+        border-color:#3a4c68;
+        box-shadow:inset 0 2px 8px rgba(0,0,0,.55), inset 0 -1px 0 rgba(238,224,186,.05);
+      }
+      /* --- 手札・ログ・対戦メニュー：鋼縁の銘板 --- */
+      .hand-zone{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(32,42,62,.74), rgba(18,24,38,.78)) padding-box,
+          linear-gradient(165deg, #7e93b3, #3d4c63 45%, #5d718f) border-box;
+        box-shadow:inset 0 1px 0 rgba(238,224,186,.12), inset 0 -10px 14px rgba(0,0,0,.28), 0 3px 8px rgba(0,0,0,.38);
+      }
+      .log{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(30,39,58,.72), rgba(17,23,36,.76)) padding-box,
+          linear-gradient(165deg, #66788f, #2c3a4f 55%, #4c5f7a) border-box;
+        box-shadow:inset 0 1px 0 rgba(238,224,186,.10), inset 0 3px 9px rgba(0,0,0,.35);
+      }
+      .battle-menu{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(28,37,56,.88), rgba(15,20,32,.90)) padding-box,
+          linear-gradient(165deg, #7e93b3, #3d4c63 45%, #5d718f) border-box;
+        box-shadow:inset 0 1px 0 rgba(238,224,186,.12), 0 3px 8px rgba(0,0,0,.4);
+      }
+      .battle-menu .btn-sub{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(46,57,80,.92), rgba(24,31,48,.94)) padding-box,
+          linear-gradient(165deg, #66788f, #33405a 55%, #54687f) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.09), inset 0 -5px 8px rgba(0,0,0,.28);
+      }
+      .menu-toggle{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(52,62,86,.94), rgba(27,34,52,.96)) padding-box,
+          linear-gradient(165deg, #93a7c6, #46536b 55%, #7186a6) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,246,214,.16), inset 0 -5px 8px rgba(0,0,0,.3), 0 2px 5px rgba(0,0,0,.4);
+      }
+      /* --- オンライン対戦のパネル類も同じ銘板に揃える --- */
+      .ov-player{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(48,60,84,.78), rgba(22,29,44,.82)) padding-box,
+          linear-gradient(165deg, #e8cd85, #7d6220 55%, #b18c3a) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,246,214,.16), inset 0 -8px 12px rgba(0,0,0,.3), 0 3px 8px rgba(0,0,0,.4);
+      }
+      .ov-field.enemy-zone{
+        background:
+          linear-gradient(180deg, rgba(56,36,44,.62), rgba(26,19,29,.68)) padding-box,
+          linear-gradient(165deg, #d99a92 0%, #7c4a45 36%, #3c2326 60%, #a06a63 84%, #5a3436 100%) border-box;
+      }
+      .ov-field.mine-zone{
+        background:
+          linear-gradient(180deg, rgba(30,52,80,.62), rgba(17,28,45,.68)) padding-box,
+          linear-gradient(165deg, #a9c8e8 0%, #51769c 36%, #22364e 60%, #7798bc 84%, #3c5d7d 100%) border-box;
+      }
+      .ov-field{border:1px solid transparent; box-shadow:inset 0 1px 0 rgba(238,224,186,.12), inset 0 -10px 15px rgba(0,0,0,.28);}
+      .ov-log{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(30,39,58,.74), rgba(17,23,36,.78)) padding-box,
+          linear-gradient(165deg, #66788f, #2c3a4f 55%, #4c5f7a) border-box;
+        box-shadow:inset 0 1px 0 rgba(238,224,186,.10), inset 0 3px 9px rgba(0,0,0,.35);
+      }
+      /* --- タイトル画面：金の銘板パネル --- */
+      #startOverlay .start-box{
+        border:2px solid transparent;
+        background:
+          radial-gradient(circle at 11px 11px, rgba(255,240,196,.98) 0, rgba(255,240,196,.98) 1.8px, rgba(50,38,4,.92) 1.8px, rgba(50,38,4,.92) 2.7px, transparent 3.5px),
+          radial-gradient(circle at calc(100% - 11px) 11px, rgba(255,240,196,.98) 0, rgba(255,240,196,.98) 1.8px, rgba(50,38,4,.92) 1.8px, rgba(50,38,4,.92) 2.7px, transparent 3.5px),
+          radial-gradient(circle at 11px calc(100% - 11px), rgba(255,240,196,.98) 0, rgba(255,240,196,.98) 1.8px, rgba(50,38,4,.92) 1.8px, rgba(50,38,4,.92) 2.7px, transparent 3.5px),
+          radial-gradient(circle at calc(100% - 11px) calc(100% - 11px), rgba(255,240,196,.98) 0, rgba(255,240,196,.98) 1.8px, rgba(50,38,4,.92) 1.8px, rgba(50,38,4,.92) 2.7px, transparent 3.5px),
+          linear-gradient(168deg, rgba(40,37,74,.97) 0%, rgba(24,31,50,.98) 52%, rgba(17,22,38,.98) 100%) padding-box,
+          linear-gradient(165deg, #f6e3a1 0%, #c9a24b 26%, #7d6220 52%, #eccd7e 78%, #8a6c1e 100%) border-box;
+        box-shadow:
+          inset 0 1px 0 rgba(255,248,220,.28),
+          inset 0 0 0 1px rgba(8,6,18,.6),
+          inset 0 0 0 5px rgba(236,205,126,.09),
+          inset 0 0 0 6px rgba(236,205,126,.30),
+          inset 0 -14px 22px rgba(0,0,0,.35),
+          0 0 34px rgba(88,72,180,.35),
+          0 18px 44px rgba(0,0,0,.55);
+      }
+      /* タイトルの選択ボタン：鋼の銘板（未選択）／金の銘板（選択中） */
+      #startOverlay .seg-btn{
+        border:1px solid transparent; color:#ccd7e8;
+        background:
+          linear-gradient(180deg, rgba(56,66,94,.94), rgba(29,36,56,.96)) padding-box,
+          linear-gradient(165deg, #8494ad, #3d4c63 52%, #62748f) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -6px 9px rgba(0,0,0,.32), 0 2px 4px rgba(0,0,0,.35);
+        text-shadow:0 1px 2px rgba(0,0,0,.45);
+      }
+      #startOverlay .seg-btn.sel{
+        color:#241a05;
+        background:
+          linear-gradient(180deg, #f6e19c 0%, #eccd7e 32%, #cfa64e 64%, #a37f2e 100%) padding-box,
+          linear-gradient(165deg, #fff3c4, #8a6c1e 55%, #e6c56e) border-box;
+        box-shadow:0 2px 0 #6d5216, inset 0 1px 0 rgba(255,250,220,.92), inset 0 -3px 5px rgba(94,68,12,.45), 0 0 10px rgba(236,205,126,.35);
+        text-shadow:0 1px 0 rgba(255,246,214,.55);
+      }
+      /* タイトルの副ボタン（モード／メニュー／SE切替）：鋼の銘板 */
+      #startOverlay .btn-sub{
+        border:1px solid transparent; color:var(--ink);
+        background:
+          linear-gradient(180deg, rgba(52,62,88,.94), rgba(27,34,54,.96)) padding-box,
+          linear-gradient(165deg, #8494ad, #3d4c63 52%, #62748f) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.11), inset 0 -6px 9px rgba(0,0,0,.3), 0 2px 5px rgba(0,0,0,.35);
+      }
+      /* タイトルの主ボタン：対戦画面のターン終了ボタンと同じ金の質感に統一 */
+      #startOverlay .btn-play{
+        background:linear-gradient(180deg,#f6e19c 0%,#eccd7e 30%,#cfa64e 62%,#a37f2e 100%);
+        box-shadow:0 3px 0 #6d5216, 0 8px 18px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,250,220,.95), inset 0 -3px 5px rgba(94,68,12,.5), inset 0 0 0 1px rgba(122,94,30,.55);
+        text-shadow:0 1px 0 rgba(255,246,214,.6);
+      }
+      #startOverlay .btn-play:disabled{background:#39445a; box-shadow:none; text-shadow:none;}
+      #startOverlay .btn-play:not(:disabled):active{transform:translateY(2px); box-shadow:0 1px 0 #6d5216, inset 0 1px 0 rgba(255,250,220,.8);}
+      /* 召喚士情報ストリップ：金の細縁の銘板 */
+      #startOverlay .summoner-info{
+        border:1px solid transparent;
+        background:
+          linear-gradient(180deg, rgba(52,62,88,.90), rgba(28,35,56,.92)) padding-box,
+          linear-gradient(165deg, #a68c3f, #5d4c1e 55%, #c9a24b) border-box;
+        box-shadow:inset 0 1px 0 rgba(255,246,214,.14), inset 0 -5px 8px rgba(0,0,0,.28), 0 2px 5px rgba(0,0,0,.35);
+      }
+      /* ☰メニューパネル：鋼縁の銘板（鋲付き） */
+      .title-menu{
+        border:1px solid transparent;
+        background:
+          radial-gradient(circle at 7px 7px, rgba(255,236,180,.9) 0, rgba(255,236,180,.9) 1.3px, rgba(43,32,4,.9) 1.3px, rgba(43,32,4,.9) 2px, transparent 2.7px),
+          radial-gradient(circle at calc(100% - 7px) 7px, rgba(255,236,180,.9) 0, rgba(255,236,180,.9) 1.3px, rgba(43,32,4,.9) 1.3px, rgba(43,32,4,.9) 2px, transparent 2.7px),
+          linear-gradient(180deg, rgba(16,21,36,.80), rgba(10,14,24,.84)) padding-box,
+          linear-gradient(165deg, #66788f, #33405a 55%, #54687f) border-box;
+        box-shadow:inset 0 1px 0 rgba(238,224,186,.10), inset 0 -8px 12px rgba(0,0,0,.3), 0 3px 8px rgba(0,0,0,.35);
+      }
+      /* 召喚士アイコンのバッジにも金属のリングを足す（選択中は金の発光リングを維持） */
+      #startOverlay .sum-pick .sum-badge{
+        box-shadow:0 0 0 2px rgba(8,6,3,.85), 0 0 0 3.5px rgba(169,138,62,.8), 0 2px 6px rgba(0,0,0,.5), inset 0 0 6px rgba(0,0,0,.35);
+      }
+      #startOverlay .sum-pick.sel .sum-badge{
+        box-shadow:0 0 0 2px rgba(8,6,3,.85), 0 0 0 3.5px var(--gold-bright), 0 0 16px rgba(236,205,126,.65), 0 2px 6px rgba(0,0,0,.5);
+      }
+      /* ===== カード枠の格付け再調整（2026-11-07 ユーザー裁定） =====
+         第1弾の銘板化でノーマルの金属縁が金色寄り・重厚になりすぎ、神話との
+         見分けがつきづらくなったための再調整。格の序列を
+         「ノーマル ＜ 神話（金） ＜ 黒のアギト（濃紫）／EX（虹）」に固定する：
+         ・ノーマル：金属縁を彩度の低い鋼グラデーションへ差し替え、太さも
+           2px→1.5px に落とす。四隅ダイヤも鋼色へ。重厚さは最小限に留める。
+         ・神話：金枠を遠慮なく豪勢にする（太さ3px＋金グラデーションの
+           リング＋脈動グローの増強＋タグの発光）。手札・場・図鑑・詳細・
+           デッキ編成のすべてで効く。
+         ・アギト／EX：太さ3.5px。濃紫は深い発光＋紫グラデーションリング、
+           虹は回転する虹グラデーションリング＋発光増強で金の上に置く。
+         色分けの約束は維持：デッキ編成の採用中＝青枠＋青グロー、
+         神話＋採用中＝金枠の外側に青グロー（.drow.mythic.in 系）。
+         寸法・レイアウト・タップ判定には触れず、枠の見た目だけを変える。
+         召喚士パネルや盤面など、カード以外の銘板質感は対象外。 */
+      :root{
+        --card-steel-grad:linear-gradient(155deg,#c3c9cf 0%,#868d96 22%,#59616b 40%,#aeb5bc 54%,#767e87 68%,#454c55 85%,#9aa1a9 100%);
+        --mythic-gold-grad:linear-gradient(155deg,#fff3c4 0%,#ffd76a 18%,#c9a24b 38%,#ffe9a8 52%,#d4a017 68%,#8a6c1e 84%,#f4d47c 100%);
+        --agito-grad:linear-gradient(155deg,#e9d5ff 0%,#a855f7 22%,#6d28d9 42%,#c084fc 56%,#7c3aed 72%,#3b1470 88%,#d8b4fe 100%);
+      }
+      /* --- ノーマル：鋼の細縁へ格下げ（マスクリング対応環境のみ。
+         リング自体が出ない環境では従来表示のまま） --- */
+      @supports ((mask-composite:exclude) or (-webkit-mask-composite:xor)){
+        .follower:not(.mythic):not(.rainbow):not(.agito):not(.can-attack):not(.selected-attacker):not(.targetable):not(.buffable):not(.fx-spawn-mythic)::before,
+        .hcard:not(.mythic):not(.rainbow):not(.agito):not(.playable)::before,
+        .gcard:not(.mythic):not(.rainbow):not(.agito)::before,
+        .ov-unit:not(.mythic):not(.rainbow):not(.agito):not(.can-attack):not(.selected):not(.targetable):not(.fx-spawn-mythic)::before,
+        .ov-hcard:not(.mythic):not(.rainbow):not(.agito):not(.playable):not(.selected)::before{
+          background:var(--card-steel-grad); padding:1.5px;
+        }
+        .detail-art:not(.mythic):not(.rainbow):not(.agito)::after{background:var(--card-steel-grad); padding:1.5px;}
+        .drow:not(.mythic):not(.in) .dthumb::before{background:var(--card-steel-grad);}
+        /* --- 神話：金のグラデーションリング（太さ3px）。
+           召喚出現中（.fx-spawn-mythic）は出現側の放射きらめきを優先し、
+           リングは出現が終わってから出す --- */
+        .follower.mythic:not(.rainbow):not(.agito):not(.fx-spawn-mythic)::before,
+        .hcard.mythic:not(.rainbow):not(.agito):not(.fx-spawn-mythic)::before,
+        .gcard.mythic:not(.rainbow):not(.agito):not(.fx-spawn-mythic)::before,
+        .ov-unit.mythic:not(.rainbow):not(.agito):not(.fx-spawn-mythic)::before,
+        .ov-hcard.mythic:not(.rainbow):not(.agito):not(.fx-spawn-mythic)::before{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:3px;
+          background:var(--mythic-gold-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:3;
+        }
+        .detail-art.mythic:not(.rainbow):not(.agito)::after{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:3.5px;
+          background:var(--mythic-gold-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:2;
+        }
+        /* --- アギト：濃紫のグラデーションリング（太さ3.5px） --- */
+        .follower.agito:not(.fx-spawn-mythic)::before,
+        .hcard.agito:not(.fx-spawn-mythic)::before,
+        .gcard.agito:not(.fx-spawn-mythic)::before,
+        .ov-unit.agito:not(.fx-spawn-mythic)::before,
+        .ov-hcard.agito:not(.fx-spawn-mythic)::before{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:3.5px;
+          background:var(--agito-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:3;
+        }
+        .detail-art.agito::after{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:3.5px;
+          background:var(--agito-grad);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:2;
+        }
+        /* --- EX：回転する虹グラデーションリング（太さ3.5px）。
+           円錐グラデーションに hue-rotate を掛けて虹を流す --- */
+        .follower.rainbow:not(.fx-spawn-mythic)::before,
+        .hcard.rainbow:not(.fx-spawn-mythic)::before,
+        .gcard.rainbow:not(.fx-spawn-mythic)::before,
+        .ov-unit.rainbow:not(.fx-spawn-mythic)::before,
+        .ov-hcard.rainbow:not(.fx-spawn-mythic)::before{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:3.5px;
+          background:conic-gradient(from 0deg,#ff5a5a,#ff9d3c,#ffe14d,#5ad66e,#4da6ff,#b45aff,#ff5a5a);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:3;
+          animation:fxFrameHueSpin 5s linear infinite;
+        }
+        .detail-art.rainbow::after{
+          content:''; position:absolute; inset:0; border-radius:inherit; padding:3.5px;
+          background:conic-gradient(from 0deg,#ff5a5a,#ff9d3c,#ffe14d,#5ad66e,#4da6ff,#b45aff,#ff5a5a);
+          -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite:xor;
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite:exclude;
+          pointer-events:none; z-index:2;
+          animation:fxFrameHueSpin 5s linear infinite;
+        }
+      }
+      @keyframes fxFrameHueSpin{from{filter:hue-rotate(0deg);}to{filter:hue-rotate(360deg);}}
+      /* --- ノーマル：デッキ行の縁も鋼へ、四隅ダイヤも鋼色に --- */
+      .drow:not(.mythic):not(.in){
+        background:linear-gradient(var(--panel),var(--panel)) padding-box, var(--card-steel-grad) border-box;
+      }
+      .ov-unit:not(.mythic):not(.rainbow):not(.agito)::after,
+      .ov-hcard:not(.mythic):not(.rainbow):not(.agito)::after{
+        border-color:rgba(154,163,171,.5);
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%239aa3ab' stroke='%23222830' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%239aa3ab' stroke='%23222830' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%239aa3ab' stroke='%23222830' stroke-width='1'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath d='M5 0 L10 5 L5 10 L0 5 Z' fill='%239aa3ab' stroke='%23222830' stroke-width='1'/%3E%3C/svg%3E");
+      }
+      /* --- 神話：太さと発光を底上げ（全表示共通） --- */
+      .follower.mythic,.hcard.mythic,.gcard.mythic,.ov-unit.mythic,.ov-hcard.mythic,.detail-art.mythic{border-width:3px;}
+      .follower.mythic{box-shadow:0 0 0 2px rgba(201,162,75,.95), 0 0 22px rgba(236,205,126,.8), 0 0 46px rgba(236,205,126,.35);}
+      .ov-unit.mythic{box-shadow:0 0 0 2px rgba(201,162,75,.95), 0 0 20px rgba(236,205,126,.75), 0 0 42px rgba(236,205,126,.3);}
+      .gcard.mythic{border:3px solid var(--gold-bright); box-shadow:0 0 20px rgba(236,205,126,.75), 0 0 44px rgba(236,205,126,.3), inset 0 0 0 1.5px rgba(255,243,196,.8);}
+      .detail-art.mythic{box-shadow:0 0 22px rgba(236,205,126,.8), 0 0 50px rgba(236,205,126,.35), inset 0 0 0 1.5px rgba(255,243,196,.85);}
+      .follower.mythic::after,.ov-unit.mythic::after{
+        box-shadow:inset 0 0 0 2.5px rgba(255,240,190,.95), inset 0 0 22px rgba(236,205,126,.7);
+      }
+      .kw.mythic{background:linear-gradient(180deg,#fff0b8,#e9c860 55%,#c9a24b); box-shadow:0 0 8px rgba(236,205,126,.75); font-weight:800;}
+      .mythic-tag{background:linear-gradient(180deg,#fff0b8,#e9c860 55%,#c9a24b); box-shadow:0 0 10px rgba(236,205,126,.85);}
+      /* --- アギト／EX：太さ 3.5px＋内側リングも金の上に --- */
+      .hcard.agito,.follower.agito,.ov-hcard.agito,.ov-unit.agito,.gcard.agito,.detail-art.agito{border-width:3.5px;}
+      .hcard.rainbow,.follower.rainbow,.ov-hcard.rainbow,.ov-unit.rainbow,.gcard.rainbow,.detail-art.rainbow{border-width:3.5px;}
+      .follower.agito::after,.ov-unit.agito::after{
+        box-shadow:inset 0 0 0 2.5px rgba(216,180,254,.95), inset 0 0 22px rgba(147,51,234,.75);
+      }
+      /* --- デッキ編成：神話の強調をさらに上げる（採用中の青は外側に維持） --- */
+      .drow.mythic{
+        border-width:2.5px;
+        background:linear-gradient(180deg,rgba(236,205,126,.26),rgba(201,162,75,.10)), var(--panel);
+        box-shadow:0 0 0 1.5px rgba(201,162,75,.65), 0 0 24px rgba(236,205,126,.65), inset 0 0 26px rgba(201,162,75,.14);
+      }
+      .drow.mythic .dthumb{box-shadow:0 0 0 3px var(--gold-bright), 0 0 14px rgba(236,205,126,.8);}
+      .drow.mythic.in{
+        box-shadow:0 0 0 3px rgba(87,182,255,.85), 0 0 20px rgba(87,182,255,.6), 0 0 24px rgba(236,205,126,.65), inset 0 0 26px rgba(201,162,75,.14);
+      }
+      .drow.mythic.in.max{
+        box-shadow:0 0 0 3.5px rgba(87,182,255,.95), 0 0 24px rgba(87,182,255,.75), 0 0 24px rgba(236,205,126,.7), inset 0 0 26px rgba(201,162,75,.14);
+      }
+      .drow.mythic.in .dthumb{
+        box-shadow:0 0 0 3px var(--gold-bright), 0 0 0 5px rgba(87,182,255,.85), 0 0 14px rgba(87,182,255,.65);
+      }
+      .drow .mythic-tag{font-size:11.5px; box-shadow:0 0 12px rgba(236,205,126,.9);}
+      @media (prefers-reduced-motion: reduce){
+        .follower.rainbow::before,.hcard.rainbow::before,.gcard.rainbow::before,.ov-unit.rainbow::before,.ov-hcard.rainbow::before,.detail-art.rainbow::after{animation:none;}
       }
     </style>
   </head>
@@ -3232,7 +3635,7 @@
     function newGame(opts){
       opts = opts || {};
       uidSeq = 1;
-      fxCpuPrev = null; fxCpuPrevCid = null; fxLungeQueue = []; /* 演出の差分ベースラインを張り直す */
+      fxCpuPrev = null; fxCpuPrevCid = null; fxLungeQueue = []; fxHitQueue = []; /* 演出の差分ベースラインを張り直す */
       fxResetFinish(); /* フィニッシュ演出の状態も張り直す */
       /* 先攻の決定：シミュレーション等で明示された場合はそれを使い、
          そうでなければタイトル画面の手番選択（先行／後攻／ランダム）に従う */
@@ -3388,6 +3791,18 @@
     logBackdropEl.addEventListener('click', function(){ setLogExpanded(false); });
     var pendingPops = [];
     function popOn(sel, text, cls){ if (HEADLESS) return; pendingPops.push({sel:sel, text:text, cls:cls||''}); }
+    /* 第2弾【4】数字ポップの段階表現：数値の大きさで pop-t1〜t3 を付け、
+       大きいダメージ／回復ほど数字が大きく・強く光る（CSS側で定義）。
+       フィニッシュ特大数字とバフ表示は従来の見た目を維持する */
+    function popTierCls(text, cls){
+      if (!cls) cls = '';
+      if ((' ' + cls + ' ').indexOf(' finish ') >= 0) return '';
+      if (cls.indexOf('buff') >= 0) return ' pop-t1';
+      var m = /-?\d+/.exec(String(text));
+      if (!m) return ' pop-t1';
+      var a = Math.abs(parseInt(m[0], 10));
+      return a >= 7 ? ' pop-t3' : (a >= 4 ? ' pop-t2' : ' pop-t1');
+    }
     function flushPops(){
       pendingPops.forEach(function(p){
         var el = document.querySelector(p.sel);
@@ -3398,7 +3813,7 @@
            CSS側の animation-delay が着弾（約0.5秒）に合わせてある。 */
         if ((' ' + (p.cls || '') + ' ').indexOf(' finish ') >= 0){ fxPopFixed(el, p.text, p.cls); return; }
         var span = document.createElement('span');
-        span.className = 'dmg-pop ' + p.cls;
+        span.className = 'dmg-pop ' + p.cls + popTierCls(p.text, p.cls);
         span.textContent = p.text;
         el.appendChild(span);
         setTimeout(function(){ if (span.parentNode) span.parentNode.removeChild(span); }, 900);
@@ -3708,6 +4123,7 @@
       fxFinishReg = {};
       fxFinishOverDelay = 1750;
       fxMythicGen++;
+      fx2DisposeAll(); /* 第2弾：対戦リセット時も通常演出の残留を即時ゼロにする */
       mythicFxCleanup();
       fxFinishTimers.forEach(clearTimeout); fxFinishTimers = [];
       document.body.classList.remove('fx-impact','fx-finish-dim');
@@ -4664,10 +5080,55 @@
       sdAuraStart();
 
       if (id === '52ex'){
-        /* EX-キャリバー：オーラを溜める → 剣をSD中心の上半円弧で大きく振る →
-           振る瞬間に剣先から小さな三日月斬撃が飛び出し、飛翔しながら超巨大化
+        /* EX-キャリバー：オーラと光の輪を剣へ収束させて溜める → 柄を手元に
+           固定した支点を中心に剣を振り、刃先が大きな弧を描く → 振り抜きの
+           終盤に剣先から小さな三日月斬撃が飛び出し、飛翔しながら超巨大化
            してパネルへ到達し、光の裂け目が走って真っ二つに崩れる */
-        /* 溜め：発光が集まり、SD自体がだんだん光る */
+        /* --- 剣の支点と振りの角度表（溜めの収束・振り・斬撃発生で共有） ---
+           支点は SD素材（413×640）の手元（実測で約79.5%, 38%）に置く。
+           剣素材（fx/fx-sword.webp 576×768）は刃が下向きで、グリップ
+           （柄）中心は高さの約19%位置・幅中央。剣はグリップを
+           transform-origin にして回転させるため、支点は一切動かず、
+           刃先だけが支点を中心に弧を描く（旧方式＝剣の中心が円軌道を
+           移動する形は、剣全体が斜めに流れて見えたため廃止） */
+        var swH = Math.round(sdH * 1.45);
+        var swPivotX = Math.round(ax + sdH * 0.19);
+        var swPivotY = Math.round(feetY - sdH * 0.62);
+        var swTipR = Math.round(swH * 0.79); /* 支点→剣先の距離（素材の剣先は約98%位置） */
+        /* off：振り全体700msに対する位置（0.52までが引き、以降が振り抜き）。
+           a：CSS rotate の角度deg（0=刃は真下／90=左／180=真上／270=右）。
+           振り抜き区間は終盤に角度の大半を消化する加速型の配分にする */
+        var SW_KEYS = [
+          { off: 0,    a: 122, op: 0 },
+          { off: 0.06, a: 122, op: 1 },
+          { off: 0.52, a: 100, op: 1 },
+          { off: 0.68, a: 146, op: 1 },
+          { off: 0.82, a: 196, op: 1 },
+          { off: 0.93, a: 234, op: 1 },
+          { off: 1,    a: 254, op: 1 }
+        ];
+        /* 角度表の線形補間（残像・風切り・斬撃発生点の算出を振りと一致させる） */
+        function swordThetaAt(u){
+          if (u <= SW_KEYS[0].off) return SW_KEYS[0].a;
+          for (var ki = 1; ki < SW_KEYS.length; ki++){
+            if (u <= SW_KEYS[ki].off){
+              var kp = SW_KEYS[ki - 1], kn = SW_KEYS[ki];
+              return kp.a + (kn.a - kp.a) * ((u - kp.off) / ((kn.off - kp.off) || 1));
+            }
+          }
+          return SW_KEYS[SW_KEYS.length - 1].a;
+        }
+        /* 角度degにおける剣先の画面座標（刃の向きは (-sinθ, cosθ)） */
+        function swordTipAt(deg){
+          var rad = deg * Math.PI / 180;
+          return { x: swPivotX - Math.sin(rad) * swTipR, y: swPivotY + Math.cos(rad) * swTipR };
+        }
+        /* グリップを支点へ固定したまま角度degへ回す transform。
+           translate の -19% はグリップの素材内位置（高さ比率）と一致させる */
+        function swordTr(deg){ return 'translate(-50%,-19%) rotate(' + deg + 'deg)'; }
+        /* 溜め：発光が集まり、SD自体がだんだん光る。あわせて画面全体から
+           光の輪が剣（支点）へ何重にも収束し、中心のグローが強まっていく
+           （pixiExConvergeFx：溜め区間の中で完結し、残像は残さない） */
         later(function(){
           fxFinAnimate(sd, [
             { transform: sdT(0, 0, 1), filter: 'brightness(1)', opacity: 1 },
@@ -4675,18 +5136,18 @@
             { transform: sdT(0, 3, 1.03), filter: 'brightness(1.68) drop-shadow(0 0 27px rgba(255,232,160,1))', opacity: 1 }
           ], { duration: 1150, easing: 'ease-in', fill: 'forwards' });
           pixiRing(ax, feetY - 4, { maxR: sdH * 0.95, dur: 800, color: 0xffe27a });
+          pixiExConvergeFx(swPivotX, swPivotY, 1230);
         }, 500);
         [620, 980, 1340].forEach(function(ms){
           later(function(){ pixiBurst(ax, feetY - sdH * 0.35, { count: 14, rise: true, colors: [0xffffff, 0xffd76a, 0xfff3c4], power: 0.8 }); }, ms);
         });
-        /* 剣の円弧スイング：勢い重視の作りに変更。まず短い「引き」（剣を
-           左端からさらに後ろへ引く溜め）で間を作り、そこから一気に振り抜く。
-           振り抜きは約340ms（従来の等速690msから大幅短縮）で、キーフレームの
-           配分自体を「最初は少しだけ進み、終盤に角度の大半を消化する」加速型に
-           して爆発的な速さを出す。振り抜き中は弧の上に剣の残像（3枚）と
-           風切りの線を残し、描画の弧トレイルも同じ加速カーブで伸ばす。
-           剣の向きは円弧の進行方向（接線）に合わせ、刃（素材は刃下向き）が
-           常に進む先を向くように回す。SD本体も引きで沈んでから振りへ乗る */
+        /* 剣のスイング（支点回転方式）：グリップを SD の手元に固定した
+           支点を中心に剣を回転させ、刃先が弧を描く。まず短い「引き」
+           （刃を左へ倒す）で間を作り、そこから一気に振り抜く。振り抜きは
+           角度配分（SW_KEYS）自体を終盤寄りにした加速型にして爆発的な
+           速さを出す。弧トレイル・剣の残像（3枚）・風切りはすべて同じ
+           角度表から算出するため、剣の動きと視覚的に一致する。
+           SD本体も引きで沈んでから振りへ乗る（従来どおり） */
         later(function(){
           sdDust(ax, feetY, false);
           fxFinAnimate(sd, [
@@ -4696,64 +5157,74 @@
             { transform: sdT(0, -6, 1.06, 6), opacity: 1, offset: 0.88 },
             { transform: sdT(0, 2, 1.01), opacity: 1 }
           ], { duration: 700, easing: 'ease-in-out', fill: 'forwards' });
-          var arcR = sdH * 0.52;
-          /* 弧トレイル：引きの間（t<0.5）は描かず、振り抜きに合わせて加速しながら伸びる */
+          /* 刃先の弧トレイル：支点を中心に、半径＝支点→剣先の距離で描く。
+             引きの間（u<0.52）は描かず、振り抜きの角度に同期して伸びる */
           pixiAnim(760, function(gfx, t){
             gfx.clear();
-            var prog = Math.min(1, Math.pow(Math.max(0, (t - 0.5) / 0.42), 1.4));
+            var u = Math.min(1, t * 760 / 700);
+            if (u <= 0.52) return;
             var fade = t > 0.88 ? Math.max(0, 1 - (t - 0.88) / 0.12) : 1;
-            if (prog <= 0) return;
+            var thR = swordThetaAt(u) * Math.PI / 180;
+            var pullR = SW_KEYS[2].a * Math.PI / 180;
+            var ph0 = Math.atan2(Math.cos(pullR), -Math.sin(pullR));
+            var ph1 = Math.atan2(Math.cos(thR), -Math.sin(thR));
             gfx.lineStyle(Math.max(8, sdH * 0.17), 0xffd76a, 0.36 * fade);
-            gfx.arc(sdCx, sdCy, arcR, -Math.PI, -Math.PI + Math.PI * prog);
+            gfx.arc(swPivotX, swPivotY, swTipR * 0.92, ph0, ph1);
             gfx.lineStyle(Math.max(3, sdH * 0.06), 0xffffff, 0.9 * fade);
-            gfx.arc(sdCx, sdCy, arcR, -Math.PI, -Math.PI + Math.PI * prog);
+            gfx.arc(swPivotX, swPivotY, swTipR * 0.92, ph0, ph1);
           });
           if (sdImgState['fx/fx-sword.webp'] === 1){
-            var sw = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.45) }, ax, sdCy);
-            var SWA = Math.PI + 0.42; /* 引きで左端（π）からさらに後ろへ引いた角度 */
-            /* off：全体700msに対する位置。0.52（約364ms）までが引き、
-               以降が振り抜き。振り抜き区間の角度配分を終盤寄りにして加速感を出す */
-            var swKeys = [
-              { off: 0,    a: Math.PI,  op: 0 },
-              { off: 0.06, a: Math.PI,  op: 1 },
-              { off: 0.52, a: SWA,      op: 1 },
-              { off: 0.68, a: SWA * 0.80, op: 1 },
-              { off: 0.82, a: SWA * 0.48, op: 1 },
-              { off: 0.93, a: SWA * 0.18, op: 1 },
-              { off: 1,    a: 0,        op: 1 }
+            var sw = sdFinNode('img', 'fx-sd-fximg');
+            sw.src = 'fx/fx-sword.webp'; sw.alt = '';
+            sw.style.left = swPivotX + 'px'; sw.style.top = swPivotY + 'px';
+            sw.style.height = swH + 'px';
+            sw.style.transformOrigin = '50% 19%'; /* 回転中心＝グリップ（手元） */
+            /* 収束で高まった輝きを受け継ぎ、出現直後は強く発光して
+               振り抜きとともに落ち着いていく */
+            var swGlow = [
+              'brightness(1.85) drop-shadow(0 0 22px rgba(255,220,120,.95))',
+              'brightness(1.85) drop-shadow(0 0 22px rgba(255,220,120,.95))',
+              'brightness(1.55) drop-shadow(0 0 17px rgba(255,220,120,.85))',
+              'brightness(1.34) drop-shadow(0 0 13px rgba(255,220,120,.7))',
+              'brightness(1.2) drop-shadow(0 0 10px rgba(255,220,120,.55))',
+              'brightness(1.12) drop-shadow(0 0 8px rgba(255,220,120,.45))',
+              'brightness(1.08) drop-shadow(0 0 7px rgba(255,220,120,.4))'
             ];
-            var swordFrames = swKeys.map(function(k){
-              var rotT = Math.round(Math.atan2(Math.cos(k.a), Math.sin(k.a)) * 180 / Math.PI - 90);
-              return {
-                transform: 'translate(-50%,-50%) translate(' + Math.round(Math.cos(k.a) * arcR) + 'px,' + Math.round(-Math.sin(k.a) * arcR) + 'px) rotate(' + rotT + 'deg) scale(1)',
-                opacity: k.op, offset: k.off
-              };
+            var swordFrames = SW_KEYS.map(function(k, ki2){
+              return { transform: swordTr(k.a), opacity: k.op, offset: k.off, filter: swGlow[ki2] };
             });
             fxFinAnimate(sw, swordFrames, { duration: 700, easing: 'cubic-bezier(.55,.06,.75,.25)', fill: 'forwards' });
-            /* 剣の残像：振り抜きの軌跡上に3枚、薄く光らせてすぐ消す */
-            [ { ms: 500, a: SWA * 0.74 }, { ms: 585, a: SWA * 0.47 }, { ms: 645, a: SWA * 0.22 } ].forEach(function(g){
+            /* 剣の残像：振り抜きの軌跡（同じ支点・同じ角度表）上に3枚、
+               薄く光らせてすぐ消す */
+            [500, 585, 645].forEach(function(ms){
               later(function(){
-                var gh = sdOverlay('fx/fx-sword.webp', { h: Math.round(sdH * 1.45) }, ax, sdCy);
-                var gr = Math.round(Math.atan2(Math.cos(g.a), Math.sin(g.a)) * 180 / Math.PI - 90);
-                var gtr = 'translate(-50%,-50%) translate(' + Math.round(Math.cos(g.a) * arcR) + 'px,' + Math.round(-Math.sin(g.a) * arcR) + 'px) rotate(' + gr + 'deg) scale(1)';
+                var gh = sdFinNode('img', 'fx-sd-fximg');
+                gh.src = 'fx/fx-sword.webp'; gh.alt = '';
+                gh.style.left = swPivotX + 'px'; gh.style.top = swPivotY + 'px';
+                gh.style.height = swH + 'px';
+                gh.style.transformOrigin = '50% 19%';
                 gh.style.filter = 'drop-shadow(0 0 10px rgba(255,215,106,.9)) brightness(1.6)';
+                var gtr = swordTr(Math.round(swordThetaAt(ms / 700)));
                 fxFinAnimate(gh, [
                   { transform: gtr, opacity: 0.42 },
                   { transform: gtr, opacity: 0 }
                 ], { duration: 250, easing: 'ease-out', fill: 'forwards' });
-              }, g.ms);
+              }, ms);
             });
-            /* 風切り：振り抜きの接線方向へ、弧上の3点から線を流す */
-            [ { ms: 480, a: SWA * 0.78 }, { ms: 570, a: SWA * 0.50 }, { ms: 635, a: SWA * 0.25 } ].forEach(function(wn){
+            /* 風切り：刃先の接線方向へ、弧上の3点から線を流す */
+            [480, 570, 635].forEach(function(ms){
               later(function(){
-                var tang = Math.atan2(Math.cos(wn.a), Math.sin(wn.a)) * 180 / Math.PI;
-                sdWind(ax + Math.cos(wn.a) * arcR, sdCy - Math.sin(wn.a) * arcR, tang, sdH * 0.95, 0xffe9a8);
-              }, wn.ms);
+                var th = swordThetaAt(ms / 700), thRad = th * Math.PI / 180;
+                var tip = swordTipAt(th);
+                var tang = Math.atan2(-Math.sin(thRad), -Math.cos(thRad)) * 180 / Math.PI;
+                sdWind(Math.round(tip.x), Math.round(tip.y), tang, sdH * 0.95, 0xffe9a8);
+              }, ms);
             });
             later(function(){
+              var endTr = swordTr(SW_KEYS[SW_KEYS.length - 1].a);
               fxFinAnimate(sw, [
-                { transform: 'translate(-50%,-50%) translate(' + Math.round(arcR) + 'px,0px) rotate(0deg) scale(1)', opacity: 1 },
-                { transform: 'translate(-50%,-50%) translate(' + Math.round(arcR) + 'px,0px) rotate(0deg) scale(1)', opacity: 0 }
+                { transform: endTr, opacity: 1 },
+                { transform: endTr, opacity: 0 }
               ], { duration: 130, easing: 'ease-in', fill: 'forwards' });
             }, 692);
           }
@@ -4768,9 +5239,11 @@
            pixiExFlyingSlashFx 側のコメント参照）。全神話で一番派手な枠は維持。
            Pixi が使えない環境では従来の光波ビーム表現へフォールバックする
            （モーション低減時は SD 方式自体に入らない＝従来演出のまま） */
-        /* 発生点：振り抜き終盤の剣先あたり（SD中心から振り半径ぶん先） */
-        var flySwR = sdH * 0.52;
-        var flySx = sdCx + flySwR * 0.92, flySy = sdCy - flySwR * 0.30;
+        /* 発生点：振り抜き終盤（全体の約93%地点）の剣先そのもの。
+           支点回転の角度表から算出するため、剣の振りの弧と発生位置・
+           タイミングが視覚的に一致する */
+        var flyTip = swordTipAt(swordThetaAt(650 / 700));
+        var flySx = Math.round(flyTip.x), flySy = Math.round(flyTip.y);
         var flyAng = Math.atan2(pcy - flySy, pcx - flySx); /* 剣先→パネル中心の飛行方向 */
         var exSlashTan = flyAng + Math.PI / 2; /* 到達点での斬撃の接線（裂け目の向き）＝飛行方向と直交 */
         var exSlashDrawn = false;
@@ -5529,6 +6002,1398 @@
         gfx.moveTo(cx - dx * L / 2, cy - dy * L / 2); gfx.lineTo(cx + dx * L / 2, cy + dy * L / 2);
       });
     }
+    /* ===== PixiJS演出の共通基盤（FxKit） =====
+       今後の全演出格上げで使い回す内部部品。構成は4点：
+       ・リボン描画：ベジェ軌跡をサンプル列に割り、三角形ストリップの帯
+         メッシュへ書き込む（fillStrip／bezierSamples）。素材は流れテクスチャ
+         （Canvas生成・共有キャッシュ）＋ UVスクロールのシェーダ
+         （ribbonMaterial）で、光の筋が進行方向へ流れ続ける。
+       ・シェーダ発光：放射フォールオフ＋時間脈動のグロー
+         （glowMaterial／glowQuad）。uTime／uIntensity を毎フレーム
+         書き換えて「溜まるほど強く光る」類の表現に使う。
+       ・粒子エミッタ：寿命カーブ（α・スケール・色を粒子の年齢で補間）を
+         持つ粒子を、scope 内に閉じて管理する。複数エミッタを時刻を
+         ずらして重ねる使い方が前提（呼び出し側が anim の中で発射する）。
+       ・後片付けの型（scope）：生成した表示物・フィルタ・アニメ登録を
+         すべて登録しておき、dispose() で一括解除する。フィルタは
+         attachFilter で局所化（filterArea）し、dispose で必ず
+         filters=null へ戻す（モバイルのフィルレート対策）。
+         エミッタの粒子も対象に含め、生存中の粒子は寿命を待たず
+         dispose の瞬間に親から外して全破棄する（emitter.kill）。
+         dispose 後はレイヤーの子要素数と pixiFx.anims 数が実行前の
+         水準に即時戻ることが不変条件。dispose は冪等で、中断時
+         （fxMythicExtraCleanup 等）からも安全に呼べる。
+       Pixi が使えない環境では available() が false になり、呼び出し側は
+       従来表現へフォールバックする（HEADLESS・モーション低減時も同様）。 */
+    var FxKit = (function(){
+      /* --- 流れる光の帯テクスチャ（Canvas生成・共有キャッシュなので破棄しない。
+         EX斬撃が使っていた生成手順をそのまま共通化したもの） --- */
+      var flowTex = null;
+      function flowTexture(){
+        if (flowTex) return flowTex;
+        var cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+        var g = cv.getContext('2d');
+        var grad = g.createLinearGradient(0, 0, 0, 64);
+        grad.addColorStop(0.00, 'rgba(255,180,80,0)');
+        grad.addColorStop(0.28, 'rgba(255,205,110,0.55)');
+        grad.addColorStop(0.50, 'rgba(255,255,255,1)');
+        grad.addColorStop(0.72, 'rgba(255,220,140,0.55)');
+        grad.addColorStop(1.00, 'rgba(255,160,70,0)');
+        g.fillStyle = grad; g.fillRect(0, 0, 256, 64);
+        g.globalCompositeOperation = 'lighter';
+        for (var i = 0; i < 26; i++){
+          var sy2 = 6 + fxFinRand(i * 3.7 + 1) * 52;
+          var sx2 = fxFinRand(i * 9.3 + 2) * 256;
+          var ln = 26 + fxFinRand(i * 5.1 + 3) * 90;
+          var gr2 = g.createLinearGradient(sx2, 0, sx2 + ln, 0);
+          var aa = 0.10 + fxFinRand(i * 7.7 + 4) * 0.30;
+          gr2.addColorStop(0, 'rgba(255,255,255,0)');
+          gr2.addColorStop(0.5, 'rgba(255,255,255,' + aa + ')');
+          gr2.addColorStop(1, 'rgba(255,255,255,0)');
+          g.fillStyle = gr2;
+          g.fillRect(sx2, sy2, ln, 1.6 + fxFinRand(i * 4.3 + 5) * 2.6);
+        }
+        flowTex = PIXI.Texture.from(cv);
+        flowTex.wrapMode = PIXI.WRAP_MODES.REPEAT;
+        return flowTex;
+      }
+      /* --- リボン用シェーダ：UVスクロールで光が進行方向へ流れる --- */
+      var RIBBON_VS = [
+        'attribute vec2 aVertexPosition;',
+        'attribute vec2 aUvs;',
+        'uniform mat3 translationMatrix;',
+        'uniform mat3 projectionMatrix;',
+        'varying vec2 vUvs;',
+        'void main(){ vUvs = aUvs; gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0); }'
+      ].join('\n');
+      var RIBBON_FS = [
+        'varying vec2 vUvs;',
+        'uniform sampler2D uTex;',
+        'uniform float uFlow;',
+        'uniform float uAlpha;',
+        'uniform float uCore;',
+        'uniform float uDir;',
+        'void main(){',
+        '  vec2 uv = (uDir < 0.5)',
+        '    ? vec2(vUvs.x * 2.0 + uFlow * 0.35, vUvs.y + uFlow)',
+        '    : vec2(vUvs.x * 3.0 - uFlow * 1.6, vUvs.y);',
+        '  vec4 tex = texture2D(uTex, uv);',
+        '  float across = sin(3.14159 * clamp(vUvs.y, 0.0, 1.0));',
+        '  float prof = pow(across, 1.35);',
+        '  float ends = (uDir < 0.5)',
+        '    ? smoothstep(0.0, 0.10, vUvs.x) * smoothstep(1.0, 0.90, vUvs.x)',
+        '    : smoothstep(0.0, 0.55, vUvs.x);',
+        '  float core = pow(across, 5.0) * uCore;',
+        '  vec3 col = tex.rgb * (0.75 + 0.45 * prof) + vec3(1.0, 0.98, 0.92) * core;',
+        '  float a = tex.a * (0.25 + 0.75 * prof) * ends * uAlpha;',
+        '  gl_FragColor = vec4(col, a);',
+        '}'
+      ].join('\n');
+      function ribbonMaterial(opt){
+        opt = opt || {};
+        return PIXI.Shader.from(RIBBON_VS, RIBBON_FS, {
+          uTex: opt.tex || flowTexture(),
+          uFlow: 0,
+          uAlpha: opt.alpha != null ? opt.alpha : 1,
+          uCore: opt.core || 0,
+          uDir: opt.dir || 0
+        });
+      }
+      /* --- 三角形ストリップ（動的バッファ） --- */
+      function strip(seg){
+        var nv = (seg + 1) * 2;
+        var pos = new Float32Array(nv * 2);
+        var uv = new Float32Array(nv * 2);
+        var idx = [];
+        for (var i = 0; i < seg; i++){
+          var a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+          idx.push(a, b, c, b, d, c);
+        }
+        var geo = new PIXI.Geometry();
+        var posBuf = new PIXI.Buffer(pos, false);
+        var uvBuf = new PIXI.Buffer(uv, false);
+        geo.addAttribute('aVertexPosition', posBuf, 2);
+        geo.addAttribute('aUvs', uvBuf, 2);
+        geo.addIndex(idx);
+        return { geo: geo, pos: pos, uv: uv, posBuf: posBuf, uvBuf: uvBuf, seg: seg };
+      }
+      /* --- ストリップへ帯を書き込む ---
+         samples[i] = {x, y, ax, ay, hw}：中心 (x,y) の両側へ、帯の太さ方向
+         (ax, ay) * hw ずらした2点が頂点対になる。u は i/seg、v は 0／1 */
+      function fillStrip(st, samples){
+        for (var i = 0; i <= st.seg; i++){
+          var sm = samples[i];
+          if (!sm) break;
+          var j = i * 4;
+          st.pos[j]     = sm.x + sm.ax * sm.hw; st.pos[j + 1] = sm.y + sm.ay * sm.hw;
+          st.pos[j + 2] = sm.x - sm.ax * sm.hw; st.pos[j + 3] = sm.y - sm.ay * sm.hw;
+          st.uv[j] = i / st.seg; st.uv[j + 1] = 0;
+          st.uv[j + 2] = i / st.seg; st.uv[j + 3] = 1;
+        }
+        st.posBuf.update(); st.uvBuf.update();
+      }
+      /* --- 2次ベジェ軌跡のサンプル列（リボンの土台） ---
+         hwFn(u) が各点の半幅を返す。帯の太さ方向は進行方向と直交させる */
+      function bezierSamples(p0, cp, p1, n, hwFn){
+        var out = [];
+        for (var i = 0; i < n; i++){
+          var u = n <= 1 ? 0 : i / (n - 1), v = 1 - u;
+          var x = v * v * p0.x + 2 * v * u * cp.x + u * u * p1.x;
+          var y = v * v * p0.y + 2 * v * u * cp.y + u * u * p1.y;
+          var dx = 2 * v * (cp.x - p0.x) + 2 * u * (p1.x - cp.x);
+          var dy = 2 * v * (cp.y - p0.y) + 2 * u * (p1.y - cp.y);
+          var dl = Math.sqrt(dx * dx + dy * dy) || 1;
+          out.push({ x: x, y: y, ax: -dy / dl, ay: dx / dl, hw: hwFn ? hwFn(u) : 10 });
+        }
+        return out;
+      }
+      /* --- シェーダ発光（グロー／脈動） ---
+         放射フォールオフをフラグメントシェーダで描き、uTime で脈動させる。
+         フィルタを使わないためフィルレートへの負担が小さい。
+         出力は必ずプリマルチプライ（col * a）にする：加算ブレンド
+         （BLEND_MODES.ADD）は WebGL の (ONE, ONE) でアルファを見ないため、
+         素の色をそのまま出すと、フォールオフ端部（a=0 の画素）でも色が
+         フルに加算され、四角い板として残ってしまう。第2弾の通常召喚で
+         召喚台まわりに水色の四角が出た不具合の根治（2026-11-07） */
+      var GLOW_FS = [
+        'varying vec2 vUvs;',
+        'uniform vec3 uColor;',
+        'uniform float uTime;',
+        'uniform float uIntensity;',
+        'uniform float uPulse;',
+        'uniform float uSpeed;',
+        'void main(){',
+        '  vec2 p = vUvs * 2.0 - 1.0;',
+        '  float d = length(p);',
+        '  float fall = pow(max(0.0, 1.0 - d), 2.1);',
+        '  float pulse = 1.0 + uPulse * sin(uTime * uSpeed);',
+        '  float a = fall * uIntensity * pulse;',
+        '  vec3 col = uColor * (0.82 + 0.36 * fall) * pulse;',
+        '  gl_FragColor = vec4(col * a, a);',
+        '}'
+      ].join('\n');
+      function glowMaterial(hex, opt){
+        opt = opt || {};
+        return PIXI.Shader.from(RIBBON_VS, GLOW_FS, {
+          uColor: [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255],
+          uTime: 0,
+          uIntensity: opt.intensity != null ? opt.intensity : 0.8,
+          uPulse: opt.pulse != null ? opt.pulse : 0.18,
+          uSpeed: opt.speed != null ? opt.speed : 5.0
+        });
+      }
+      /* 放射グロー用の四角メッシュ（中心原点・半径1。scale で大きさを決める） */
+      function glowQuad(hex, opt){
+        var st = strip(1);
+        st.pos[0] = -1; st.pos[1] = -1; st.pos[2] = -1; st.pos[3] = 1;
+        st.pos[4] = 1;  st.pos[5] = -1; st.pos[6] = 1;  st.pos[7] = 1;
+        st.uv[0] = 0; st.uv[1] = 0; st.uv[2] = 0; st.uv[3] = 1;
+        st.uv[4] = 1; st.uv[5] = 0; st.uv[6] = 1; st.uv[7] = 1;
+        st.posBuf.update(); st.uvBuf.update();
+        var m = new PIXI.Mesh(st.geo, glowMaterial(hex, opt));
+        m.blendMode = PIXI.BLEND_MODES.ADD;
+        return m;
+      }
+      /* --- 色の線形補間（寿命カーブ用。[r,g,b] は 0..1） --- */
+      function tintLerp(c0, c1, k){
+        var r = Math.round((c0[0] + (c1[0] - c0[0]) * k) * 255);
+        var gg = Math.round((c0[1] + (c1[1] - c0[1]) * k) * 255);
+        var b = Math.round((c0[2] + (c1[2] - c0[2]) * k) * 255);
+        return (r << 16) | (gg << 8) | b;
+      }
+      /* --- 後片付けの単位（スコープ） ---
+         演出1回ぶんの表示物・フィルタ・アニメ登録・エミッタを登録し、
+         dispose() で残さず解除する。アニメは pixiFx.anims へ登録して
+         pixiTick に駆動させる（フィニッシュのスロー／ヒットストップにも
+         dt 経由で連動する）。dispose は冪等 */
+      function scope(layer){
+        var dead = false;
+        var S = {
+          objs: [], recs: [], filters: [], disposers: [], emitters: [],
+          /* 表示物をレイヤーへ載せ、後片付けの対象にする */
+          add: function(o){ layer.addChild(o); S.objs.push(o); return o; },
+          /* pixiTick 駆動のアニメ登録。onDone は完了時に1回だけ呼ばれる */
+          anim: function(dur, update, onDone){
+            if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return null;
+            var rec = { gfx: null, life: 0, max: dur,
+              update: function(g, t, l){ if (!dead) update(g, t, l); },
+              onDone: function(){ if (onDone){ try { onDone(); } catch (e) {} } return true; } };
+            pixiFx.anims.push(rec); S.recs.push(rec);
+            return rec;
+          },
+          /* フィルタは局所化（filterArea）して付け、dispose で必ず外す */
+          attachFilter: function(o, filter, area){
+            o.filters = [filter];
+            if (area) o.filterArea = area;
+            S.filters.push({ o: o, f: filter });
+          },
+          onDispose: function(fn){ S.disposers.push(fn); },
+          /* 寿命カーブ粒子エミッタ：init = {x, y, vx, vy, life(ms), size,
+             sizeEnd, colA:[r,g,b], colB:[r,g,b], grav, damp,
+             curve:'io'(α=sin型) | 'o'(減衰) | 'i'(増加), pow}
+             発射は呼び出し側が任意のタイミングで行う（複数エミッタの
+             ずらし発射は、エミッタを分けて発射時刻をずらすことで行う）。
+             進行は呼び出し側のアニメから step(dt, env) を毎フレーム呼ぶ */
+          emitter: function(parent, opt){
+            opt = opt || {};
+            var maxP = opt.max || 120;
+            var parts = [], pool = [];
+            var em = {
+              dead: false,
+              spawn: function(init){
+                if (em.dead || dead || parts.length >= maxP) return;
+                var sp = pool.pop();
+                if (!sp){ sp = new PIXI.Sprite(pixiFx.tex); sp.anchor.set(0.5); sp.blendMode = PIXI.BLEND_MODES.ADD; }
+                sp.position.set(init.x, init.y); sp.visible = true; sp.alpha = 0;
+                parent.addChild(sp);
+                parts.push({ sp: sp, vx: init.vx || 0, vy: init.vy || 0, life: 0,
+                  max: init.life || 600, s0: init.size || 0.5,
+                  s1: init.sizeEnd != null ? init.sizeEnd : 0.12,
+                  c0: init.colA || [1, 1, 1], c1: init.colB || [1, 0.8, 0.4],
+                  grav: init.grav || 0, damp: init.damp != null ? init.damp : 1,
+                  curve: init.curve || 'io', pow: init.pow || 1 });
+              },
+              burst: function(n, fn){ for (var i = 0; i < n; i++){ var ini = fn(i); if (ini) em.spawn(ini); } },
+              count: function(){ return parts.length; },
+              step: function(dt, env){
+                if (em.dead) return;
+                env = env == null ? 1 : env;
+                for (var i = parts.length - 1; i >= 0; i--){
+                  var p = parts[i];
+                  p.life += dt;
+                  var k = p.life / p.max;
+                  if (k >= 1){
+                    p.sp.visible = false;
+                    if (p.sp.parent) p.sp.parent.removeChild(p.sp);
+                    pool.push(p.sp); parts.splice(i, 1); continue;
+                  }
+                  p.vy += p.grav * dt / 1000;
+                  if (p.damp !== 1){ var df = Math.pow(p.damp, dt / 1000); p.vx *= df; p.vy *= df; }
+                  p.sp.position.x += p.vx * dt / 1000;
+                  p.sp.position.y += p.vy * dt / 1000;
+                  var a;
+                  if (p.curve === 'o') a = Math.pow(1 - k, p.pow);
+                  else if (p.curve === 'i') a = Math.pow(k, p.pow);
+                  else a = Math.pow(Math.sin(Math.PI * k), p.pow);
+                  p.sp.alpha = a * env;
+                  p.sp.scale.set(Math.max(0.02, p.s0 + (p.s1 - p.s0) * k));
+                  p.sp.tint = tintLerp(p.c0, p.c1, k);
+                }
+              }
+            };
+            /* 生存中の粒子をその場で全破棄する（後片付け用・冪等）。
+               destroy() 任せで親に残すのではなく、親から明示的に外して
+               から破棄する：寿命の残っている粒子も dispose の瞬間に
+               消えることがスコープの不変条件（自然消滅を待たない）。
+               プール側（寿命切れで回収済みのスプライト）も同様に破棄する */
+            em.kill = function(){
+              if (em.dead) return;
+              em.dead = true;
+              for (var i = 0; i < parts.length; i++){
+                var sp1 = parts[i].sp;
+                try { if (sp1.parent) sp1.parent.removeChild(sp1); } catch (e) {}
+                try { sp1.destroy(); } catch (e) {}
+              }
+              for (var j = 0; j < pool.length; j++){
+                var sp2 = pool[j];
+                try { if (sp2.parent) sp2.parent.removeChild(sp2); } catch (e) {}
+                try { sp2.destroy(); } catch (e) {}
+              }
+              parts = []; pool = [];
+            };
+            S.emitters.push(em);
+            S.onDispose(em.kill);
+            return em;
+          },
+          /* 全解除：アニメ登録を抜き、フィルタを外して破棄し、登録した
+             後処理を実行し、表示物をステージから外して破棄する */
+          dispose: function(){
+            if (dead) return true;
+            dead = true;
+            for (var i = 0; i < S.recs.length; i++){
+              var ri = pixiFx.anims.indexOf(S.recs[i]);
+              if (ri >= 0) pixiFx.anims.splice(ri, 1);
+            }
+            S.recs = [];
+            for (var f = 0; f < S.filters.length; f++){
+              try { S.filters[f].o.filters = null; } catch (e) {}
+              try { if (S.filters[f].f.destroy) S.filters[f].f.destroy(); } catch (e) {}
+            }
+            S.filters = [];
+            /* 粒子は自然消滅を待たず、この瞬間に全破棄する。
+               kill は冪等なので、disposers 側に登録済みの分と二重に
+               呼ばれても安全（表示物の破棄より前に粒子を消し切る） */
+            for (var ei = 0; ei < S.emitters.length; ei++){ try { S.emitters[ei].kill(); } catch (e) {} }
+            S.emitters = [];
+            var ds = S.disposers; S.disposers = [];
+            for (var d = 0; d < ds.length; d++){ try { ds[d](); } catch (e) {} }
+            for (var o = 0; o < S.objs.length; o++){
+              var ob = S.objs[o];
+              try { ob.filters = null; } catch (e) {}
+              if (ob.parent) ob.parent.removeChild(ob);
+              try { ob.destroy({ children: true }); } catch (e) {}
+            }
+            S.objs = [];
+            return true;
+          },
+          isDead: function(){ return dead; }
+        };
+        return S;
+      }
+      return {
+        flowTexture: flowTexture, ribbonMaterial: ribbonMaterial, strip: strip,
+        fillStrip: fillStrip, bezierSamples: bezierSamples,
+        glowMaterial: glowMaterial, glowQuad: glowQuad, tintLerp: tintLerp,
+        scope: scope,
+        available: function(){
+          return !!(pixiFx.enabled && !HEADLESS && !pixiReducedMotion && pixiFx.fxLayer &&
+            typeof window.PIXI !== 'undefined' && PIXI.Mesh && PIXI.Shader && PIXI.Geometry && PIXI.Buffer);
+        }
+      };
+    })();
+    /* ===== 演出総見直し 第2弾：通常演出の底上げ（FxKit の上に構築） =====
+       対象は通常召喚／攻撃／破壊／数字ポップの4系統。数字ポップは CSS＋
+       popTierCls（後段）で担い、ここは Pixi 側の3系統：
+       ・pixiNormalSummonFx：通常召喚の魔法陣へ、シェーダ発光の脈動＋
+         回転リング＋出現時の粒子ウェイク＋小さな光の柱の残滓を重ねる
+         （神話召喚は従来のまま据え置き、ここは通常専用）。
+       ・pixiHitFx：打撃点の寿命カーブ粒子（火花・破片）＋閃光コア
+         （加算ブレンドの glowQuad を一瞬だけ強く光らせる）。
+       ・pixiPierceFx：貫通の光跡。攻撃点から召喚士側へリボン帯を引き、
+         到達点に小さな閃光と火花を置く。
+       ・pixiDestroyFx：破壊点の破片粒子（重力で落ちながら消える）。
+       後片付け規律（第1弾の型を全系統に適用）：全演出は FxKit.scope を
+       1つ作り、表示物・粒子・アニメ登録をすべてその中に閉じる。自然終了
+       ではアニメの onDone が scope.dispose() を呼び、生存中の粒子も
+       寿命を待たず全破棄される。中断・画面遷移では fx2DisposeAll()
+       （pixiTick の blocked 検出／fxResetFinish 等から呼ばれる）が
+       登録済みスコープを即時すべて dispose し、レイヤー子要素と
+       アニメ登録はその瞬間に実行前の水準へ戻る。Pixi が使えない環境
+       （未読込・HEADLESS・モーション低減）では available() が false で
+       全関数が何もせず、従来演出のままゲームが進行する。
+       各演出の尺は従来と同程度（召喚680ms／打撃550ms／破壊700ms／
+       貫通460ms）に収め、対戦のテンポには影響しない（すべて非同期の
+       見た目のみで、ゲーム進行は一切待たせない）。 */
+    var fx2Scopes = [];
+    function fx2Scope(){
+      var scope = FxKit.scope(pixiFx.fxLayer);
+      fx2Scopes.push(scope);
+      var origDispose = scope.dispose;
+      scope.dispose = function(){
+        var i = fx2Scopes.indexOf(scope);
+        if (i >= 0) fx2Scopes.splice(i, 1);
+        return origDispose();
+      };
+      return scope;
+    }
+    function fx2DisposeAll(){
+      var list = fx2Scopes.slice();
+      for (var i = 0; i < list.length; i++){ try { list[i].dispose(); } catch (e) {} }
+    }
+    /* 検証用：新規演出の残留量（モック駆動・監査プローブから読む） */
+    function fx2DebugCounts(){
+      return {
+        scopes: fx2Scopes.length,
+        fxChildren: pixiFx.fxLayer ? pixiFx.fxLayer.children.length : -1,
+        anims: pixiFx.anims ? pixiFx.anims.length : -1,
+        bursts: pixiFx.bursts ? pixiFx.bursts.length : -1,
+        rings: pixiFx.rings ? pixiFx.rings.length : -1
+      };
+    }
+    /* 放射グラデーションの発光テクスチャ（共有・破棄しない）。
+       中心が明るく、縁が完全に透明へ落ちる Canvas 製グラデーション。
+       召喚の中心グローはシェーダの矩形プレーン（glowQuad）で描くと、
+       加算ブレンドが (ONE, ONE) でアルファを見ないため四角い板が残る
+       事故があった（実機で確認済み）。テクスチャのスプライトなら
+       縁の画素そのものが透明なので、板は原理的に出ない */
+    var fx2GlowTex = null;
+    function fx2GlowTexture(){
+      if (fx2GlowTex) return fx2GlowTex;
+      var cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+      var g = cv.getContext('2d');
+      var grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+      grad.addColorStop(0.7, 'rgba(255,255,255,0.16)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
+      fx2GlowTex = PIXI.Texture.from(cv);
+      return fx2GlowTex;
+    }
+    /* --- 【1】通常召喚：魔法陣の発光脈動＋回転＋ウェイク＋光柱の残滓 ---
+       DOM／SVG の魔法陣（summonMagicCircle、従来どおり）の上に重ねる。
+       ・中心グローは放射グラデーションテクスチャのスプライト。アルファと
+         スケールを出現→滞在→消散の包絡で脈動させ、魔法陣の発光の
+         うねりを作る（矩形プレーンは使わない：四角い板の再発防止）。
+       ・回転リングは Graphics の破線弧を2重に、互い違いへ回す。
+       ・ウェイクは FxKit エミッタ：足元から渦巻くように舞い上がる光の粒。
+       ・光の柱の残滓は細い3層の帯を足元へ立て、ゆっくり薄くする
+         （神話の光柱より小さく短く、格差は保つ）。 */
+    function pixiNormalSummonFx(cx, cy, w, h, feetY){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var R = Math.max(w, h) * 0.86;
+      var glow = new PIXI.Sprite(fx2GlowTexture());
+      glow.anchor.set(0.5);
+      glow.tint = 0x8fc4ff;
+      glow.blendMode = PIXI.BLEND_MODES.ADD;
+      glow.position.set(cx, cy);
+      glow.scale.set(R * 2.6 / 128);
+      glow.alpha = 0;
+      cont.addChild(glow);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var em = scope.emitter(cont, { max: 90 });
+      var lastLife = 0, wakeDone = false;
+      var seed = 811.7 + cx * 0.13 + cy * 0.07;
+      scope.anim(680, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.min(1, t / 0.16) * (t > 0.66 ? Math.max(0, 1 - (t - 0.66) / 0.34) : 1);
+        /* 発光の脈動：出現で立ち上がり、滞在中は息づき、消散で落ちる */
+        glow.alpha = Math.min(1, (0.30 + 0.62 * Math.min(1, t / 0.3)) * env) * 0.92;
+        var gs = (R * 2.6 / 128) * (1.02 + 0.10 * Math.sin(life * 0.011));
+        glow.scale.set(gs);
+        gfx.clear();
+        /* 回転リング（外＝時計回り／内＝反時計回り、魔法陣の回転と同期する速度感） */
+        var rot = life * 0.0026;
+        gfx.lineStyle(2.4, 0xaed8ff, 0.75 * env);
+        for (var q = 0; q < 4; q++){
+          var a0 = rot + q * Math.PI / 2;
+          gfx.arc(cx, cy, R * 0.98, a0, a0 + 1.05);
+        }
+        gfx.lineStyle(1.6, 0xffe9a8, 0.65 * env);
+        for (var q2 = 0; q2 < 3; q2++){
+          var b0 = -rot * 1.45 + q2 * Math.PI * 2 / 3;
+          gfx.arc(cx, cy, R * 0.74, b0, b0 + 1.35);
+        }
+        /* 光の柱の残滓：出現直後に細く立ち、魔法陣より長く薄く残る */
+        var pilA = Math.min(1, t / 0.10) * (t > 0.45 ? Math.max(0, 1 - (t - 0.45) / 0.55) : 1);
+        if (pilA > 0.01){
+          var pw = w * 0.30, ph = h * 1.05;
+          gfx.beginFill(0x8fc4ff, 0.10 * pilA); gfx.drawRect(cx - pw, feetY - ph, pw * 2, ph); gfx.endFill();
+          gfx.beginFill(0xd8ecff, 0.16 * pilA); gfx.drawRect(cx - pw * 0.45, feetY - ph, pw * 0.9, ph); gfx.endFill();
+          gfx.beginFill(0xffffff, 0.20 * pilA); gfx.drawRect(cx - pw * 0.14, feetY - ph, pw * 0.28, ph); gfx.endFill();
+        }
+        /* ウェイク：出現の最初の約300ms、足元の円周から内向き＋上向きに
+           光の粒を撒く（軌跡を引いて中心へ集まりながら消える） */
+        if (t < 0.46){
+          em.burst(3, function(bi){
+            var ba = fxFinRand(seed + life * 0.37 + bi * 11.3) * Math.PI * 2;
+            var br = R * (0.55 + fxFinRand(seed + bi * 5.7 + life * 0.11) * 0.4);
+            var sx = cx + Math.cos(ba) * br, sy = feetY - 4 + Math.sin(ba) * br * 0.22;
+            return { x: sx, y: sy,
+              vx: (cx - sx) * 1.5 + (fxFinRand(seed + bi * 3.3) - 0.5) * 30,
+              vy: -55 - fxFinRand(seed + bi * 7.9 + life * 0.05) * 85,
+              life: 340 + fxFinRand(seed + bi * 9.1) * 260, size: 0.34 + fxFinRand(seed + bi * 4.7) * 0.3, sizeEnd: 0.05,
+              colA: [0.85, 0.93, 1], colB: [1, 0.85, 0.5], curve: 'io', pow: 1.2 };
+          });
+        } else if (!wakeDone){ wakeDone = true; }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 【2】攻撃：打撃点の火花・破片＋閃光コア ---
+       power は大きさ倍率（通常1、召喚士への直撃などは1.35）。
+       閃光コアは glowQuad を加算で一瞬だけ強く焚き、寿命カーブ粒子が
+       火花（速く・重力弱め）と破片（遅く・重力強め）を広げて消す */
+    function pixiHitFx(x, y, opt){
+      if (!FxKit.available()) return false;
+      opt = opt || {};
+      var power = opt.power || 1;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var core = FxKit.glowQuad(opt.color || 0xffb066, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(x, y);
+      core.scale.set(30 * power);
+      cont.addChild(core);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var em = scope.emitter(cont, { max: 70 });
+      var seed = 517.3 + x * 0.21 + y * 0.17;
+      var burstDone = false;
+      var lastLife = 0;
+      scope.anim(560, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        /* 閃光コア：最初の60msで最大、そこから急減衰（局所グローのみ） */
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = t < 0.11 ? (t / 0.11) * 1.5 : Math.max(0, 1.5 * (1 - (t - 0.11) / 0.5));
+        core.scale.set((30 + 46 * Math.min(1, t / 0.3)) * power);
+        /* 小さな衝撃リング */
+        gfx.clear();
+        if (t < 0.5){
+          var rk = t / 0.5;
+          gfx.lineStyle(2.2 * (1 - rk) + 0.4, 0xffd9a0, 0.7 * (1 - rk));
+          gfx.drawEllipse(x, y, (6 + rk * 40) * power, (6 + rk * 40) * power * 0.62);
+        }
+        if (!burstDone){
+          burstDone = true;
+          /* 火花：放射状に速く、色は白→橙へ */
+          em.burst(Math.round(14 * power), function(bi){
+            var ba = fxFinRand(seed + bi * 12.9) * Math.PI * 2;
+            var bs = (120 + fxFinRand(seed + bi * 7.3) * 300) * power;
+            return { x: x, y: y, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 30,
+              life: 280 + fxFinRand(seed + bi * 5.1) * 240, size: 0.42 + fxFinRand(seed + bi * 3.7) * 0.4, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [1, 0.55, 0.2], grav: 340, damp: 0.32, curve: 'o', pow: 1.15 };
+          });
+          /* 破片：少し大きく遅く、重力で落ちる */
+          em.burst(Math.round(7 * power), function(bi){
+            var ba2 = fxFinRand(seed + 90 + bi * 9.7) * Math.PI * 2;
+            var bs2 = (50 + fxFinRand(seed + 90 + bi * 6.1) * 130) * power;
+            return { x: x, y: y, vx: Math.cos(ba2) * bs2, vy: Math.sin(ba2) * bs2 - 60,
+              life: 380 + fxFinRand(seed + 90 + bi * 4.3) * 180, size: 0.55 + fxFinRand(seed + 90 + bi * 8.3) * 0.45, sizeEnd: 0.1,
+              colA: [1, 0.85, 0.6], colB: [0.85, 0.4, 0.25], grav: 620, curve: 'o', pow: 1 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 【2b】貫通：抜けた先の召喚士側へ小さな光跡 ---
+       攻撃点→召喚士パネルの縁へ、わずかに弧を描くリボン帯（FxKit の
+       ストリップ＋流れシェーダ）を引き、到達の拍で小さな閃光と火花。
+       尺は460msで、貫通ダメージの数字ポップとほぼ同時に読める */
+    function pixiPierceFx(x1, y1, x2, y2){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var strip = FxKit.strip(18);
+      var mat = FxKit.ribbonMaterial({ alpha: 0.9, core: 0.7, dir: 0 });
+      var mesh = new PIXI.Mesh(strip.geo, mat);
+      mesh.blendMode = PIXI.BLEND_MODES.ADD;
+      cont.addChild(mesh);
+      scope.onDispose(function(){
+        try { if (mat.destroy) mat.destroy(); } catch (e) {}
+        try { strip.geo.destroy(); } catch (e) {}
+      });
+      var dx = x2 - x1, dy = y2 - y1;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var cpx = (x1 + x2) / 2 - dy / dist * dist * 0.10;
+      var cpy = (y1 + y2) / 2 + dx / dist * dist * 0.10 - dist * 0.05;
+      var core = FxKit.glowQuad(0xc9a2ff, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(x2, y2);
+      core.scale.set(20);
+      cont.addChild(core);
+      var em = scope.emitter(cont, { max: 40 });
+      var seed = 233.9 + x1 * 0.11 + y2 * 0.19;
+      var hitDone = false;
+      var lastLife = 0;
+      scope.anim(460, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var head = Math.min(1, t / 0.42); /* 先端の到達 */
+        var env = t < 0.55 ? Math.min(1, t / 0.08 + 0.2) : Math.max(0, 1 - (t - 0.55) / 0.45);
+        var samples = FxKit.bezierSamples({ x: x1, y: y1 }, { x: cpx, y: cpy }, { x: x1 + dx * head, y: y1 + dy * head }, 19, function(u){
+          return (1.5 + 7 * Math.sin(Math.PI * u)) * (0.4 + 0.6 * head);
+        });
+        FxKit.fillStrip(strip, samples);
+        mat.uniforms.uFlow = life * 0.004;
+        mat.uniforms.uAlpha = 0.9 * env;
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = hitDone ? Math.max(0, 1.2 * (1 - (t - 0.42) / 0.5)) : 0;
+        core.scale.set(20 + 22 * Math.max(0, t - 0.42));
+        if (!hitDone && t >= 0.42){
+          hitDone = true;
+          em.burst(9, function(bi){
+            var ba = fxFinRand(seed + bi * 13.7) * Math.PI * 2;
+            var bs = 70 + fxFinRand(seed + bi * 6.9) * 170;
+            return { x: x2, y: y2, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 20,
+              life: 240 + fxFinRand(seed + bi * 4.1) * 180, size: 0.4, sizeEnd: 0.05,
+              colA: [0.9, 0.8, 1], colB: [0.55, 0.35, 1], grav: 260, curve: 'o', pow: 1.2 };
+          });
+        }
+        /* 軌跡上の光屑：先端の少し後ろから小さく撒く */
+        if (t < 0.5){
+          var hp = FxKit.bezierSamples({ x: x1, y: y1 }, { x: cpx, y: cpy }, { x: x1 + dx * head, y: y1 + dy * head }, 3, null)[1];
+          if (hp) em.spawn({ x: hp.x, y: hp.y, vx: (fxFinRand(seed + life * 0.31) - 0.5) * 36, vy: -14,
+            life: 260, size: 0.3, sizeEnd: 0.05, colA: [0.85, 0.75, 1], colB: [0.6, 0.4, 1], curve: 'io', pow: 1.2 });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 【3】破壊：カードの破片が飛び散って落ちながら消える ---
+       fxGhost（残像フェード）と同時に、破壊点で破片粒子を出す。
+       破片は重力で落ち、寿命後半で急速に小さく・薄くなる。色は
+       カードの破片らしく金〜灰〜焦げ色へ遷移させる */
+    function pixiDestroyFx(x, y, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var core = FxKit.glowQuad(0xffc9a0, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(x, y);
+      core.scale.set(Math.max(w, h) * 0.5);
+      cont.addChild(core);
+      var em = scope.emitter(cont, { max: 80 });
+      var seed = 641.5 + x * 0.17 + y * 0.23;
+      var burstDone = false;
+      var lastLife = 0;
+      scope.anim(700, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = t < 0.08 ? (t / 0.08) * 0.9 : Math.max(0, 0.9 * (1 - (t - 0.08) / 0.4));
+        if (!burstDone){
+          burstDone = true;
+          /* 破片：カード面全体から飛び散り、重力で落ちる */
+          em.burst(20, function(bi){
+            var ba = fxFinRand(seed + bi * 11.9) * Math.PI * 2;
+            var bs = 60 + fxFinRand(seed + bi * 6.7) * 190;
+            return { x: x + (fxFinRand(seed + bi * 3.1) - 0.5) * w * 0.7, y: y + (fxFinRand(seed + bi * 4.9) - 0.5) * h * 0.7,
+              vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 90,
+              life: 430 + fxFinRand(seed + bi * 8.7) * 240, size: 0.5 + fxFinRand(seed + bi * 5.3) * 0.55, sizeEnd: 0.06,
+              colA: [1, 0.9, 0.66], colB: [0.45, 0.32, 0.3], grav: 780, damp: 0.55, curve: 'o', pow: 0.9 };
+          });
+          /* 灰：ゆっくり舞い上がって消える細粒 */
+          em.burst(8, function(bi){
+            var ba2 = fxFinRand(seed + 140 + bi * 9.3) * Math.PI * 2;
+            var bs2 = 20 + fxFinRand(seed + 140 + bi * 7.7) * 50;
+            return { x: x + (fxFinRand(seed + 140 + bi * 2.9) - 0.5) * w * 0.6, y: y,
+              vx: Math.cos(ba2) * bs2, vy: -30 - fxFinRand(seed + 140 + bi * 6.3) * 40,
+              life: 520 + fxFinRand(seed + 140 + bi * 4.7) * 160, size: 0.3, sizeEnd: 0.05,
+              colA: [0.9, 0.85, 0.8], colB: [0.5, 0.45, 0.5], grav: -60, curve: 'io', pow: 1.3 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* ===== 演出総見直し 第3弾：神話登場演出×8の格上げ（FxKit の上に構築） =====
+       対象は神話の登場演出8種：セレスティア／ミラージュ／ダーククイーン／
+       ティアマト／EX-キャリバー／ロンギヌス／黒のアギト孵化／聖剣の欠片・
+       黒竜の卵（通常召喚寄りの登場）。各演出のモチーフ・全体の流れ・尺
+       （約1〜1.2秒級）は現行のまま、描画方式だけを差し替えて素材絵の
+       切り貼り感を消す：
+       ・光柱／斬撃／鎖／剣光／槍の光跡は FxKit のリボン（流れシェーダ付き
+         帯メッシュ）で描く。色違いの帯は fx3FlowTexture（色違いの流れ
+         テクスチャ）を ribbonMaterial の tex オプションへ渡して作る
+         （FxKit 本体は変更しない）。
+       ・着地の波紋／衝撃波の「歪み」は fx3DistortRing：うねる輪郭の輪を
+         Graphics で描き、そのコンテナだけに DisplacementFilter を
+         局所化（filterArea＝輪の最大外接矩形、マスクは共有の放射波紋
+         マップ）して本物の屈折を重ねる。歪み量は山型に増減して消える。
+       ・残像の残光／中心の発光は FxKit.glowQuad（シェーダ放射発光。
+         プリマルチプライ出力に修正済みで四角い板は出ない）。
+       ・砂煙と光屑は FxKit エミッタ（寿命カーブ）を層状に重ねる。
+       後片付けは第2弾と同じく fx2Scope（fx2Scopes 登録制）に閉じ、
+       自然終了は onDone の dispose、中断・画面遷移は fx2DisposeAll で
+       即時ゼロになる。フィルタはスコープの attachFilter 管理で、
+       dispose 時に必ず filters=null へ戻る（面積は小さく短時間のみ）。
+       Pixi が使えない環境では FxKit.available() が false になり、
+       呼び出し側（fx*Fx ラッパ）は従来演出へフォールバックする
+       （HEADLESS では従来どおり演出自体が出ない）。 */
+    /* 色違いの流れテクスチャ（リボンの色付け用）。FxKit の共有テクスチャと
+       同じ生成手順で、縁色／中間色だけを差し替えたものを色ごとにキャッシュ
+       する（破棄しない）。FxKit.ribbonMaterial({ tex }) へ渡して使う */
+    var fx3FlowTexCache = {};
+    function fx3FlowTexture(key, edge, mid){
+      if (fx3FlowTexCache[key]) return fx3FlowTexCache[key];
+      var cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+      var g = cv.getContext('2d');
+      var grad = g.createLinearGradient(0, 0, 0, 64);
+      grad.addColorStop(0.00, 'rgba(' + edge + ',0)');
+      grad.addColorStop(0.28, 'rgba(' + mid + ',0.55)');
+      grad.addColorStop(0.50, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.72, 'rgba(' + mid + ',0.55)');
+      grad.addColorStop(1.00, 'rgba(' + edge + ',0)');
+      g.fillStyle = grad; g.fillRect(0, 0, 256, 64);
+      g.globalCompositeOperation = 'lighter';
+      for (var i = 0; i < 26; i++){
+        var sy2 = 6 + fxFinRand(i * 3.7 + 1) * 52;
+        var sx2 = fxFinRand(i * 9.3 + 2) * 256;
+        var ln = 26 + fxFinRand(i * 5.1 + 3) * 90;
+        var gr2 = g.createLinearGradient(sx2, 0, sx2 + ln, 0);
+        var aa = 0.10 + fxFinRand(i * 7.7 + 4) * 0.30;
+        gr2.addColorStop(0, 'rgba(255,255,255,0)');
+        gr2.addColorStop(0.5, 'rgba(255,255,255,' + aa + ')');
+        gr2.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr2;
+        g.fillRect(sx2, sy2, ln, 1.6 + fxFinRand(i * 4.3 + 5) * 2.6);
+      }
+      var tex = PIXI.Texture.from(cv);
+      tex.wrapMode = PIXI.WRAP_MODES.REPEAT;
+      fx3FlowTexCache[key] = tex;
+      return tex;
+    }
+    /* リボン帯メッシュを親へ載せ、ジオメトリ／マテリアルの破棄をスコープへ
+       登録する（第2弾の貫通リボンと同じ後片付けの型） */
+    function fx3Ribbon(scope, parent, seg, matOpt){
+      var strip = FxKit.strip(seg);
+      var mat = FxKit.ribbonMaterial(matOpt);
+      var mesh = new PIXI.Mesh(strip.geo, mat);
+      mesh.blendMode = PIXI.BLEND_MODES.ADD;
+      parent.addChild(mesh);
+      scope.onDispose(function(){
+        try { if (mat.destroy) mat.destroy(); } catch (e) {}
+        try { strip.geo.destroy(); } catch (e) {}
+      });
+      return { strip: strip, mat: mat, mesh: mesh };
+    }
+    /* 歪みマップ（共有・破棄しない）：中心から放射方向へ波打つ変位を
+       RG チャンネルへ焼いた 256×256 のマップ。DisplacementFilter の
+       マスクに使うと、波紋の輪がうねりながら屈折して見える。
+       外周（d≧1）は中立値（128）で変位ゼロになるよう落としてある */
+    var fx3RippleTex = null;
+    function fx3RippleTexture(){
+      if (fx3RippleTex) return fx3RippleTex;
+      var S = 256;
+      var cv = document.createElement('canvas'); cv.width = S; cv.height = S;
+      var g = cv.getContext('2d');
+      var img = g.createImageData(S, S);
+      for (var y = 0; y < S; y++){
+        for (var x = 0; x < S; x++){
+          var dx = (x - S / 2) / (S / 2), dy = (y - S / 2) / (S / 2);
+          var d = Math.sqrt(dx * dx + dy * dy);
+          var idx = (y * S + x) * 4;
+          var wv = d < 1 ? Math.sin(d * 26.0) * (1 - d) : 0;
+          img.data[idx]     = 128 + (d > 0.001 ? Math.round(dx / d * wv * 118) : 0);
+          img.data[idx + 1] = 128 + (d > 0.001 ? Math.round(dy / d * wv * 118) : 0);
+          img.data[idx + 2] = 128;
+          img.data[idx + 3] = 255;
+        }
+      }
+      g.putImageData(img, 0, 0);
+      fx3RippleTex = PIXI.Texture.from(cv);
+      return fx3RippleTex;
+    }
+    /* 歪み波紋リング：うねる輪郭の輪を Graphics で描き、そのコンテナだけに
+       DisplacementFilter を局所化（filterArea＝輪の最大外接矩形）して
+       本物の屈折の歪みを重ねる。歪み量は山型に増減し、終われば消える。
+       draw(k, env) を呼び出し側のアニメから毎フレーム呼ぶ（k は拡大の
+       進み 0..1、env は全体の係数。env=0 の間は不可視）。
+       フィルタが使えない環境では輪だけを描く（フォールバック） */
+    function fx3DistortRing(scope, parent, cx, cy, opt){
+      var cont = new PIXI.Container();
+      cont.position.set(cx, cy);
+      parent.addChild(cont);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var squish = opt.squish != null ? opt.squish : 0.32;
+      var maskSpr = null, filter = null;
+      try {
+        if (typeof PIXI !== 'undefined' && PIXI.DisplacementFilter && PIXI.Sprite){
+          maskSpr = new PIXI.Sprite(fx3RippleTexture());
+          maskSpr.anchor.set(0.5);
+          cont.addChild(maskSpr); /* DisplacementFilter が renderable=false にする */
+          filter = new PIXI.DisplacementFilter(maskSpr, 0);
+          var D = opt.maxR * 2 + 40;
+          scope.attachFilter(cont, filter, new PIXI.Rectangle(cx - D / 2, cy - (D * squish) / 2 - 20, D, D * squish + 40));
+        }
+      } catch (e) { filter = null; maskSpr = null; }
+      function draw(k, env){
+        if (k < 0) k = 0; if (k > 1) k = 1;
+        var R = 6 + (opt.maxR - 6) * (1 - Math.pow(1 - k, 2));
+        var wob = opt.wobble != null ? opt.wobble : 0.05;
+        var ph = k * 9 + (opt.phase || 0);
+        gfx.clear();
+        var passes = opt.fringe
+          ? [{ dx: opt.fringeDx || 3, col: opt.fringe, aMul: 0.38 }, { dx: 0, col: opt.color, aMul: 1 }]
+          : [{ dx: 0, col: opt.color, aMul: 1 }];
+        for (var pi = 0; pi < passes.length; pi++){
+          var ps = passes[pi];
+          gfx.lineStyle(Math.max(0.5, (opt.width || 3) * (1 - k) + 0.5), ps.col, (opt.alpha || 0.85) * env * (1 - k * 0.5) * ps.aMul);
+          var N = 44;
+          for (var i = 0; i <= N; i++){
+            var a = (i / N) * Math.PI * 2;
+            var rr = R * (1 + wob * Math.sin(a * 3 + ph) + wob * 0.6 * Math.sin(a * 5 - ph * 1.4));
+            var px = ps.dx + Math.cos(a) * rr, py = Math.sin(a) * rr * squish;
+            if (i === 0) gfx.moveTo(px, py); else gfx.lineTo(px, py);
+          }
+        }
+        if (filter){
+          var s = (opt.distort || 16) * Math.sin(Math.PI * Math.min(1, k * 1.12)) * env;
+          filter.scale.set(s, s * squish);
+        }
+        if (maskSpr){ maskSpr.width = R * 2.35; maskSpr.height = R * 2.35; }
+      }
+      return { cont: cont, draw: draw };
+    }
+    /* 039 セレスティア（第3弾）：光柱は流れシェーダのリボン2層（外／芯）で
+       「流れる光の柱」にし、足元にシェーダ発光の芯＋光の粒の上昇。
+       着地の波紋は歪みリング（うねり＋屈折）×2。尺とモチーフ
+       （光柱→波紋→上昇粒子、波紋2波の 170ms 差）は現行のまま */
+    function fx3CelestiaFx(cx, cy, feet, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var topY = feet - h * 3.4, botY = feet + 4;
+      var pilOuter = fx3Ribbon(scope, cont, 20, { alpha: 0.85, core: 0.55, dir: 0 });
+      var pilCore = fx3Ribbon(scope, cont, 20, { alpha: 0.95, core: 0.9, dir: 0 });
+      var glow = FxKit.glowQuad(0xffeeb0, { intensity: 0, pulse: 0.25, speed: 6.0 });
+      glow.position.set(cx, feet - 6);
+      glow.scale.set(w * 1.05);
+      cont.addChild(glow);
+      var ring1 = fx3DistortRing(scope, cont, cx, feet, { maxR: w * 1.75, color: 0xffffff, width: 3.2, distort: 18, wobble: 0.06 });
+      var ring2 = fx3DistortRing(scope, cont, cx, feet, { maxR: w * 1.4, color: 0xeccd7e, width: 2.6, distort: 14, wobble: 0.07, phase: 2.1 });
+      var em = scope.emitter(cont, { max: 80 });
+      var seed = 391.7 + cx * 0.17 + feet * 0.11;
+      var lastLife = 0;
+      scope.anim(980, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.min(1, t / 0.13) * (t > 0.6 ? Math.max(0, 1 - (t - 0.6) / 0.4) : 1);
+        /* 流れる光の柱：上下にわずかにたわむベジェ帯。外層は幅広く淡く、
+           芯は細く白く。uFlow を進めて光を下方向へ流し続ける */
+        var sway = Math.sin(life * 0.004) * w * 0.05;
+        function pillarSamples(halfW){
+          return FxKit.bezierSamples({ x: cx + sway * 0.4, y: topY }, { x: cx + sway, y: (topY + botY) / 2 }, { x: cx, y: botY }, 21, function(u){
+            return halfW * (0.30 + 0.85 * Math.pow(u, 1.35)) * env;
+          });
+        }
+        FxKit.fillStrip(pilOuter.strip, pillarSamples(w * 0.41));
+        FxKit.fillStrip(pilCore.strip, pillarSamples(w * 0.15));
+        pilOuter.mat.uniforms.uFlow = life * 0.005;
+        pilCore.mat.uniforms.uFlow = life * 0.0075;
+        pilOuter.mat.uniforms.uAlpha = 0.8 * env;
+        pilCore.mat.uniforms.uAlpha = 0.95 * env;
+        /* 足元の発光芯 */
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = 1.05 * env;
+        glow.scale.set(w * (1.0 + 0.12 * Math.sin(life * 0.009)));
+        /* 波紋：第1波は即時、第2波は 170ms 遅れて（現行タイミング） */
+        ring1.draw(Math.min(1, life / 820), Math.min(1, life / 90));
+        ring2.draw(Math.min(1, Math.max(0, life - 170) / 740), life < 170 ? 0 : Math.min(1, (life - 170) / 60));
+        /* 上昇する光の粒（現行バーストの置き換え：寿命カーブで舞い上がる） */
+        if (t < 0.34){
+          em.burst(3, function(bi){
+            var bx = cx + (fxFinRand(seed + life * 0.41 + bi * 13.7) - 0.5) * w * 0.9;
+            return { x: bx, y: feet - 6, vx: (fxFinRand(seed + bi * 7.1) - 0.5) * 40,
+              vy: -70 - fxFinRand(seed + bi * 5.3 + life * 0.07) * 170,
+              life: 480 + fxFinRand(seed + bi * 9.7) * 380, size: 0.4 + fxFinRand(seed + bi * 3.9) * 0.45, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [1, 0.87, 0.5], curve: 'io', pow: 1.2 };
+          });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 046 ミラージュ（第3弾）：交差する斬撃×6を赤い流れテクスチャのリボンに
+       置き換え（先端が伸び、尾が追いつく三日月帯）、斬撃の行き交った中心に
+       シェーダ発光の残光を残す。DOM 残像（mirageEcho）は従来どおり併用。
+       タイミング（30〜640ms に6閃＋300ms の破裂）は現行のまま */
+    function fx3MirageFx(cx, cy, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var len = Math.max(w, h) * 2.9;
+      var redTex = fx3FlowTexture('red', '255,64,40', '255,120,84');
+      var specs = [
+        { delay: 30, deg: -38, dy: 0, lenMul: 1 }, { delay: 140, deg: 38, dy: 0, lenMul: 1 },
+        { delay: 280, deg: 24, dy: -14, lenMul: 1.05 }, { delay: 400, deg: -24, dy: 12, lenMul: 1.05 },
+        { delay: 530, deg: -38, dy: -6, lenMul: 1 }, { delay: 640, deg: 38, dy: 6, lenMul: 1 }
+      ];
+      var slashes = specs.map(function(sp){
+        var rb = fx3Ribbon(scope, cont, 16, { alpha: 0.95, core: 0.75, dir: 0, tex: redTex });
+        rb.mesh.visible = false;
+        return { sp: sp, rb: rb, rad: sp.deg * Math.PI / 180 };
+      });
+      var glowA = FxKit.glowQuad(0xff4a3c, { intensity: 0, pulse: 0, speed: 1 });
+      glowA.position.set(cx, cy); glowA.scale.set(len * 0.34); cont.addChild(glowA);
+      var em = scope.emitter(cont, { max: 50 });
+      var seed = 463.1 + cx * 0.13 + cy * 0.19;
+      var burstDone = false;
+      var lastLife = 0;
+      scope.anim(1020, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        slashes.forEach(function(sl, j){
+          var local = (life - sl.sp.delay) / 380;
+          if (local <= 0){ sl.rb.mesh.visible = false; return; }
+          sl.rb.mesh.visible = true;
+          var head = Math.min(1, local * 1.7); head = 1 - Math.pow(1 - head, 3);
+          var tail = Math.max(0, head - 0.66);
+          var aEnv = local < 0.14 ? local / 0.14 : (local > 0.55 ? Math.max(0, 1 - (local - 0.55) / 0.45) : 1);
+          var dx = Math.cos(sl.rad), dy = Math.sin(sl.rad);
+          var px = -dy, py = dx;
+          var L = len * sl.sp.lenMul;
+          var samples = [];
+          for (var i = 0; i <= 16; i++){
+            var s = i / 16;
+            var u = tail + (head - tail) * s;
+            var along = (u - 0.5) * L;
+            var arc = Math.sin(s * Math.PI) * L * 0.028;
+            samples.push({ x: cx + dx * along + px * arc, y: cy + sl.sp.dy + dy * along + py * arc,
+              ax: px, ay: py, hw: (1.5 + 8.5 * Math.sin(Math.PI * s)) * Math.min(1, local * 3) });
+          }
+          FxKit.fillStrip(sl.rb.strip, samples);
+          sl.rb.mat.uniforms.uFlow = life * 0.011 + j * 0.7;
+          sl.rb.mat.uniforms.uAlpha = 0.95 * aEnv;
+        });
+        /* 残光：斬撃が行き交った中心に赤いシェーダ発光が残って消える */
+        var gu = glowA.material.uniforms;
+        gu.uTime = life / 1000;
+        var gEnv = t < 0.25 ? t / 0.25 : Math.max(0, 1 - (t - 0.25) / 0.65);
+        gu.uIntensity = 0.85 * gEnv;
+        if (!burstDone && life >= 300){
+          burstDone = true;
+          em.burst(22, function(bi){
+            var ba = fxFinRand(seed + bi * 12.3) * Math.PI * 2;
+            var bs = 60 + fxFinRand(seed + bi * 6.7) * 260;
+            return { x: cx, y: cy, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 26,
+              life: 300 + fxFinRand(seed + bi * 4.9) * 260, size: 0.42 + fxFinRand(seed + bi * 3.3) * 0.4, sizeEnd: 0.05,
+              colA: [1, 0.75, 0.68], colB: [1, 0.3, 0.22], grav: 300, curve: 'o', pow: 1.15 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 048 ダーククイーン（第3弾）：紫の鎖を流れテクスチャのリボン×8に
+       置き換え。帯の幅を波打たせて鎖の輪の連なりを表し、収束の軌跡には
+       うねるベジェ（制御点を時間で揺らす）を与える。最後に紫の閃光＋
+       歪みリング。尺（鎖の収束＋780ms の閃光）は現行のまま */
+    function fx3DarkQueenFx(cx, cy, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var R0 = Math.max(w, h) * 1.5;
+      var purTex = fx3FlowTexture('purple', '122,62,224', '176,124,255');
+      var chains = [];
+      for (var i = 0; i < 8; i++){
+        chains.push({ rb: fx3Ribbon(scope, cont, 16, { alpha: 0.9, core: 0.5, dir: 0, tex: purTex }), i: i });
+      }
+      var glow = FxKit.glowQuad(0x8a5cff, { intensity: 0, pulse: 0.3, speed: 5.0 });
+      glow.position.set(cx, cy); glow.scale.set(R0 * 0.55); cont.addChild(glow);
+      var ring = fx3DistortRing(scope, cont, cx, cy, { maxR: Math.max(w, h) * 1.2, color: 0xb18cff, width: 2.8, distort: 13, wobble: 0.07 });
+      var em = scope.emitter(cont, { max: 50 });
+      var seed = 487.9 + cx * 0.11 + cy * 0.23;
+      var flashDone = false;
+      var lastLife = 0;
+      scope.anim(980, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var conv = Math.min(1, life / 820); /* 収束の進み */
+        var env = t > 0.86 ? Math.max(0, 1 - (t - 0.86) / 0.14) : 1;
+        chains.forEach(function(ch){
+          var i2 = ch.i;
+          var base = (i2 / 8) * Math.PI * 2 + life * 0.0011;
+          var rOut = R0 * (1 - 0.74 * conv);
+          var ox = cx + Math.cos(base) * rOut, oy = cy + Math.sin(base) * rOut * 0.92;
+          var txv = cx - ox, tyv = cy - oy;
+          var tl = Math.sqrt(txv * txv + tyv * tyv) || 1;
+          var px = -tyv / tl, py = txv / tl;
+          var und = Math.sin(life * 0.011 + i2 * 1.93) * R0 * 0.17 * (1 - conv * 0.55);
+          var samples = FxKit.bezierSamples({ x: ox, y: oy },
+            { x: (ox + cx) / 2 + px * und, y: (oy + cy) / 2 + py * und },
+            { x: cx + Math.cos(base) * R0 * 0.05, y: cy + Math.sin(base) * R0 * 0.05 * 0.92 }, 17,
+            function(u){ return Math.max(0.6, (2.6 + 1.7 * Math.sin(u * 15 - life * 0.028 + i2 * 2.4)) * (1 - u * 0.4)) * env; });
+          FxKit.fillStrip(ch.rb.strip, samples);
+          ch.rb.mat.uniforms.uFlow = life * 0.006 + i2 * 0.4;
+          ch.rb.mat.uniforms.uAlpha = 0.9 * env;
+        });
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = (0.25 + 0.75 * conv) * (flashDone ? Math.max(0, 1 - (life - 780) / 200) : 1);
+        ring.draw(Math.min(1, Math.max(0, life - 780) / 560), life < 780 ? 0 : Math.min(1, (life - 780) / 50));
+        if (!flashDone && life >= 780){
+          flashDone = true;
+          em.burst(28, function(bi){
+            var ba = fxFinRand(seed + bi * 11.7) * Math.PI * 2;
+            var bs = 60 + fxFinRand(seed + bi * 6.1) * 250;
+            return { x: cx, y: cy, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 20,
+              life: 300 + fxFinRand(seed + bi * 4.3) * 240, size: 0.42 + fxFinRand(seed + bi * 3.1) * 0.4, sizeEnd: 0.05,
+              colA: [0.85, 0.7, 1], colB: [0.5, 0.3, 1], grav: 240, curve: 'o', pow: 1.15 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 051 ティアマト（第3弾）：咆哮の衝撃波は歪みリング×2（紅→蒼。
+       互いの色をフリンジに使い、屈折の色ズレとして読ませる）。
+       砂煙は寿命カーブ粒子の3層（速い近層／中層／遅い遠層）で層状に。
+       画面の揺れと尺（リング 840ms 級）は現行のまま */
+    function fx3TiamatFx(cx, cy, feet, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var ringR = fx3DistortRing(scope, cont, cx, feet, { maxR: w * 2.3, color: 0xff6a4a, width: 3.6, distort: 22, wobble: 0.075, fringe: 0x5aa2ff, fringeDx: 3 });
+      var ringB = fx3DistortRing(scope, cont, cx, feet, { maxR: w * 1.95, color: 0x5aa2ff, width: 3.2, distort: 19, wobble: 0.075, fringe: 0xff6a4a, fringeDx: -3, phase: 1.7 });
+      var glow = FxKit.glowQuad(0xff8a5c, { intensity: 0, pulse: 0, speed: 1 });
+      glow.position.set(cx, feet - h * 0.3); glow.scale.set(w * 1.2); cont.addChild(glow);
+      var emNear = scope.emitter(cont, { max: 40 });
+      var emMid = scope.emitter(cont, { max: 40 });
+      var emFar = scope.emitter(cont, { max: 30 });
+      var seed = 511.3 + cx * 0.19 + feet * 0.13;
+      var dustDone = false;
+      var lastLife = 0;
+      scope.anim(900, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        ringR.draw(Math.min(1, life / 840), Math.min(1, life / 70));
+        ringB.draw(Math.min(1, Math.max(0, life - 150) / 780), life < 150 ? 0 : Math.min(1, (life - 150) / 60));
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = t < 0.1 ? (t / 0.1) * 0.9 : Math.max(0, 0.9 * (1 - (t - 0.1) / 0.45));
+        if (!dustDone){
+          dustDone = true;
+          /* 近層：速く大きく、重力で落ちる砂 */
+          emNear.burst(16, function(bi){
+            var ba = fxFinRand(seed + bi * 12.1) * Math.PI * 2;
+            var bs = 130 + fxFinRand(seed + bi * 6.9) * 170;
+            return { x: cx + (fxFinRand(seed + bi * 3.7) - 0.5) * w * 0.6, y: feet - 4,
+              vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs * 0.45 - 50,
+              life: 480 + fxFinRand(seed + bi * 5.1) * 300, size: 0.75 + fxFinRand(seed + bi * 4.3) * 0.5, sizeEnd: 0.15,
+              colA: [0.88, 0.8, 0.66], colB: [0.5, 0.42, 0.33], grav: 330, curve: 'o', pow: 0.9 };
+          });
+          /* 中層：中速・中粒 */
+          emMid.burst(16, function(bi){
+            var ba2 = fxFinRand(seed + 60 + bi * 10.7) * Math.PI * 2;
+            var bs2 = 70 + fxFinRand(seed + 60 + bi * 5.9) * 110;
+            return { x: cx + (fxFinRand(seed + 60 + bi * 3.1) - 0.5) * w * 0.7, y: feet - 4,
+              vx: Math.cos(ba2) * bs2, vy: Math.sin(ba2) * bs2 * 0.4 - 36,
+              life: 620 + fxFinRand(seed + 60 + bi * 4.9) * 300, size: 0.5 + fxFinRand(seed + 60 + bi * 4.1) * 0.35, sizeEnd: 0.1,
+              colA: [0.85, 0.78, 0.64], colB: [0.55, 0.47, 0.36], grav: 170, curve: 'o', pow: 1 };
+          });
+          /* 遠層：遅く小さく、長く漂う粉塵 */
+          emFar.burst(12, function(bi){
+            var ba3 = fxFinRand(seed + 130 + bi * 9.3) * Math.PI * 2;
+            var bs3 = 26 + fxFinRand(seed + 130 + bi * 6.3) * 60;
+            return { x: cx + (fxFinRand(seed + 130 + bi * 2.7) - 0.5) * w * 0.8, y: feet - 6,
+              vx: Math.cos(ba3) * bs3, vy: -18 - fxFinRand(seed + 130 + bi * 5.5) * 30,
+              life: 760 + fxFinRand(seed + 130 + bi * 4.5) * 240, size: 0.32 + fxFinRand(seed + 130 + bi * 3.9) * 0.22, sizeEnd: 0.05,
+              colA: [0.8, 0.73, 0.6], colB: [0.52, 0.46, 0.4], grav: 40, damp: 0.5, curve: 'io', pow: 1.2 };
+          });
+        }
+        emNear.step(dt, 1); emMid.step(dt, 1); emFar.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      fxQuake('fx-quake-md', 560);
+      return true;
+    }
+    /* 52ex EX-キャリバー登場（第3弾）：空から落ちる剣光を「リボン＋流れる光」
+       に作り替え（落下する剣の光跡が流れシェーダの帯になり、剣本体は従来の
+       素材／描画のまま帯の先端に同期する）。着弾は金の歪みリング×2と
+       光屑。剣の落下曲線・着弾拍（400ms）・揺れは現行のまま */
+    function fx3ExcaliburFx(cx, cy, feet, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var S = Math.max(1.6, Math.min(2.4, h / 76));
+      var startY = cy - h * 2.3, endY = cy - h * 0.05;
+      var trail = fx3Ribbon(scope, cont, 18, { alpha: 0.9, core: 0.8, dir: 1 });
+      var swordTex = (typeof summonFxTexture === 'function') ? summonFxTexture('sword') : null;
+      var spr = null, sg = null;
+      if (swordTex){
+        spr = new PIXI.Sprite(swordTex);
+        spr.anchor.set(0.5, 0.5);
+        var dispH = 97 * S;
+        spr.height = dispH; spr.width = dispH * (swordTex.width / swordTex.height);
+        cont.addChild(spr);
+      } else {
+        sg = new PIXI.Graphics();
+        cont.addChild(sg);
+      }
+      var glow = FxKit.glowQuad(0xffd76a, { intensity: 0, pulse: 0.2, speed: 6.0 });
+      glow.position.set(cx, feet - 4); glow.scale.set(w * 1.0); cont.addChild(glow);
+      var ring1 = fx3DistortRing(scope, cont, cx, feet, { maxR: w * 1.65, color: 0xffd76a, width: 3.2, distort: 16, wobble: 0.055 });
+      var ring2 = fx3DistortRing(scope, cont, cx, feet, { maxR: w * 1.15, color: 0xffffff, width: 2.6, distort: 11, wobble: 0.06, phase: 2.6 });
+      var em = scope.emitter(cont, { max: 60 });
+      var seed = 523.7 + cx * 0.23 + feet * 0.17;
+      var landDone = false, quakeDone = false;
+      var lastLife = 0;
+      scope.anim(950, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var p = Math.min(1, t / 0.42); p = p * p;
+        var swordY = startY + (endY - startY) * p;
+        var fade = t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1;
+        /* 剣光リボン：空の高い位置から剣の切っ先までを結ぶ流れる光の帯。
+           着弾後は急速に痩せて消える */
+        var tipY = swordY + 34 * S * 0.9;
+        var trailEnv = (t < 0.46 ? Math.min(1, t / 0.06) : Math.max(0, 1 - (t - 0.46) / 0.3)) * fade;
+        var samples = FxKit.bezierSamples({ x: cx, y: feet - h * 3.2 }, { x: cx + Math.sin(life * 0.006) * 5, y: (feet - h * 3.2 + tipY) / 2 }, { x: cx, y: tipY }, 19, function(u){
+          return w * 0.30 * (0.22 + 0.78 * u) * trailEnv;
+        });
+        FxKit.fillStrip(trail.strip, samples);
+        trail.mat.uniforms.uFlow = life * 0.009;
+        trail.mat.uniforms.uAlpha = 0.9 * trailEnv;
+        if (spr){ spr.position.set(cx, swordY - 14.5 * S); spr.alpha = fade; }
+        if (sg){
+          sg.clear();
+          sg.position.set(cx, swordY);
+          sg.alpha = fade;
+          sg.beginFill(0xffffff, 0.95); sg.lineStyle(1.5 * S, 0xeccd7e, 0.9);
+          sg.moveTo(-4.5 * S, -42 * S); sg.lineTo(4.5 * S, -42 * S); sg.lineTo(0, 34 * S); sg.closePath(); sg.endFill();
+          sg.beginFill(0xeccd7e, 1); sg.drawRect(-14 * S, -47 * S, 28 * S, 5.5 * S); sg.endFill();
+          sg.beginFill(0xc9a24b, 1); sg.drawRect(-2.6 * S, -60 * S, 5.2 * S, 13 * S); sg.endFill();
+          sg.beginFill(0xfff3c4, 1); sg.drawCircle(0, -63 * S, 3.6 * S); sg.endFill();
+        }
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = landDone ? Math.max(0, 1.15 * (1 - (life - 400) / 420)) : 0.4 * Math.min(1, t / 0.42);
+        ring1.draw(Math.min(1, Math.max(0, life - 400) / 720), life < 400 ? 0 : Math.min(1, (life - 400) / 50));
+        ring2.draw(Math.min(1, Math.max(0, life - 460) / 600), life < 460 ? 0 : Math.min(1, (life - 460) / 50));
+        if (!landDone && life >= 400){
+          landDone = true;
+          em.burst(34, function(bi){
+            var ba = fxFinRand(seed + bi * 11.3) * Math.PI * 2;
+            var bs = 70 + fxFinRand(seed + bi * 6.5) * 280;
+            return { x: cx, y: feet - h * 0.2, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 40,
+              life: 320 + fxFinRand(seed + bi * 4.5) * 280, size: 0.44 + fxFinRand(seed + bi * 3.5) * 0.42, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [1, 0.78, 0.35], grav: 380, curve: 'o', pow: 1.1 };
+          });
+        }
+        if (!quakeDone && life >= 400){ quakeDone = true; fxQuake('fx-quake-sm', 480); }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 054 ロンギヌス（第3弾）：槍の周回軌道に光跡リボン（流れシェーダの帯）を
+       付け、残像は4段の濃淡グラデーションで滑らかにする。槍本体は素材が
+       あればスプライト、無ければ描画（従来の形状のまま）。頂点の閃光は
+       光屑に置き換え。一周 840ms のタイミングは現行のまま */
+    function fx3LonginusFx(cx, cy, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var R = Math.max(w, h) * 1.02;
+      var trail = fx3Ribbon(scope, cont, 30, { alpha: 0.85, core: 0.6, dir: 0 });
+      var spearTex = (typeof summonFxTexture === 'function') ? summonFxTexture('spear') : null;
+      var LAGS = [0, 0.3, 0.58, 0.84], ALPHAS = [0.98, 0.42, 0.23, 0.12], SCALES = [1.18, 1.1, 1.04, 1.0];
+      var sprs = null, sg = null;
+      if (spearTex){
+        sprs = LAGS.map(function(lag, gi){
+          var s = new PIXI.Sprite(spearTex);
+          s.anchor.set(0.5, 0.5);
+          var len2 = 72 * SCALES[gi];
+          s.height = len2; s.width = len2 * (spearTex.width / spearTex.height);
+          cont.addChild(s);
+          return s;
+        });
+      } else { sg = new PIXI.Graphics(); cont.addChild(sg); }
+      var em = scope.emitter(cont, { max: 30 });
+      var seed = 541.9 + cx * 0.29 + cy * 0.07;
+      var burstDone = false;
+      var lastLife = 0;
+      function drawSpearGfx(a, alpha, sc){
+        var hx = cx + Math.cos(a) * R, hy = cy + Math.sin(a) * R * 0.92;
+        var tx = -Math.sin(a), ty = Math.cos(a) * 0.92;
+        var tl = Math.sqrt(tx * tx + ty * ty); tx /= tl; ty /= tl;
+        var px = -ty, py = tx;
+        sg.lineStyle(3.2 * sc, 0xf2e7bd, alpha);
+        sg.moveTo(hx - tx * 24 * sc, hy - ty * 24 * sc);
+        sg.lineTo(hx + tx * 9 * sc, hy + ty * 9 * sc);
+        sg.beginFill(0xffffff, alpha); sg.lineStyle(1, 0xeccd7e, alpha);
+        sg.moveTo(hx + tx * 27 * sc, hy + ty * 27 * sc);
+        sg.lineTo(hx + tx * 8 * sc + px * 5 * sc, hy + ty * 8 * sc + py * 5 * sc);
+        sg.lineTo(hx + tx * 8 * sc - px * 5 * sc, hy + ty * 8 * sc - py * 5 * sc);
+        sg.closePath(); sg.endFill();
+      }
+      scope.anim(900, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var rotT = Math.min(1, life / 840);
+        var ang = -Math.PI / 2 + rotT * Math.PI * 2;
+        var fade = life <= 655 ? 1 : Math.max(0, 1 - (life - 655) / 185);
+        /* 光跡リボン：頭の後ろへ 2.15rad ぶんの帯を引き、先端ほど太くする */
+        var samples = [];
+        for (var i = 0; i <= 30; i++){
+          var u = i / 30;
+          var a2 = ang - u * 2.15;
+          var tx2 = -Math.sin(a2), ty2 = Math.cos(a2) * 0.92;
+          var tl2 = Math.sqrt(tx2 * tx2 + ty2 * ty2); tx2 /= tl2; ty2 /= tl2;
+          samples.push({ x: cx + Math.cos(a2) * R, y: cy + Math.sin(a2) * R * 0.92,
+            ax: -ty2, ay: tx2, hw: (0.7 + 6.6 * Math.pow(1 - u, 1.35)) * fade * Math.min(1, life / 90) });
+        }
+        FxKit.fillStrip(trail.strip, samples);
+        trail.mat.uniforms.uFlow = life * 0.007;
+        trail.mat.uniforms.uAlpha = 0.85 * fade;
+        if (sprs){
+          sprs.forEach(function(s, gi){
+            var a3 = ang - LAGS[gi];
+            s.position.set(cx + Math.cos(a3) * R, cy + Math.sin(a3) * R * 0.92);
+            s.rotation = a3 + Math.PI / 2;
+            s.alpha = ALPHAS[gi] * fade;
+          });
+        } else if (sg){
+          sg.clear();
+          for (var gi2 = LAGS.length - 1; gi2 >= 0; gi2--) drawSpearGfx(ang - LAGS[gi2], ALPHAS[gi2] * fade, SCALES[gi2]);
+        }
+        if (!burstDone && life >= 800){
+          burstDone = true;
+          em.burst(16, function(bi){
+            var ba = fxFinRand(seed + bi * 12.9) * Math.PI * 2;
+            var bs = 50 + fxFinRand(seed + bi * 6.7) * 170;
+            return { x: cx, y: cy - R * 0.92, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 16,
+              life: 260 + fxFinRand(seed + bi * 4.1) * 200, size: 0.4 + fxFinRand(seed + bi * 3.3) * 0.34, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [1, 0.88, 0.55], grav: 240, curve: 'o', pow: 1.15 };
+          });
+        }
+        em.step(dt, fade);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 黒のアギト孵化（第3弾・影）：DOM の黒い影（従来どおり）の外周に、
+       うねる輪郭のリングを Pixi で重ねる。輪郭は角度方向の波で絶えず
+       変形し、上昇（460ms）→間→落下（530ms から130ms）の DOM 側
+       タイムラインに同期する。紫の粉も影の上昇に付き従う */
+    function fx3HatchShadowFx(fx){
+      if (!FxKit.available() || !fx) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      scope.add(cont);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var em = scope.emitter(cont, { max: 24 });
+      var seed = 553.3 + fx.cx * 0.31;
+      var lastLife = 0;
+      var rx0 = fx.w * 0.44, ry0 = fx.h * 0.29;
+      scope.anim(660, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var cxp, cyp, rx, ry, env;
+        if (life < 460){
+          var p = life / 460, pe = Math.pow(p, 1.7);
+          cxp = fx.cx; cyp = fx.cy - window.innerHeight * 0.95 * pe;
+          rx = rx0 * (1 - 0.45 * p); ry = ry0 * (1 - 0.18 * p);
+          env = 0.9 - 0.25 * p;
+          if (p > 0.05 && p < 0.95){
+            em.spawn({ x: cxp + (fxFinRand(seed + life * 0.53) - 0.5) * rx * 1.6, y: cyp + ry * 0.7,
+              vx: (fxFinRand(seed + life * 0.29) - 0.5) * 26, vy: 26 + fxFinRand(seed + life * 0.17) * 40,
+              life: 380, size: 0.3, sizeEnd: 0.05, colA: [0.66, 0.5, 1], colB: [0.32, 0.16, 0.62], curve: 'io', pow: 1.3 });
+          }
+        } else if (life < 530){
+          gfx.clear();
+          em.step(dt, 0);
+          return;
+        } else {
+          var q = Math.min(1, (life - 530) / 130);
+          cxp = fx.cx; cyp = (fx.cy - fx.h * 0.9) + fx.h * 0.9 * q;
+          rx = rx0 * (0.62 + 0.53 * q); ry = ry0 * (0.86 - 0.16 * q);
+          env = 0.95;
+        }
+        gfx.clear();
+        function wobbly(width, col, alpha){
+          gfx.lineStyle(width, col, alpha * env);
+          var N = 38;
+          for (var i = 0; i <= N; i++){
+            var a = (i / N) * Math.PI * 2;
+            var wobF = 1 + 0.055 * Math.sin(a * 3 + life * 0.021) + 0.04 * Math.sin(a * 5 - life * 0.033);
+            var px = cxp + Math.cos(a) * rx * wobF, py = cyp + Math.sin(a) * ry * wobF;
+            if (i === 0) gfx.moveTo(px, py); else gfx.lineTo(px, py);
+          }
+        }
+        wobbly(9, 0x7b2ff7, 0.15);
+        wobbly(2.6, 0xd8b4fe, 0.85);
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 黒のアギト孵化（第3弾・着地）：従来の紫リング／バーストに加えて、
+       着地の衝撃波として歪みリング（うねり＋屈折）を足し、紫の閃光と
+       欠片を重ねる */
+    function fx3HatchLandFx(fx){
+      if (!FxKit.available() || !fx) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var ring = fx3DistortRing(scope, cont, fx.cx, fx.feet, { maxR: fx.w * 1.95, color: 0xb18cff, width: 3.4, distort: 20, wobble: 0.07 });
+      var glow = FxKit.glowQuad(0x8a5cff, { intensity: 0, pulse: 0, speed: 1 });
+      glow.position.set(fx.cx, fx.cy); glow.scale.set(fx.w * 1.1); cont.addChild(glow);
+      var em = scope.emitter(cont, { max: 30 });
+      var seed = 557.1 + fx.cx * 0.37 + fx.feet * 0.11;
+      var burstDone = false;
+      var lastLife = 0;
+      scope.anim(700, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        ring.draw(Math.min(1, life / 640), Math.min(1, life / 60));
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = t < 0.12 ? (t / 0.12) * 1.1 : Math.max(0, 1.1 * (1 - (t - 0.12) / 0.55));
+        if (!burstDone){
+          burstDone = true;
+          em.burst(16, function(bi){
+            var ba = fxFinRand(seed + bi * 12.7) * Math.PI * 2;
+            var bs = 70 + fxFinRand(seed + bi * 6.3) * 190;
+            return { x: fx.cx, y: fx.feet - 4, vx: Math.cos(ba) * bs, vy: -Math.abs(Math.sin(ba)) * bs * 0.7 - 30,
+              life: 340 + fxFinRand(seed + bi * 4.7) * 220, size: 0.46 + fxFinRand(seed + bi * 3.7) * 0.4, sizeEnd: 0.06,
+              colA: [0.82, 0.68, 1], colB: [0.42, 0.2, 0.8], grav: 720, curve: 'o', pow: 1 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 聖剣の欠片（052）／黒竜の卵（053）（第3弾）：通常召喚寄りの登場。
+       格は現行のまま、魔法陣まわりだけ第2弾の通常召喚と質感を揃える
+       （放射グラデーションテクスチャの中心発光＋二重リング回転＋出現時の
+       光の粒のウェイク）。色は魔法陣の色（欠片＝金／卵＝紫）に合わせ、
+       柱の残滓は付けない（魔法陣まわりに限る） */
+    function fx3ShardEggFx(cx, cy, feet, w, h, id){
+      if (!FxKit.available()) return false;
+      var egg = id === '53';
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var R = Math.max(w, h) * 0.86;
+      var glow = new PIXI.Sprite(fx2GlowTexture());
+      glow.anchor.set(0.5);
+      glow.tint = egg ? 0xb18cff : 0xffd76a;
+      glow.blendMode = PIXI.BLEND_MODES.ADD;
+      glow.position.set(cx, cy);
+      glow.scale.set(R * 2.6 / 128);
+      glow.alpha = 0;
+      cont.addChild(glow);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var ringOut = egg ? 0xc9a2ff : 0xffe9a8;
+      var ringIn = egg ? 0x8a5cff : 0xeccd7e;
+      var em = scope.emitter(cont, { max: 70 });
+      var seed = (egg ? 571.7 : 577.3) + cx * 0.13 + cy * 0.07;
+      var colA = egg ? [0.82, 0.68, 1] : [1, 0.93, 0.72];
+      var colB = egg ? [0.55, 0.35, 1] : [1, 0.8, 0.42];
+      var lastLife = 0;
+      scope.anim(680, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.min(1, t / 0.16) * (t > 0.66 ? Math.max(0, 1 - (t - 0.66) / 0.34) : 1);
+        glow.alpha = Math.min(1, (0.30 + 0.62 * Math.min(1, t / 0.3)) * env) * 0.92;
+        var gs = (R * 2.6 / 128) * (1.02 + 0.10 * Math.sin(life * 0.011));
+        glow.scale.set(gs);
+        gfx.clear();
+        var rot = life * 0.0026;
+        gfx.lineStyle(2.4, ringOut, 0.75 * env);
+        for (var q = 0; q < 4; q++){
+          var a0 = rot + q * Math.PI / 2;
+          gfx.arc(cx, cy, R * 0.98, a0, a0 + 1.05);
+        }
+        gfx.lineStyle(1.6, ringIn, 0.65 * env);
+        for (var q2 = 0; q2 < 3; q2++){
+          var b0 = -rot * 1.45 + q2 * Math.PI * 2 / 3;
+          gfx.arc(cx, cy, R * 0.74, b0, b0 + 1.35);
+        }
+        if (t < 0.46){
+          em.burst(3, function(bi){
+            var ba = fxFinRand(seed + life * 0.37 + bi * 11.3) * Math.PI * 2;
+            var br = R * (0.55 + fxFinRand(seed + bi * 5.7 + life * 0.11) * 0.4);
+            var sx = cx + Math.cos(ba) * br, sy = feet - 4 + Math.sin(ba) * br * 0.22;
+            return { x: sx, y: sy,
+              vx: (cx - sx) * 1.5 + (fxFinRand(seed + bi * 3.3) - 0.5) * 30,
+              vy: -55 - fxFinRand(seed + bi * 7.9 + life * 0.05) * 85,
+              life: 340 + fxFinRand(seed + bi * 9.1) * 260, size: 0.34 + fxFinRand(seed + bi * 4.7) * 0.3, sizeEnd: 0.05,
+              colA: colA, colB: colB, curve: 'io', pow: 1.2 };
+          });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
     /* ===== EX-キャリバー専用：飛翔しながら超巨大化する三日月斬撃（帯メッシュ方式） =====
        旧方式（Graphics の lineStyle で巨大な円弧の輪郭を描く）は、弧が
        「分度器」のような図形として画面に残り、飛翔感も出なかったため廃止。
@@ -5599,92 +7464,19 @@
         var f = t > 0.60 ? Math.max(0, 1 - (t - 0.60) / 0.37) : 1;
         return a * f;
       }
-      /* --- 光の帯テクスチャ（Canvas生成。共有キャッシュなので破棄しない） --- */
-      function slashTexture(){
-        if (pixiExFlyingSlashFx._tex) return pixiExFlyingSlashFx._tex;
-        var cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
-        var g = cv.getContext('2d');
-        var grad = g.createLinearGradient(0, 0, 0, 64);
-        grad.addColorStop(0.00, 'rgba(255,180,80,0)');
-        grad.addColorStop(0.28, 'rgba(255,205,110,0.55)');
-        grad.addColorStop(0.50, 'rgba(255,255,255,1)');
-        grad.addColorStop(0.72, 'rgba(255,220,140,0.55)');
-        grad.addColorStop(1.00, 'rgba(255,160,70,0)');
-        g.fillStyle = grad; g.fillRect(0, 0, 256, 64);
-        g.globalCompositeOperation = 'lighter';
-        for (var i = 0; i < 26; i++){
-          var sy2 = 6 + fxFinRand(i * 3.7 + 1) * 52;
-          var sx2 = fxFinRand(i * 9.3 + 2) * 256;
-          var ln = 26 + fxFinRand(i * 5.1 + 3) * 90;
-          var gr2 = g.createLinearGradient(sx2, 0, sx2 + ln, 0);
-          var aa = 0.10 + fxFinRand(i * 7.7 + 4) * 0.30;
-          gr2.addColorStop(0, 'rgba(255,255,255,0)');
-          gr2.addColorStop(0.5, 'rgba(255,255,255,' + aa + ')');
-          gr2.addColorStop(1, 'rgba(255,255,255,0)');
-          g.fillStyle = gr2;
-          g.fillRect(sx2, sy2, ln, 1.6 + fxFinRand(i * 4.3 + 5) * 2.6);
-        }
-        var tex = PIXI.Texture.from(cv);
-        tex.wrapMode = PIXI.WRAP_MODES.REPEAT;
-        pixiExFlyingSlashFx._tex = tex;
-        return tex;
-      }
-      /* --- シェーダ：UVスクロールで光が進行方向へ流れる --- */
-      var SLASH_VS = [
-        'attribute vec2 aVertexPosition;',
-        'attribute vec2 aUvs;',
-        'uniform mat3 translationMatrix;',
-        'uniform mat3 projectionMatrix;',
-        'varying vec2 vUvs;',
-        'void main(){ vUvs = aUvs; gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0); }'
-      ].join('\n');
-      var SLASH_FS = [
-        'varying vec2 vUvs;',
-        'uniform sampler2D uTex;',
-        'uniform float uFlow;',
-        'uniform float uAlpha;',
-        'uniform float uCore;',
-        'uniform float uDir;',
-        'void main(){',
-        '  vec2 uv = (uDir < 0.5)',
-        '    ? vec2(vUvs.x * 2.0 + uFlow * 0.35, vUvs.y + uFlow)',
-        '    : vec2(vUvs.x * 3.0 - uFlow * 1.6, vUvs.y);',
-        '  vec4 tex = texture2D(uTex, uv);',
-        '  float across = sin(3.14159 * clamp(vUvs.y, 0.0, 1.0));',
-        '  float prof = pow(across, 1.35);',
-        '  float ends = (uDir < 0.5)',
-        '    ? smoothstep(0.0, 0.10, vUvs.x) * smoothstep(1.0, 0.90, vUvs.x)',
-        '    : smoothstep(0.0, 0.55, vUvs.x);',
-        '  float core = pow(across, 5.0) * uCore;',
-        '  vec3 col = tex.rgb * (0.75 + 0.45 * prof) + vec3(1.0, 0.98, 0.92) * core;',
-        '  float a = tex.a * (0.25 + 0.75 * prof) * ends * uAlpha;',
-        '  gl_FragColor = vec4(col, a);',
-        '}'
-      ].join('\n');
+      /* --- 帯テクスチャ／シェーダ／三角形ストリップは共通基盤 FxKit を使用 ---
+         （テクスチャの生成手順・シェーダ式・バッファ構成は従来と同一のまま
+         FxKit 側へ集約した。この斬撃の見た目・挙動は変えていない） */
       function makeShader(alpha, core, dir){
-        return PIXI.Shader.from(SLASH_VS, SLASH_FS, {
-          uTex: slashTexture(), uFlow: 0, uAlpha: alpha, uCore: core, uDir: dir
-        });
+        return FxKit.ribbonMaterial({ alpha: alpha, core: core, dir: dir });
       }
-      /* --- 三角形ストリップ（動的バッファ） --- */
-      function makeStrip(seg){
-        var nv = (seg + 1) * 2;
-        var pos = new Float32Array(nv * 2);
-        var uv = new Float32Array(nv * 2);
-        var idx = [];
-        for (var i = 0; i < seg; i++){
-          var a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
-          idx.push(a, b, c, b, d, c);
-        }
-        var geo = new PIXI.Geometry();
-        var posBuf = new PIXI.Buffer(pos, false);
-        var uvBuf = new PIXI.Buffer(uv, false);
-        geo.addAttribute('aVertexPosition', posBuf, 2);
-        geo.addAttribute('aUvs', uvBuf, 2);
-        geo.addIndex(idx);
-        return { geo: geo, pos: pos, uv: uv, posBuf: posBuf, uvBuf: uvBuf, seg: seg };
-      }
-      /* 波面（三日月）をストリップへ書き込む。scaleL：長さ倍率、scaleT：太さ倍率 */
+      function makeStrip(seg){ return FxKit.strip(seg); }
+      /* 帯サンプルの受け渡し用スクラッチ（fillBlade／fillWake で共有。
+         呼び出しは逐次で再入しない前提） */
+      var stripSamples = [];
+      for (var sbi = 0; sbi < 29; sbi++) stripSamples.push({ x: 0, y: 0, ax: 0, ay: 0, hw: 0 });
+      /* 波面（三日月）をストリップへ書き込む。scaleL：長さ倍率、scaleT：太さ倍率。
+         頂点の書き込み自体は FxKit.fillStrip（サンプル列→帯）が担当する */
       function fillBlade(strip, S, scaleL, scaleT){
         var px = -S.dy, py = S.dx; /* 波面の向き（進行方向と直交） */
         var hl = S.halfLen * scaleL, th = S.thick * scaleT;
@@ -5692,16 +7484,13 @@
         for (var i = 0; i <= strip.seg; i++){
           var s = i / strip.seg * 2 - 1;
           var prof = Math.pow(Math.max(0, Math.cos(s * Math.PI / 2)), 0.72);
-          var cxp = S.x + px * s * hl - S.dx * lag * s * s;
-          var cyp = S.y + py * s * hl - S.dy * lag * s * s;
-          var hw = th * (0.04 + 0.96 * prof) / 2;
-          var j = i * 4;
-          strip.pos[j]     = cxp + S.dx * hw; strip.pos[j + 1] = cyp + S.dy * hw;
-          strip.pos[j + 2] = cxp - S.dx * hw; strip.pos[j + 3] = cyp - S.dy * hw;
-          strip.uv[j] = i / strip.seg; strip.uv[j + 1] = 0;
-          strip.uv[j + 2] = i / strip.seg; strip.uv[j + 3] = 1;
+          var smp = stripSamples[i];
+          smp.x = S.x + px * s * hl - S.dx * lag * s * s;
+          smp.y = S.y + py * s * hl - S.dy * lag * s * s;
+          smp.ax = S.dx; smp.ay = S.dy;
+          smp.hw = th * (0.04 + 0.96 * prof) / 2;
         }
-        strip.posBuf.update(); strip.uvBuf.update();
+        FxKit.fillStrip(strip, stripSamples);
       }
       /* 軌跡ウェイク：頭の履歴に沿った薄い帯 */
       function fillWake(strip, hist, curThick){
@@ -5710,18 +7499,15 @@
         for (var i = 0; i <= strip.seg; i++){
           var f = i / strip.seg;
           var fi = f * (n - 1), i0 = Math.floor(fi), i1 = Math.min(n - 1, i0 + 1), fr = fi - i0;
-          var hx = hist[i0].x + (hist[i1].x - hist[i0].x) * fr;
-          var hy = hist[i0].y + (hist[i1].y - hist[i0].y) * fr;
           var hdx = hist[i0].dx + (hist[i1].dx - hist[i0].dx) * fr;
           var hdy = hist[i0].dy + (hist[i1].dy - hist[i0].dy) * fr;
-          var hw = 1.2 + f * f * curThick * 0.30;
-          var j = i * 4;
-          strip.pos[j]     = hx - hdy * hw; strip.pos[j + 1] = hy + hdx * hw;
-          strip.pos[j + 2] = hx + hdy * hw; strip.pos[j + 3] = hy - hdx * hw;
-          strip.uv[j] = f; strip.uv[j + 1] = 0;
-          strip.uv[j + 2] = f; strip.uv[j + 3] = 1;
+          var smp = stripSamples[i];
+          smp.x = hist[i0].x + (hist[i1].x - hist[i0].x) * fr;
+          smp.y = hist[i0].y + (hist[i1].y - hist[i0].y) * fr;
+          smp.ax = -hdy; smp.ay = hdx;
+          smp.hw = 1.2 + f * f * curThick * 0.30;
         }
-        strip.posBuf.update(); strip.uvBuf.update();
+        FxKit.fillStrip(strip, stripSamples);
       }
 
       /* --- 組み立て：コンテナ＋各層メッシュ --- */
@@ -5764,12 +7550,6 @@
         sp.position.set(x, y); sp.visible = true;
         particles.push({ sp: sp, sys: sys, vx: vx, vy: vy, life: 0, max: max, s0: s0, c0: c0, c1: c1, grav: grav });
       }
-      function tintLerp(c0, c1, k){
-        var r = Math.round((c0[0] + (c1[0] - c0[0]) * k) * 255);
-        var gg = Math.round((c0[1] + (c1[1] - c0[1]) * k) * 255);
-        var b = Math.round((c0[2] + (c1[2] - c0[2]) * k) * 255);
-        return (r << 16) | (gg << 8) | b;
-      }
       function stepParticles(dt, env){
         for (var i = particles.length - 1; i >= 0; i--){
           var p = particles[i];
@@ -5797,7 +7577,7 @@
           }
           p.sp.alpha = a * env;
           p.sp.scale.set(Math.max(0.02, sc));
-          p.sp.tint = tintLerp(p.c0, p.c1, k);
+          p.sp.tint = FxKit.tintLerp(p.c0, p.c1, k);
         }
       }
 
@@ -5925,6 +7705,98 @@
         stepParticles(dt, pEnv);
       };
       pixiFx.anims.push(rec);
+      return true;
+    }
+    /* ===== EX-キャリバー専用：溜めの「エネルギーの収束」 =====
+       画面の広い範囲から光の輪が何重にも剣（支点）へ縮みながら集まり、
+       内向きの光屑が吸い込まれ、中心のグローが収束に合わせて強まっていく。
+       溜め区間（剣を振る直前）の中で完結し、振り開始時の剣の発光へ
+       受け渡す前提の表現。共通基盤 FxKit の上に構築する：
+       ・輪はスコープ駆動アニメ内の Graphics 描画（金の外周＋白い芯＋
+         回転する4つのダイヤ目盛り）。輪ごとに開始をずらし、加速しながら縮む
+       ・中心グローは FxKit.glowQuad（シェーダの放射発光＋脈動）。
+         uIntensity を収束の進行で引き上げ、剣の輝きの増強と同期させる
+       ・光屑は FxKit エミッタ（寿命カーブ：α・スケール・色）。外周の
+         円環上から生まれ、中心へ届く速度で吸い込まれる。輪が中心へ
+         届くたびに小さな火花バーストを重ねる
+       終了時・中断時とも scope.dispose() で表示物・粒子・アニメ登録を
+       すべて解除する（残像ゼロ。fxMythicExtraCleanup 経由でも掃除される）。
+       戻り値の意味は pixiExFlyingSlashFx と同じ（false 時は何も出ない） */
+    function pixiExConvergeFx(cx, cy, dur){
+      if (!FxKit.available() || !pixiFx.fxLayer) return false;
+      var scope = FxKit.scope(pixiFx.fxLayer);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var glow = FxKit.glowQuad(0xffd76a, { intensity: 0, pulse: 0.22, speed: 6.0 });
+      glow.position.set(cx, cy);
+      cont.addChild(glow);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var em = scope.emitter(cont, { max: 130 });
+      var R0 = Math.max(window.innerWidth, window.innerHeight) * 0.66;
+      var RINGS = 6, RING_LIFE = 560, RING_STAGGER = 130;
+      var arrived = [];
+      var lastLife = 0;
+      var seedBase = 371.3;
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        gfx.clear();
+        /* --- 光の輪：画面外周から支点へ、加速しながら何重にも縮む --- */
+        for (var i = 0; i < RINGS; i++){
+          var lt = life - i * RING_STAGGER;
+          if (lt < 0 || lt > RING_LIFE) continue;
+          var k = lt / RING_LIFE;
+          var rr = 10 + (R0 - 10) * Math.pow(1 - k, 2.1);
+          var al = Math.pow(Math.sin(Math.PI * Math.min(1, k * 1.05)), 1.15);
+          gfx.lineStyle(5.5, 0xffd76a, 0.30 * al);
+          gfx.drawCircle(cx, cy, rr);
+          gfx.lineStyle(2.0, 0xfff6da, 0.75 * al);
+          gfx.drawCircle(cx, cy, rr);
+          /* 輪の上のダイヤ目盛り：回転しながら一緒に収束する */
+          var rot = life * 0.0016 + i * 1.13;
+          gfx.lineStyle(3.2, 0xffe9a8, 0.8 * al);
+          for (var q = 0; q < 4; q++){
+            var a0 = rot + q * Math.PI / 2;
+            gfx.arc(cx, cy, rr, a0, a0 + 0.16);
+          }
+          /* 輪が中心へ届いた拍に、小さな火花を重ねる */
+          if (k >= 0.985 && !arrived[i]){
+            arrived[i] = true;
+            em.burst(7, function(bi){
+              var ba = fxFinRand(seedBase + i * 31.7 + bi * 7.9) * Math.PI * 2;
+              var bs = 60 + fxFinRand(seedBase + i * 17.3 + bi * 3.1) * 170;
+              return { x: cx, y: cy, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 24,
+                life: 300 + fxFinRand(seedBase + bi * 5.3 + i) * 220, size: 0.55, sizeEnd: 0.08,
+                colA: [1, 1, 1], colB: [1, 0.78, 0.35], grav: 60, curve: 'o', pow: 1.2 };
+            });
+          }
+        }
+        /* --- 中心グロー：収束が進むほど強く・大きく脈動する --- */
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = 0.25 + 1.15 * t;
+        glow.scale.set(26 + 120 * t + Math.sin(life * 0.012) * 5);
+        /* --- 内向きの光屑：外周の円環上から生まれ、中心へ吸い込まれる --- */
+        var spawnN = t < 0.85 ? 2 : 1;
+        for (var s = 0; s < spawnN; s++){
+          var pa = fxFinRand(seedBase + life * 0.371 + s * 13.7) * Math.PI * 2;
+          var pr = R0 * (0.55 + fxFinRand(seedBase + life * 0.113 + s * 7.3) * 0.5);
+          var pLife = 480 + fxFinRand(seedBase + life * 0.077 + s * 3.9) * 260;
+          var spd = pr / (pLife / 1000);
+          em.spawn({ x: cx + Math.cos(pa) * pr, y: cy + Math.sin(pa) * pr,
+            vx: -Math.cos(pa) * spd, vy: -Math.sin(pa) * spd,
+            life: pLife, size: 0.42 + fxFinRand(seedBase + s * 9.1 + life * 0.05) * 0.4, sizeEnd: 0.06,
+            colA: [1, 0.92, 0.62], colB: [1, 0.72, 0.3], curve: 'io', pow: 1.1 });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      /* フィニッシュが中断・差し替えられた場合も、既存の後片付け経路から必ず掃除する */
+      var prevExtraCleanup = fxMythicExtraCleanup;
+      fxMythicExtraCleanup = function(){
+        scope.dispose();
+        if (prevExtraCleanup){ try { prevExtraCleanup(); } catch (e) {} }
+      };
       return true;
     }
     /* ===== EX-キャリバー専用：パネルに走る光の裂け目（斬撃の到達点） =====
@@ -6109,6 +7981,7 @@
     }
     /* 039 セレスティア：光柱＋足元の浄化の波紋（白〜金）。カード枠を大きくはみ出す規模 */
     function fxCelestiaFx(cx, cy, feet, w, h){
+      if (fx3CelestiaFx(cx, cy, feet, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
       pixiBeamFx(cx, feet - h * 3.4, feet + 4, w * 0.82, [0xffeeb0, 0xfff6da], 980);
       pixiRing(cx, feet, { maxR: w * 1.75, dur: 820, color: 0xffffff });
       setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.4, dur: 740, color: 0xeccd7e }); }, 170);
@@ -6116,6 +7989,7 @@
     }
     /* 046 ミラージュ：赤い斬撃を大きく連続で走らせる（交差×3回）。残像は DOM 側の mirageEcho が担当 */
     function fxMirageFx(cx, cy, w, h){
+      if (fx3MirageFx(cx, cy, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
       var len = Math.max(w, h) * 2.9;
       setTimeout(function(){ pixiSlashFx(cx, cy, -38, len, 0xff4a3c, 360); }, 30);
       setTimeout(function(){ pixiSlashFx(cx, cy, 38, len, 0xff4a3c, 360); }, 140);
@@ -6127,6 +8001,7 @@
     }
     /* 048 ダーククイーン：紫の鎖が大きく巻きつくように集まり、最後に紫の閃光 */
     function fxDarkQueenFx(cx, cy, w, h){
+      if (fx3DarkQueenFx(cx, cy, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
       pixiChainsFx(cx, cy, Math.max(w, h) * 1.5, 900);
       setTimeout(function(){
         pixiBurst(cx, cy, { count: 28, colors: [0xc39bff, 0x8a5cff, 0xffffff], power: 1.5 });
@@ -6135,6 +8010,7 @@
     }
     /* 051 ティアマト：咆哮の衝撃波リング（紅→蒼）＋粉塵＋画面の揺れ。一回り大きく */
     function fxTiamatFx(cx, cy, feet, w, h){
+      if (fx3TiamatFx(cx, cy, feet, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
       pixiRing(cx, feet, { maxR: w * 2.3, dur: 840, color: 0xff6a4a });
       setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.95, dur: 780, color: 0x5aa2ff }); }, 150);
       pixiBurst(cx, feet - 4, { count: 42, colors: [0xd8c6a5, 0xa08b6d, 0xefe4cc], power: 2.1, size: 1.35 });
@@ -6143,6 +8019,7 @@
     /* 52ex EX-キャリバー：空から巨大な剣がドーンと落ち、着弾の衝撃波も大きく。
        剣は生成素材（fx/fx-sword.webp）が読めていれば画像版、無ければ描画版 */
     function fxExcaliburFx(cx, cy, feet, w, h){
+      if (fx3ExcaliburFx(cx, cy, feet, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
       pixiBeamFx(cx, feet - h * 3.2, feet + 4, w * 0.52, [0xeccd7e, 0xfff6da], 900);
       if (!pixiSwordImgFx(cx, cy, h, 950)) pixiSwordFx(cx, cy, h, 950);
       setTimeout(function(){
@@ -6239,6 +8116,7 @@
     /* 054 ロンギヌス：光の槍がカードの周りをぐるっと一周し、頂点で閃光。
        槍は生成素材（fx/fx-spear.webp）が読めていれば画像版、無ければ描画版 */
     function fxLonginusFx(cx, cy, w, h){
+      if (fx3LonginusFx(cx, cy, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
       var R = Math.max(w, h) * 1.02;
       if (!pixiOrbitSpearImgFx(cx, cy, R, 840)) pixiOrbitSpearFx(cx, cy, R, 840);
       setTimeout(function(){ pixiBurst(cx, cy - R * 0.92, { count: 16, colors: [0xffffff, 0xf2e7bd, 0xeccd7e], power: 1.2 }); }, 800);
@@ -6353,6 +8231,9 @@
         var blocked = PIXI_BLOCK_OVERLAYS.some(function(id){ var e = document.getElementById(id); return e && e.classList.contains('show'); });
         pixiFx.blocked = blocked; /* 常駐アンビエント粒子の停止判定にも使う */
         pixiFx.app.view.style.display = blocked ? 'none' : '';
+        /* 第2弾の通常演出：全面画面への遷移（中断）を検出したら、再生中の
+           スコープを即時すべて破棄して残像ゼロにする（後片付け規律） */
+        if (blocked) fx2DisposeAll();
         /* 画面遷移で残ったオーラを確実に掃除するため、定期的にも同期する */
         pixiSyncAuras();
       }
@@ -6435,6 +8316,8 @@
     var fxCpuPrev = null;   /* CPU戦盤面の前回スナップショット {units:{'me-uid':hp}} */
     var fxCpuPrevCid = null; /* 同・カードIDマップ {'me-uid':'53'}（孵化＝ID変化の検出用） */
     var fxLungeQueue = [];  /* CPU戦の突進キュー {sel, dir} */
+    var fxHitQueue = [];    /* 第2弾【2】攻撃の打撃点キュー（doAttack が積み、fxApplyCpu が再描画後に発火する）
+                               {kind:'leader', side} ＝召喚士への直撃／{kind:'pierce', x, y, side} ＝貫通の光跡（x,y は攻撃点の画面座標、side は貫かれた召喚士側） */
     /* ===== 召喚演出の継続記録 =====
        盤面は render() のたびに innerHTML で作り直されるため、クラスを付けた
        要素は次の render() で捨てられてアニメーションが消えてしまう（playCard は
@@ -6805,6 +8688,8 @@
       var r = stageEl.getBoundingClientRect();
       if (!r.width) return;
       var cx = r.left + r.width / 2, cy = r.top + r.height / 2, feet = r.bottom;
+      if (!mythic){ pixiNormalSummonFx(cx, cy, r.width, r.height, feet); return; } /* 第2弾：通常召喚の底上げ（魔法陣シェーダ脈動＋回転＋ウェイク＋光柱の残滓）。神話は従来の格のまま */
+      if (id === '52' || id === '53'){ fx3ShardEggFx(cx, cy, feet, r.width, r.height, id); return; } /* 第3弾：欠片／卵は魔法陣まわりだけ第2弾と質感を揃える */
       if (id === '39') fxCelestiaFx(cx, cy, feet, r.width, r.height);
       else if (id === '46'){ fxMirageFx(cx, cy, r.width, r.height); mirageEcho(stageEl); }
       else if (id === '48') fxDarkQueenFx(cx, cy, r.width, r.height);
@@ -7021,6 +8906,7 @@
             { transform: 'translate(-50%,-50%) translateY(-' + Math.round(window.innerHeight * 0.95) + 'px) scale(.55,.82)', opacity: 0.9 }
           ], { duration: 460, easing: 'cubic-bezier(.55,-0.1,.8,.4)', fill: 'forwards' });
         } catch (e) {}
+        fx3HatchShadowFx(fx); /* 第3弾：影の外周にうねる輪郭（Pixi）を重ねる */
         fxQuake('fx-quake-sm', 420);
       }, 540);
       /* 3) 着地：少し置いて影が元の位置へ落ち、衝撃と共にアギトが現れる */
@@ -7064,6 +8950,7 @@
         pixiRing(fx.cx, fx.feet, { maxR: fx.w * 1.25, dur: 600, color: 0xeccd7e });
         pixiBurst(fx.cx, fx.cy, { count: 38, colors: [0xb18cff, 0x8a5cff, 0xffffff], power: 1.8 });
       }
+      fx3HatchLandFx(fx); /* 第3弾：着地の衝撃波に歪みリングを足す */
       fxQuake('fx-quake-md', 560);
       sePlay('summonMythic');
     }
@@ -7081,13 +8968,23 @@
       g.classList.add('fx-ghost');
       document.body.appendChild(g);
       setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 520);
+      /* 第2弾【3】破壊の重み：残像フェード（少し大きく滲んだ複製を遅れて消す）
+         ＋破片粒子（FxKitスコープ。落下しながら消える）。死亡時効果の発動
+         タイミング・処理順には一切触らない（これは見た目だけの追加） */
+      if (!stageReducedMotion){
+        var g2 = g.cloneNode(true);
+        g2.classList.add('fx-ghost-after');
+        document.body.appendChild(g2);
+        setTimeout(function(){ if (g2.parentNode) g2.parentNode.removeChild(g2); }, 720);
+      }
+      pixiDestroyFx(r.left + r.width / 2, r.top + r.height / 2, r.width, r.height);
     }
     function fxPopFixed(el, text, cls){
       if (!el || !el.getBoundingClientRect) return;
       var r = el.getBoundingClientRect();
       if (!r.width) return;
       var span = document.createElement('span');
-      span.className = 'dmg-pop fx-fixed ' + (cls || '');
+      span.className = 'dmg-pop fx-fixed ' + (cls || '') + popTierCls(text, cls || '');
       span.textContent = text;
       span.style.left = (r.left + r.width / 2) + 'px';
       span.style.top = (r.top + r.height * 0.4) + 'px';
@@ -7172,7 +9069,12 @@
       if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
       plan.hit.forEach(function(k){
         var el = document.querySelector('[data-fol="' + k + '"]');
-        if (el) el.classList.add('fx-hit');
+        if (el){
+          el.classList.add('fx-hit');
+          /* 第2弾【2】打撃点：寿命カーブ粒子（火花・破片）＋閃光コア */
+          var hitRect = el.getBoundingClientRect();
+          if (hitRect.width) pixiHitFx(hitRect.left + hitRect.width / 2, hitRect.top + hitRect.height / 2, {});
+        }
       });
       fxLungeQueue.forEach(function(l){
         var el = document.querySelector(l.sel);
@@ -7187,6 +9089,17 @@
         }
       });
       fxLungeQueue = [];
+      /* 第2弾【2】召喚士への直撃の閃光／貫通の光跡（doAttack が積んだキュー） */
+      fxHitQueue.forEach(function(q){
+        var leaderEl = document.getElementById(q.side === 'me' ? 'myLeader' : 'cpuLeader');
+        if (!leaderEl) return;
+        var lr = leaderEl.getBoundingClientRect();
+        if (!lr.width) return;
+        var lx = lr.left + lr.width / 2, ly = lr.top + lr.height / 2;
+        if (q.kind === 'leader') pixiHitFx(lx, ly, { power: 1.35 });
+        else if (q.kind === 'pierce') pixiPierceFx(q.x, q.y, lx, ly);
+      });
+      fxHitQueue = [];
       /* フィニッシュ演出を実要素へ付け直す（再描画で消えても位相を保って復元する） */
       fxFinishSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
@@ -8104,6 +10017,8 @@
         var lethalLeader = atk.atk > 0 && (sideObj(defSide).hp - atk.atk) <= 0;
         if (lethalLeader){ fxTriggerFinish(fxMythicFinishArg(atk, defSide)); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
         if (atk.atk > 0) sePlay('hit');
+        /* 第2弾【2】召喚士への直撃も打撃点演出の対象にする（発火は再描画後の fxApplyCpu） */
+        if (!HEADLESS && atk.atk > 0) fxHitQueue.push({ kind: 'leader', side: defSide });
         damageLeader(defSide, atk.atk);
         fxLeaderPopFinish = false;
       } else {
@@ -8158,6 +10073,15 @@
           /* 演出：貫通でとどめになる場合もフィニッシュ演出（ユニットの攻撃が起点のため）。
              神話（黒のアギト等）が刺せば神話個別フィニッシュになる */
           if ((sideObj(defSide).hp - penExcess) <= 0){ fxTriggerFinish(fxMythicFinishArg(atk, defSide)); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
+          /* 第2弾【2】貫通の光跡：抜けた位置（防御ユニットの現在位置）を
+             再描画前に控え、fxApplyCpu が召喚士側へ光跡を引く */
+          if (!HEADLESS){
+            var defElPen = document.querySelector('[data-fol="' + defSide + '-' + defUid + '"]');
+            if (defElPen){
+              var penRect = defElPen.getBoundingClientRect();
+              if (penRect.width) fxHitQueue.push({ kind: 'pierce', x: penRect.left + penRect.width / 2, y: penRect.top + penRect.height / 2, side: defSide });
+            }
+          }
           damageLeader(defSide, penExcess);
           fxLeaderPopFinish = false;
         }
@@ -10581,7 +12505,7 @@
       { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後はパネル上で斬って消える' },
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖がパネル全体に被さり、闇の渦へ引きずり込む' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスしてパネルを爆発させる' },
-      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、剣を頭上の上半円弧で大きく振ると、剣先から小さな三日月斬撃が光の帯メッシュとして飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）してパネルに光の裂け目を走らせ、真っ二つに崩す' },
+      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、柄を手元に固定した支点を中心に剣を振って刃先が大きな弧を描き、剣先から小さな三日月斬撃が光の帯メッシュとして飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）してパネルに光の裂け目を走らせ、真っ二つに崩す' },
       { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して上空へ消え、巨大な顎が横から現れてパネルを飲み込む' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスが攻撃側から長い距離を一気に突進し、槍の一突きでドンッと止まって放射状のヒビを入れる' }
     ];
@@ -11775,13 +13699,35 @@
       });
       plan.hit.forEach(function(h){
         var el = fxOvUnitEl(h.side, h.uid);
-        if (el) el.classList.add('fx-hit');
+        if (el){
+          el.classList.add('fx-hit');
+          /* 第2弾【2】打撃点：寿命カーブ粒子＋閃光コア（CPU戦と共通） */
+          var ovHitRect = el.getBoundingClientRect();
+          if (ovHitRect.width) pixiHitFx(ovHitRect.left + ovHitRect.width / 2, ovHitRect.top + ovHitRect.height / 2, {});
+        }
       });
       plan.pops.forEach(function(p){
         fxPopFixed(fxOvUnitEl(p.side, p.uid), p.text, p.cls);
       });
       plan.leaderPops.forEach(function(p){
-        fxPopFixed(document.getElementById(p.id), p.text, p.cls);
+        var panelEl = document.getElementById(p.id);
+        fxPopFixed(panelEl, p.text, p.cls);
+        /* 第2弾【2】オンライン：召喚士がダメージを受けた更新では、貫通の
+           光跡（その更新で倒れた自陣ユニットの位置→パネル）か、突進が
+           特定できていれば直撃の閃光を出す（見た目のみの近似） */
+        if (p.cls !== 'heal' && panelEl){
+          var pr2 = panelEl.getBoundingClientRect();
+          if (pr2.width){
+            var panelSide = p.id === 'ovMyPanel' ? 'me' : 'opp';
+            var deadRect = null;
+            Object.keys(plan.rects || {}).forEach(function(k){
+              var kp = k.split('|');
+              if (kp[1] === panelSide && !fxOvUnitEl(kp[1], kp.slice(2).join('|'))) deadRect = plan.rects[k];
+            });
+            if (deadRect) pixiPierceFx(deadRect.left + deadRect.width / 2, deadRect.top + deadRect.height / 2, pr2.left + pr2.width / 2, pr2.top + pr2.height / 2);
+            else if (plan.lunge) pixiHitFx(pr2.left + pr2.width / 2, pr2.top + pr2.height / 2, { power: 1.3 });
+          }
+        }
       });
       if (plan.lunge){
         var el = fxOvUnitEl(plan.lunge.side, plan.lunge.uid);
