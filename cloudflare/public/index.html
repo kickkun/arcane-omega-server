@@ -976,6 +976,16 @@
          フェードさせる（消え方に重みを持たせる。合計時間は従来と同程度） */
       .fx-ghost-after{z-index:87; animation:fxGhostAfter .6s ease-out .05s both;}
       @keyframes fxGhostAfter{0%{opacity:.5; transform:scale(1.03); filter:blur(1.5px) brightness(1.6);}100%{opacity:0; transform:scale(.9) translateY(10px); filter:blur(3px) brightness(1.9);}}
+      /* ===== 破壊演出（第7弾）：ヒビが広がってカードが砕け飛ぶ =====
+         破壊されたユニットのゴーストに、放射状のガラスヒビ（SVG）を一瞬で
+         広げ、次の瞬間にカードを扇形の破片（clip-path で切り分けた複製）
+         へ砕いて飛散・落下させる。動きは JS の WAAPI、後片付けはタイマーで
+         全要素を除去する。バウンス／奪取など破壊でない離脱には使わない */
+      .fx-ghost-shatter{position:fixed; z-index:88; pointer-events:none; margin:0;}
+      .fx-glass-cracks{position:absolute; inset:0; z-index:6; pointer-events:none; animation:fxGlassCrackIn .13s ease-out both;}
+      .fx-glass-cracks svg{display:block; width:100%; height:100%;}
+      @keyframes fxGlassCrackIn{0%{opacity:0; transform:scale(.9);}100%{opacity:1; transform:scale(1);}}
+      .fx-shard-piece{position:fixed; z-index:88; pointer-events:none; margin:0;}
       .dmg-pop.fx-fixed{position:fixed; z-index:89; animation:popUpFixed .85s ease-out forwards, popGlow .34s ease-out;}
       .dmg-pop.fx-fixed.heal{animation:popUpFixed .85s ease-out forwards, popGlowHeal .34s ease-out;}
       @keyframes popUpFixed{0%{opacity:0; transform:translate(-50%,-20%) scale(.6);}18%{opacity:1; transform:translate(-50%,-60%) scale(1.15);}100%{opacity:0; transform:translate(-50%,-170%) scale(1);}}
@@ -2047,79 +2057,93 @@
       .fx-hatch-shadow::before{left:31%;}
       .fx-hatch-shadow::after{right:31%;}
       /* ===== 召喚台（中央ステージの常駐台座） =====
-         対戦中は中央ステージに常時表示する丸型の石／光の台座。
-         position:fixed でステージカード（z-index:90）の足元に敷く。
-         z-index:88 は魔法陣（89）より下。
+         第7弾で見た目を作り替え：従来の「カードの下に置く円形の台」は廃し、
+         召喚されるカードの背面に魔法陣的な円盤（.ped-disc）が来て、その
+         円の中心にカード型の四角い枠（.ped-frame）がピタッと収まる構成に
+         した。台座要素そのものが円盤の正方形ボックスで、JS は中心座標を
+         left／top にセットし translate(-50%,-50%) で中心合わせする。
+         position:fixed、z-index:88 は魔法陣（89）より下（カードの背後）。
          神話は .mythic で光柱・金の縁・強いグローを足して豪華にする。
          常駐台座（.persistent）は普段は控えめな明るさで置かれ、召喚時に
          .active が付いて従来どおり光り、カードが場へスライドした後は
          消えずに待機状態へ戻る。出現の小さな動きは JS の WAAPI が担当。
          演出チェック画面では #fxStage 内の .fxcheck-ped が同じ見た目で常駐する。 */
-      .fx-pedestal{position:fixed; z-index:88; pointer-events:none; transform:translate(-50%,0);}
+      .fx-pedestal{position:fixed; z-index:88; pointer-events:none; transform:translate(-50%,-50%); aspect-ratio:1/1;}
       .fx-pedestal .ped-pillar{
-        position:absolute; left:50%; bottom:78%; transform:translateX(-50%);
-        width:58%; height:120px; display:none;
+        position:absolute; left:50%; bottom:52%; transform:translateX(-50%);
+        width:58%; height:130px; display:none;
         background:linear-gradient(180deg, transparent, rgba(177,140,255,.16) 62%, rgba(236,205,126,.34));
         filter:blur(3px);
       }
       .fx-pedestal.mythic .ped-pillar{display:block;}
+      /* 円盤の背後の柔らかい光暈（放射グラデーションで縁まで消える） */
       .fx-pedestal .ped-glow{
-        position:absolute; left:50%; top:-4px; transform:translateX(-50%);
-        width:122%; height:36px; border-radius:50%; filter:blur(2px);
-        background:radial-gradient(ellipse at center, rgba(236,205,126,.5), rgba(236,205,126,.13) 55%, transparent 72%);
+        position:absolute; inset:-16%; border-radius:50%; filter:blur(2px);
+        background:radial-gradient(circle at center, rgba(236,205,126,.42), rgba(236,205,126,.12) 52%, transparent 70%);
       }
       .fx-pedestal.mythic .ped-glow{
-        background:radial-gradient(ellipse at center, rgba(255,233,168,.65), rgba(147,51,234,.28) 52%, transparent 74%);
+        background:radial-gradient(circle at center, rgba(255,233,168,.55), rgba(147,51,234,.24) 52%, transparent 72%);
       }
-      .fx-pedestal .ped-top{
-        position:relative; height:16px; border-radius:50%;
-        background:radial-gradient(ellipse at 50% 38%, #4a5872, #232c3e 62%, #141a28);
-        border:1.5px solid rgba(236,205,126,.75);
-        box-shadow:inset 0 0 0 3px rgba(0,0,0,.35), inset 0 0 12px rgba(236,205,126,.35), 0 0 14px rgba(236,205,126,.35);
+      /* 円盤本体：同心のリングと金の縁を持つ魔法陣的な円 */
+      .fx-pedestal .ped-disc{
+        position:absolute; inset:0; border-radius:50%;
+        background:radial-gradient(circle at 50% 42%, #46536e, #26314a 58%, #151c2c);
+        border:2px solid rgba(236,205,126,.8);
+        box-shadow:inset 0 0 0 4px rgba(0,0,0,.32), inset 0 0 22px rgba(236,205,126,.30), 0 0 16px rgba(236,205,126,.32);
       }
-      .fx-pedestal .ped-top::after{
-        content:''; position:absolute; inset:3px 13%; border-radius:50%;
-        border:1px solid rgba(236,205,126,.55);
-        box-shadow:inset 0 0 8px rgba(236,205,126,.3);
+      .fx-pedestal .ped-disc::before{
+        content:''; position:absolute; inset:9%; border-radius:50%;
+        border:1px solid rgba(236,205,126,.5);
+        box-shadow:inset 0 0 12px rgba(236,205,126,.22);
       }
-      .fx-pedestal.mythic .ped-top{
-        border-color:#ffe9a8; height:18px;
-        background:radial-gradient(ellipse at 50% 38%, #5d4a86, #2c2145 62%, #171029);
-        box-shadow:inset 0 0 0 3px rgba(0,0,0,.35), inset 0 0 14px rgba(177,140,255,.55), 0 0 22px rgba(236,205,126,.6), 0 0 34px rgba(147,51,234,.4);
+      /* 点線リングだけがゆっくり回る（魔法陣らしさ。モーション低減時は止める） */
+      .fx-pedestal .ped-disc::after{
+        content:''; position:absolute; inset:4.5%; border-radius:50%;
+        border:1.5px dashed rgba(236,205,126,.38);
+        animation:pedRingSpin 26s linear infinite;
       }
-      .fx-pedestal .ped-body{
-        margin:-8px auto 0; width:78%; height:20px;
-        clip-path:polygon(0 0, 100% 0, 87% 100%, 13% 100%);
-        background:linear-gradient(180deg, #2c3648, #171e2c 70%, #10151f);
-        box-shadow:inset 0 -6px 10px rgba(0,0,0,.5);
+      @keyframes pedRingSpin{to{transform:rotate(360deg);}}
+      .fx-pedestal.mythic .ped-disc{
+        border-color:#ffe9a8;
+        background:radial-gradient(circle at 50% 42%, #5d4a86, #2c2145 60%, #171029);
+        box-shadow:inset 0 0 0 4px rgba(0,0,0,.32), inset 0 0 26px rgba(177,140,255,.5), 0 0 24px rgba(236,205,126,.55), 0 0 38px rgba(147,51,234,.38);
       }
-      .fx-pedestal.mythic .ped-body{
-        height:30px;
-        background:linear-gradient(180deg, #4a3a75, #241a42 55%, #150e2a);
+      .fx-pedestal.mythic .ped-disc::before{border-color:rgba(255,233,168,.65); box-shadow:inset 0 0 14px rgba(177,140,255,.4);}
+      .fx-pedestal.mythic .ped-disc::after{border-color:rgba(216,180,254,.45);}
+      /* カード型の四角い枠：円の中心にカードがハマる見た目の受け枠。
+         幅は JS が召喚カードとの比率（--pfw）で合わせ、待機時は神話相当 */
+      .fx-pedestal .ped-frame{
+        position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        width:var(--pfw, 53%); aspect-ratio:1/1.42; border-radius:7px;
+        border:1.5px solid rgba(236,205,126,.55);
+        box-shadow:inset 0 0 0 3px rgba(0,0,0,.28), inset 0 0 14px rgba(236,205,126,.20), 0 0 10px rgba(236,205,126,.18);
+        background:radial-gradient(ellipse at 50% 40%, rgba(236,205,126,.07), rgba(0,0,0,.14) 75%);
       }
-      /* 常駐台座の待機／点灯状態：待機時は胴を低くして丸い天板だけが
-         目立つ形にし、明るさも落として背景の隠れを最小限に抑える。
-         召喚時に .active が付くと従来の明るさ・高さに戻って光る */
+      .fx-pedestal.mythic .ped-frame{
+        border-color:rgba(255,233,168,.85);
+        box-shadow:inset 0 0 0 3px rgba(0,0,0,.28), inset 0 0 16px rgba(177,140,255,.35), 0 0 14px rgba(236,205,126,.35);
+      }
+      /* 常駐台座の待機／点灯状態：待機時は円盤の明るさを落として淡く点灯
+         させ、背景の隠れを最小限に抑える。召喚時に .active が付くと
+         従来の明るさに戻って光る */
       .fx-pedestal.persistent{
         transition:opacity .38s ease, filter .38s ease, width .38s ease, left .38s ease, top .38s ease;
         filter:brightness(.66) saturate(.72);
         opacity:.58;
       }
-      .fx-pedestal.persistent .ped-body{height:11px; opacity:.8; transition:height .38s ease, opacity .38s ease;}
       .fx-pedestal.persistent.active{filter:none; opacity:1;}
-      .fx-pedestal.persistent.active .ped-body{height:20px; opacity:1;}
-      .fx-pedestal.persistent.mythic.active .ped-body{height:30px;}
       .fx-pedestal.persistent.ped-hidden{opacity:0 !important; visibility:hidden;}
-      /* 演出チェック画面内の常駐台座：中央ストリップの真ん中に置く。
+      /* 演出チェック画面内の常駐台座：中央ストリップの真ん中に円盤を置く。
          実戦の常駐台座（両盤面の間）と同じ位置関係になり、SDフィニッシュの
-         登場位置（sdFinAnchor がこの台座の矩形を読む）も実戦と揃う */
+         登場位置（sdFinAnchor がこの台座の矩形を読む）も実戦と揃う。
+         円盤はストリップ（高さ128px）に収まる大きさにする */
       .fx-pedestal.fxcheck-ped{
-        position:absolute; left:50%; top:50%; width:190px; z-index:1;
+        position:absolute; left:50%; top:50%; width:122px; z-index:1;
         transform:translate(-50%,-50%);
       }
       @media (prefers-reduced-motion: reduce){
         .fx-pedestal.persistent{transition:none;}
-        .fx-pedestal.persistent .ped-body{transition:none;}
+        .fx-pedestal .ped-disc::after{animation:none;}
       }
       /* 小〜中規模の画面シェイク（ティアマトの咆哮／アギト孵化用。
          フィニッシュ専用の body.fx-impact とは別系統で、フラッシュは伴わない） */
@@ -3220,7 +3244,7 @@
             </div>
           </div>
           <div class="fx-center-strip">
-            <div class="fx-pedestal persistent fxcheck-ped" aria-hidden="true"><div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-top"></div><div class="ped-body"></div></div>
+            <div class="fx-pedestal persistent fxcheck-ped" aria-hidden="true"><div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-disc"></div><div class="ped-frame"></div></div>
           </div>
           <div class="fx-field">
             <span class="fx-field-label">あなたの場</span>
@@ -4029,6 +4053,19 @@
             seTone(420, 60, 0.28, 'sawtooth', 0.07);
             seNoise(0.22, 0.09, 0.02, 800);
             break;
+          case 'shatter': /* 第7弾：ガラスが割れる「パリンッ」。高音のピングを
+             わずかにずらして重ね、破片の散らばりは短い高域ノイズで添える。
+             音量は控えめにし、sePlay の同一音スロットルで連発も抑える */
+            seTone(2950, 1980, 0.055, 'sine', 0.034);
+            seTone(3560, 2410, 0.045, 'sine', 0.027, 0.014);
+            seTone(2380, 1560, 0.07, 'sine', 0.02, 0.03);
+            seNoise(0.06, 0.03, 0, 6400);
+            seNoise(0.09, 0.016, 0.045, 5200);
+            break;
+          case 'slashWind': /* 第7弾：ミラージュ登場の斬撃の風切り（短く軽く） */
+            seTone(1250, 2480, 0.07, 'sine', 0.02);
+            seNoise(0.055, 0.014, 0, 3400);
+            break;
           case 'heal': /* 回復：柔らかい上昇2音 */
             seTone(659, 659, 0.11, 'sine', 0.075);
             seTone(988, 1319, 0.17, 'sine', 0.07, 0.08);
@@ -4768,14 +4805,21 @@
       fxMythicFxNodes.push(el);
       return el;
     }
-    /* SDの登場位置：表示中の召喚台（常駐台座）の中心。無ければ画面中央の下寄り */
+    /* SDの登場位置：表示中の召喚台（常駐台座）の中心。無ければ画面中央の下寄り。
+       足元 Y は台座のレイアウトが保持する _anchorFeetY（ステージカードの
+       足元）を優先し、演出チェックの台座では円盤中心（＝ステージ中心）を
+       使う（第7弾の円盤化に合わせた換算） */
     function sdFinAnchor(){
       var peds = document.querySelectorAll('.fx-pedestal.persistent');
       for (var i = 0; i < peds.length; i++){
         var p = peds[i];
         if (p.classList.contains('ped-hidden')) continue;
         var r = p.getBoundingClientRect();
-        if (r.width > 0) return { ped: p, x: r.left + r.width / 2, feetY: r.top + 8 };
+        if (r.width > 0){
+          var fy = (typeof p._anchorFeetY === 'number') ? p._anchorFeetY
+            : (p.classList.contains('fxcheck-ped') ? r.top + r.height / 2 : r.top + 8);
+          return { ped: p, x: r.left + r.width / 2, feetY: fy };
+        }
       }
       return { ped: null, x: window.innerWidth / 2, feetY: Math.round(window.innerHeight * 0.6) };
     }
@@ -5846,7 +5890,9 @@
         sdFadeOut(3750);
       } else if (id === '53ag'){
         /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて巨大な顎が
-           横からスライドインし、パネルを覆って噛み砕く（飲み込まれて消える） */
+           真上の画面外から降ってきて、パネルを上からガブッと飲み込む
+           （第7弾で登場方向を横→真上へ変更。SDが真上へ飛ぶ前段の動きと
+           整合し、素材・大きさ・間・総尺・SEは従来どおり） */
         later(function(){
           var up = feetY + sdH + 90;
           fxFinAnimate(sd, [
@@ -5856,7 +5902,8 @@
           ], { duration: 600, easing: 'cubic-bezier(.5,0,.8,.4)', fill: 'forwards' });
         }, 470);
         /* 追加はこの2点だけ：飛び立つ瞬間に足元へ砂煙、上昇中に風切り
-           （顎のサイズ・動き・タイミングと、消えてから顎が出るまでの流れは不変） */
+           （顎のサイズ・タイミングと、消えてから顎が出るまでの流れは不変。
+           顎の登場方向だけ第7弾で真上へ変更した） */
         later(function(){
           if (!pixiFinDustFx(ax, feetY, true, 0xbfb0d4)) sdDust(ax, feetY, true); /* 第4弾：飛び立ちの砂煙を寿命カーブ粒子へ（顎まわりは不変） */
           sdWind(ax, feetY - sdH * 0.55, -90, sdH * 1.15, 0xd6bcff);
@@ -5870,41 +5917,44 @@
             { transform: 'translate(0px,0px)' }, { transform: 'translate(-2.5px,1px)' },
             { transform: 'translate(2.5px,-1px)' }, { transform: 'translate(0px,0px)' }
           ], { duration: 300, iterations: 2 });
-          /* 顎素材は右向きの横顔：口の中心がパネル中心に重なる位置へ左から滑り込む */
+          /* 顎素材は右向きの横顔：最終位置（口の中心がパネル中心に重なる）は
+             従来どおりとし、真上の画面外からまっすぐ降ってくる。
+             開始オフセットは顎全体が画面上端の外に出切る量にする
+             （素材は横長で高さ≦幅のため、幅基準で見積もれば必ず画面外） */
           var jawW = Math.round(Math.max(w * 2.35, 330));
           var jaw = sdFinNode('img', 'fx-sd-char');
           jaw.src = conf.fx; jaw.alt = '';
           jaw.style.width = jawW + 'px';
           var finL = pcx - jawW * 0.70, finT = pcy - jawW * 0.60;
           jaw.style.left = finL + 'px'; jaw.style.top = finT + 'px';
-          var startOff = -(finL + jawW + 40);
+          var startOffY = -(finT + jawW + 40);
           fxFinAnimate(jaw, [
-            { transform: 'translateX(' + startOff + 'px)', opacity: 1 },
-            { transform: 'translateX(0px)', opacity: 1 }
+            { transform: 'translateY(' + startOffY + 'px)', opacity: 1 },
+            { transform: 'translateY(0px)', opacity: 1 }
           ], { duration: 540, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'forwards' });
-          /* 噛み砕く：顎とパネルが一緒に揺れ、パネルは口の中へ吸い込まれて消える */
+          /* 噛み砕く：顎が上下に震え、パネルは口の中へ上向きに吸い込まれて消える */
           later(function(){
             fxQuake('fx-quake-md', 560);
             pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
-            pixiFinAgitoBiteFx(pcx, pcy, jawW); /* 第4弾：噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（顎の動きは不変） */
+            pixiFinAgitoBiteFx(pcx, pcy, jawW); /* 第4弾：噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（拍は従来どおり） */
             fxFinAnimate(jaw, [
-              { transform: 'translateX(0px) rotate(0deg)' },
-              { transform: 'translateX(-9px) rotate(-1.1deg)' },
-              { transform: 'translateX(7px) rotate(0.9deg)' },
-              { transform: 'translateX(-5px) rotate(-0.6deg)' },
-              { transform: 'translateX(0px) rotate(0deg)' }
+              { transform: 'translateY(0px) rotate(0deg)' },
+              { transform: 'translateY(8px) rotate(0.7deg)' },
+              { transform: 'translateY(-6px) rotate(-0.8deg)' },
+              { transform: 'translateY(4px) rotate(0.4deg)' },
+              { transform: 'translateY(0px) rotate(0deg)' }
             ], { duration: 460, easing: 'ease-in-out', fill: 'forwards' });
             fxFinAnimate(cl, [
               { transform: 'translate(0px,0px) scale(1)', opacity: 1 },
-              { transform: 'translate(6px,-4px) scale(.55) rotate(3deg)', opacity: 0.9, offset: 0.45 },
-              { transform: 'translate(14px,-8px) scale(.1) rotate(7deg)', opacity: 0 }
+              { transform: 'translate(2px,-8px) scale(.55) rotate(-3deg)', opacity: 0.9, offset: 0.45 },
+              { transform: 'translate(-2px,-30px) scale(.1) rotate(-6deg)', opacity: 0 }
             ], { duration: 520, easing: 'ease-in', fill: 'forwards' });
           }, 580);
-          /* 飲み込んだ顎は左へ退場する */
+          /* 飲み込んだ顎は真上へ退場する */
           later(function(){
             fxFinAnimate(jaw, [
-              { transform: 'translateX(0px)', opacity: 1 },
-              { transform: 'translateX(' + Math.round(startOff * 0.55) + 'px)', opacity: 0 }
+              { transform: 'translateY(0px)', opacity: 1 },
+              { transform: 'translateY(' + Math.round(startOffY * 0.55) + 'px)', opacity: 0 }
             ], { duration: 270, easing: 'ease-in', fill: 'forwards' });
           }, 1060);
         }, 1120);
@@ -6501,7 +6551,7 @@
          （加算ブレンドの glowQuad を一瞬だけ強く光らせる）。
        ・pixiPierceFx：貫通の光跡。攻撃点から召喚士側へリボン帯を引き、
          到達点に小さな閃光と火花を置く。
-       ・pixiDestroyFx：破壊点の破片粒子（重力で落ちながら消える）。
+       ・破壊演出は第7弾で DOM 側の fxGhostShatter（ヒビ→砕け飛ぶ）へ移行した。
        後片付け規律（第1弾の型を全系統に適用）：全演出は FxKit.scope を
        1つ作り、表示物・粒子・アニメ登録をすべてその中に閉じる。自然終了
        ではアニメの onDone が scope.dispose() を呼び、生存中の粒子も
@@ -6752,54 +6802,12 @@
       }, function(){ scope.dispose(); });
       return true;
     }
-    /* --- 【3】破壊：カードの破片が飛び散って落ちながら消える ---
-       fxGhost（残像フェード）と同時に、破壊点で破片粒子を出す。
-       破片は重力で落ち、寿命後半で急速に小さく・薄くなる。色は
-       カードの破片らしく金〜灰〜焦げ色へ遷移させる */
-    function pixiDestroyFx(x, y, w, h){
-      if (!FxKit.available()) return false;
-      var scope = fx2Scope();
-      var cont = new PIXI.Container();
-      cont.blendMode = PIXI.BLEND_MODES.ADD;
-      scope.add(cont);
-      var core = FxKit.glowQuad(0xffc9a0, { intensity: 0, pulse: 0, speed: 1 });
-      core.position.set(x, y);
-      core.scale.set(Math.max(w, h) * 0.5);
-      cont.addChild(core);
-      var em = scope.emitter(cont, { max: 80 });
-      var seed = 641.5 + x * 0.17 + y * 0.23;
-      var burstDone = false;
-      var lastLife = 0;
-      scope.anim(700, function(_, t, life){
-        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
-        var cu = core.material.uniforms;
-        cu.uTime = life / 1000;
-        cu.uIntensity = t < 0.08 ? (t / 0.08) * 0.9 : Math.max(0, 0.9 * (1 - (t - 0.08) / 0.4));
-        if (!burstDone){
-          burstDone = true;
-          /* 破片：カード面全体から飛び散り、重力で落ちる */
-          em.burst(20, function(bi){
-            var ba = fxFinRand(seed + bi * 11.9) * Math.PI * 2;
-            var bs = 60 + fxFinRand(seed + bi * 6.7) * 190;
-            return { x: x + (fxFinRand(seed + bi * 3.1) - 0.5) * w * 0.7, y: y + (fxFinRand(seed + bi * 4.9) - 0.5) * h * 0.7,
-              vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 90,
-              life: 430 + fxFinRand(seed + bi * 8.7) * 240, size: 0.5 + fxFinRand(seed + bi * 5.3) * 0.55, sizeEnd: 0.06,
-              colA: [1, 0.9, 0.66], colB: [0.45, 0.32, 0.3], grav: 780, damp: 0.55, curve: 'o', pow: 0.9 };
-          });
-          /* 灰：ゆっくり舞い上がって消える細粒 */
-          em.burst(8, function(bi){
-            var ba2 = fxFinRand(seed + 140 + bi * 9.3) * Math.PI * 2;
-            var bs2 = 20 + fxFinRand(seed + 140 + bi * 7.7) * 50;
-            return { x: x + (fxFinRand(seed + 140 + bi * 2.9) - 0.5) * w * 0.6, y: y,
-              vx: Math.cos(ba2) * bs2, vy: -30 - fxFinRand(seed + 140 + bi * 6.3) * 40,
-              life: 520 + fxFinRand(seed + 140 + bi * 4.7) * 160, size: 0.3, sizeEnd: 0.05,
-              colA: [0.9, 0.85, 0.8], colB: [0.5, 0.45, 0.5], grav: -60, curve: 'io', pow: 1.3 };
-          });
-        }
-        em.step(dt, 1);
-      }, function(){ scope.dispose(); });
-      return true;
-    }
+    /* --- 【3】破壊：第7弾で DOM 側の「ヒビ→砕け飛ぶ」演出へ作り替え ---
+       旧 pixiDestroyFx（破片粒子＋残像フェード）は廃止し、破壊時の表現は
+       fxGhostShatter（カード全体にヒビが広がり、扇形の破片に砕けて飛散・
+       落下する。ガラスの破砕 SE 付き）が一手に担う。DOM 完結のため
+       Pixi が使えない環境でも同じ表現になり、破壊でない離脱
+       （バウンス／奪取）には使わない。 */
     /* ===== 演出総見直し 第3弾：神話登場演出×8の格上げ（FxKit の上に構築） =====
        対象は神話の登場演出8種：セレスティア／ミラージュ／ダーククイーン／
        ティアマト／EX-キャリバー／ロンギヌス／黒のアギト孵化／聖剣の欠片・
@@ -7011,77 +7019,136 @@
       }, function(){ scope.dispose(); });
       return true;
     }
-    /* 046 ミラージュ（第3弾＋実機フィードバック修正）：赤い斬撃を赤い流れ
-       テクスチャのリボンで描く（先端が伸び、尾が追いつく三日月帯）。
-       斬撃の順番は「右斜め→左斜め→右斜め→左斜め→最後に両方同時の
-       クロス」の5連に変更（旧：角度のずれた6閃の行き交い）。全斬撃の
-       中心はカード中心に揃え（dy は全て0）、カードからはみ出す規模感・
-       残光・DOM 残像（mirageEcho）は従来の格のまま。尺は約1.2秒 */
-    function fx3MirageFx(cx, cy, w, h){
+    /* 046 ミラージュ（第7弾で作り替え：「空間の斬り刻み→割れて召喚」）：
+       カードが現れる前の空間へ、赤い斬撃が1本ずつ順番に現れて全て残り、
+       累積していく。段階は手描き図の順で、＼1本 → ／が加わりX字 →
+       さらにもう1本追加 → 密度が上がる → 浅い角度の斬撃も混ざって全面が
+       網目状に斬り刻まれる、の5段階。斬撃のたびに短い風切りSE。
+       最終段階まで刻まれたところで空間（カード型の領域）がパリンッと
+       ガラス・鏡のように割れて砕け（破砕SE＋破片の飛散・落下）、割れた
+       向こうからカードが現れる（出現は onShatter コールバックで呼び出し
+       側が担う）。この「空間が割れる」表現はミラージュの登場専用。
+       尺は約2.1秒。破片は通常合成の Graphics ポリゴンで描き（加算の
+       四角い板を出さない）、後片付けは fx2Scope の dispose に閉じる */
+    function fx3MirageFx(cx, cy, w, h, onShatter){
       if (!FxKit.available()) return false;
       var scope = fx2Scope();
       var cont = new PIXI.Container();
       cont.blendMode = PIXI.BLEND_MODES.ADD;
       scope.add(cont);
-      var len = Math.max(w, h) * 2.9;
+      var diag = Math.sqrt(w * w + h * h);
       var redTex = fx3FlowTexture('red', '255,64,40', '255,120,84');
-      var specs = [
-        { delay: 30, deg: -38, dy: 0, lenMul: 1 }, { delay: 220, deg: 38, dy: 0, lenMul: 1 },
-        { delay: 410, deg: -38, dy: 0, lenMul: 1 }, { delay: 600, deg: 38, dy: 0, lenMul: 1 },
-        { delay: 790, deg: -38, dy: 0, lenMul: 1 }, { delay: 790, deg: 38, dy: 0, lenMul: 1 }
+      var MIRAGE_STAGES = [
+        { at: 90,   list: [{ deg: 34, dx: 0, dy: -0.04, len: 1.04 }] },
+        { at: 330,  list: [{ deg: -40, dx: 0, dy: 0.02, len: 1.06 }] },
+        { at: 570,  list: [{ deg: 52, dx: -0.05, dy: 0.16, len: 0.98 }, { deg: -16, dx: 0.04, dy: -0.2, len: 0.94 }] },
+        { at: 820,  list: [{ deg: 22, dx: -0.1, dy: 0.05, len: 1.0 }, { deg: -56, dx: 0.09, dy: -0.08, len: 0.97 }, { deg: 64, dx: 0.02, dy: 0.3, len: 0.9 }] },
+        { at: 1080, list: [{ deg: 11, dx: 0, dy: -0.3, len: 1.02 }, { deg: -9, dx: -0.02, dy: 0.12, len: 1.0 }, { deg: 17, dx: 0.03, dy: 0.34, len: 0.96 }, { deg: -24, dx: 0.06, dy: -0.34, len: 0.93 }] }
       ];
-      var slashes = specs.map(function(sp){
-        var rb = fx3Ribbon(scope, cont, 16, { alpha: 0.95, core: 0.75, dir: 0, tex: redTex });
-        rb.mesh.visible = false;
-        return { sp: sp, rb: rb, rad: sp.deg * Math.PI / 180 };
+      var MIRAGE_SHATTER_AT = 1420;
+      var slashes = [];
+      MIRAGE_STAGES.forEach(function(st){
+        st.list.forEach(function(sp){
+          var rb = fx3Ribbon(scope, cont, 16, { alpha: 0.95, core: 0.75, dir: 0, tex: redTex });
+          rb.mesh.visible = false;
+          slashes.push({ at: st.at, sp: sp, rb: rb, rad: sp.deg * Math.PI / 180, seDone: false });
+        });
       });
+      /* 割れた破片は通常合成の別コンテナ（Graphics の半透明ポリゴン）で描く */
+      var shardCont = new PIXI.Container();
+      scope.add(shardCont);
+      var shardGfx = new PIXI.Graphics();
+      shardCont.addChild(shardGfx);
+      var seed = 467.3 + cx * 0.13 + cy * 0.19;
+      var shards = [];
+      for (var si = 0; si < 18; si++){
+        var sa = fxFinRand(seed + si * 12.7) * Math.PI * 2;
+        var sr0 = fxFinRand(seed + si * 5.3);
+        shards.push({
+          x: cx + (fxFinRand(seed + si * 3.1) - 0.5) * w * 0.84,
+          y: cy + (fxFinRand(seed + si * 4.3) - 0.5) * h * 0.84,
+          vx: Math.cos(sa) * (40 + sr0 * 150), vy: Math.sin(sa) * (30 + sr0 * 90) - 60,
+          size: 5 + fxFinRand(seed + si * 6.9) * 13,
+          rot: fxFinRand(seed + si * 8.1) * Math.PI * 2,
+          vr: (fxFinRand(seed + si * 9.4) - 0.5) * 9,
+          tone: fxFinRand(seed + si * 11.7)
+        });
+      }
       var glowA = FxKit.glowQuad(0xff4a3c, { intensity: 0, pulse: 0, speed: 1 });
-      glowA.position.set(cx, cy); glowA.scale.set(len * 0.34); cont.addChild(glowA);
-      var em = scope.emitter(cont, { max: 50 });
-      var seed = 463.1 + cx * 0.13 + cy * 0.19;
-      var burstDone = false;
+      glowA.position.set(cx, cy); glowA.scale.set(diag * 0.36); cont.addChild(glowA);
+      var shatterDone = false;
       var lastLife = 0;
-      scope.anim(1260, function(_, t, life){
+      scope.anim(2080, function(_, t, life){
         var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var dtS = dt / 1000;
         slashes.forEach(function(sl, j){
-          var local = (life - sl.sp.delay) / 380;
+          var local = (life - sl.at) / 170; /* 1本の描き込みは約170ms */
           if (local <= 0){ sl.rb.mesh.visible = false; return; }
+          if (!sl.seDone){ sl.seDone = true; sePlay('slashWind'); }
           sl.rb.mesh.visible = true;
-          var head = Math.min(1, local * 1.7); head = 1 - Math.pow(1 - head, 3);
-          var tail = Math.max(0, head - 0.66);
-          var aEnv = local < 0.14 ? local / 0.14 : (local > 0.55 ? Math.max(0, 1 - (local - 0.55) / 0.45) : 1);
+          var head = Math.min(1, local * 1.6); head = 1 - Math.pow(1 - head, 3);
+          var tail = Math.max(0, head - 0.7);
+          /* 出現した斬撃は消えずに残る（累積）。割れる瞬間に閃いて一緒に消える */
+          var aEnv = Math.min(1, local / 0.12) * 0.92;
+          if (life >= MIRAGE_SHATTER_AT) aEnv *= Math.max(0, 1 - (life - MIRAGE_SHATTER_AT) / 130);
           var dx = Math.cos(sl.rad), dy = Math.sin(sl.rad);
           var px = -dy, py = dx;
-          var L = len * sl.sp.lenMul;
+          var L = diag * sl.sp.len;
+          var scx = cx + sl.sp.dx * w, scy = cy + sl.sp.dy * h;
           var samples = [];
           for (var i = 0; i <= 16; i++){
             var s = i / 16;
             var u = tail + (head - tail) * s;
             var along = (u - 0.5) * L;
-            var arc = Math.sin(s * Math.PI) * L * 0.028;
-            samples.push({ x: cx + dx * along + px * arc, y: cy + sl.sp.dy + dy * along + py * arc,
-              ax: px, ay: py, hw: (1.5 + 8.5 * Math.sin(Math.PI * s)) * Math.min(1, local * 3) });
+            var arc = Math.sin(s * Math.PI) * L * 0.026;
+            samples.push({ x: scx + dx * along + px * arc, y: scy + dy * along + py * arc,
+              ax: px, ay: py, hw: (1.5 + 8 * Math.sin(Math.PI * s)) * Math.min(1, local * 3) });
           }
           FxKit.fillStrip(sl.rb.strip, samples);
           sl.rb.mat.uniforms.uFlow = life * 0.011 + j * 0.7;
           sl.rb.mat.uniforms.uAlpha = 0.95 * aEnv;
         });
-        /* 残光：斬撃が行き交った中心に赤いシェーダ発光が残って消える */
+        /* 中心の残光：斬撃が増えるほど溜まって光り、割れと共に弾ける */
         var gu = glowA.material.uniforms;
         gu.uTime = life / 1000;
-        var gEnv = t < 0.18 ? t / 0.18 : Math.max(0, 1 - (t - 0.18) / 0.72);
-        gu.uIntensity = 0.85 * gEnv;
-        if (!burstDone && life >= 790){
-          burstDone = true;
-          em.burst(22, function(bi){
-            var ba = fxFinRand(seed + bi * 12.3) * Math.PI * 2;
-            var bs = 60 + fxFinRand(seed + bi * 6.7) * 260;
-            return { x: cx, y: cy, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 26,
-              life: 250 + fxFinRand(seed + bi * 4.9) * 180, size: 0.42 + fxFinRand(seed + bi * 3.3) * 0.4, sizeEnd: 0.05,
-              colA: [1, 0.75, 0.68], colB: [1, 0.3, 0.22], grav: 300, curve: 'o', pow: 1.15 };
+        gu.uIntensity = life < MIRAGE_SHATTER_AT
+          ? 0.25 + 0.5 * Math.min(1, life / MIRAGE_SHATTER_AT)
+          : Math.max(0, 0.9 * (1 - (life - MIRAGE_SHATTER_AT) / 220));
+        /* 割れる瞬間：破砕SE＋コールバック（割れた向こうからカードが現れる） */
+        if (!shatterDone && life >= MIRAGE_SHATTER_AT){
+          shatterDone = true;
+          sePlay('shatter');
+          if (onShatter) onShatter();
+        }
+        /* 破片の飛散・落下と、割れた瞬間のヒビの閃光（放射状の白線） */
+        shardGfx.clear();
+        if (shatterDone){
+          var st = (life - MIRAGE_SHATTER_AT) / 1000;
+          if (st < 0.16){
+            var ca = 0.85 * (1 - st / 0.16);
+            shardGfx.lineStyle(1.6, 0xffffff, ca);
+            for (var ci = 0; ci < 8; ci++){
+              var cang = ci * Math.PI / 4 + 0.35;
+              shardGfx.moveTo(cx, cy);
+              shardGfx.lineTo(cx + Math.cos(cang) * w * 0.62, cy + Math.sin(cang) * h * 0.62);
+            }
+          }
+          shards.forEach(function(sh){
+            sh.x += sh.vx * dtS; sh.y += sh.vy * dtS;
+            sh.vy += 620 * dtS; sh.rot += sh.vr * dtS;
+            var al = st < 0.32 ? 0.75 : Math.max(0, 0.75 * (1 - (st - 0.32) / 0.3));
+            if (al <= 0) return;
+            var c1 = Math.cos(sh.rot), s1 = Math.sin(sh.rot);
+            var c2 = Math.cos(sh.rot + 2.4), s2 = Math.sin(sh.rot + 2.4);
+            var c3 = Math.cos(sh.rot + 4.4), s3 = Math.sin(sh.rot + 4.4);
+            var col = sh.tone > 0.66 ? 0xffd9d2 : (sh.tone > 0.33 ? 0xfff4ee : 0xff9a86);
+            shardGfx.beginFill(col, al * 0.85);
+            shardGfx.moveTo(sh.x + c1 * sh.size, sh.y + s1 * sh.size);
+            shardGfx.lineTo(sh.x + c2 * sh.size * 0.7, sh.y + s2 * sh.size * 0.7);
+            shardGfx.lineTo(sh.x + c3 * sh.size * 0.85, sh.y + s3 * sh.size * 0.85);
+            shardGfx.closePath(); shardGfx.endFill();
           });
         }
-        em.step(dt, 1);
       }, function(){ scope.dispose(); });
       return true;
     }
@@ -8790,17 +8857,51 @@
       setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.4, dur: 740, color: 0xeccd7e }); }, 170);
       pixiBurst(cx, feet - 8, { count: 38, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 });
     }
-    /* 046 ミラージュ：赤い斬撃を「右斜め→左斜め→右斜め→左斜め→両方同時の
-       クロス」の5連で走らせる（全てカード中心で交差）。残像は DOM 側の mirageEcho が担当 */
-    function fxMirageFx(cx, cy, w, h){
-      if (fx3MirageFx(cx, cy, w, h)) return; /* 第3弾：FxKit 版（使えない環境では従来版へ） */
-      var len = Math.max(w, h) * 2.9;
-      setTimeout(function(){ pixiSlashFx(cx, cy, -38, len, 0xff4a3c, 360); }, 30);
-      setTimeout(function(){ pixiSlashFx(cx, cy, 38, len, 0xff4a3c, 360); }, 220);
-      setTimeout(function(){ pixiSlashFx(cx, cy, -38, len, 0xff6a4a, 360); }, 410);
-      setTimeout(function(){ pixiSlashFx(cx, cy, 38, len, 0xff6a4a, 360); }, 600);
-      setTimeout(function(){ pixiSlashFx(cx, cy, -38, len, 0xff8a5c, 360); pixiSlashFx(cx, cy, 38, len, 0xff8a5c, 360); }, 790);
-      setTimeout(function(){ pixiBurst(cx, cy, { count: 22, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.5 }); }, 790);
+    /* 046 ミラージュ（第7弾）：「空間の斬り刻み→割れて召喚」は fx3MirageFx
+       （FxKit 版）が本体。FxKit が使えない環境では Graphics の斬撃線で
+       同じ拍（5段階の累積→1420ms で割れる）を再現する簡易版に倒し、
+       どちらも使えない場合は false を返して呼び出し側がカードを即座に
+       表示する（従来どおり演出なしで進行）。残像は出現後に DOM 側の
+       mirageEcho が担当する */
+    function fxMirageFx(cx, cy, w, h, onShatter){
+      if (fx3MirageFx(cx, cy, w, h, onShatter)) return true; /* 第7弾：FxKit 版 */
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return false;
+      var diag = Math.sqrt(w * w + h * h);
+      var specs = [
+        { at: 90, deg: 34, dx: 0, dy: -0.04, len: 1.04 },
+        { at: 330, deg: -40, dx: 0, dy: 0.02, len: 1.06 },
+        { at: 570, deg: 52, dx: -0.05, dy: 0.16, len: 0.98 }, { at: 570, deg: -16, dx: 0.04, dy: -0.2, len: 0.94 },
+        { at: 820, deg: 22, dx: -0.1, dy: 0.05, len: 1.0 }, { at: 820, deg: -56, dx: 0.09, dy: -0.08, len: 0.97 }, { at: 820, deg: 64, dx: 0.02, dy: 0.3, len: 0.9 },
+        { at: 1080, deg: 11, dx: 0, dy: -0.3, len: 1.02 }, { at: 1080, deg: -9, dx: -0.02, dy: 0.12, len: 1.0 }, { at: 1080, deg: 17, dx: 0.03, dy: 0.34, len: 0.96 }, { at: 1080, deg: -24, dx: 0.06, dy: -0.34, len: 0.93 }
+      ];
+      var SHATTER_AT = 1420;
+      var done = false;
+      pixiAnim(2080, function(gfx, t, life){
+        gfx.clear();
+        specs.forEach(function(sp){
+          if (life < sp.at) return;
+          if (!sp.seDone){ sp.seDone = true; sePlay('slashWind'); }
+          var local = Math.min(1, (life - sp.at) / 170);
+          var a = Math.min(1, local / 0.12) * 0.9;
+          if (life >= SHATTER_AT) a *= Math.max(0, 1 - (life - SHATTER_AT) / 130);
+          if (a <= 0) return;
+          var rad = sp.deg * Math.PI / 180, dx = Math.cos(rad), dy = Math.sin(rad);
+          var grow = 1 - Math.pow(1 - local, 3);
+          var L = diag * sp.len * (0.4 + 0.6 * grow);
+          var sx = cx + sp.dx * w, sy = cy + sp.dy * h;
+          gfx.lineStyle(9, 0xff4a3c, 0.30 * a);
+          gfx.moveTo(sx - dx * L / 2, sy - dy * L / 2); gfx.lineTo(sx + dx * L / 2, sy + dy * L / 2);
+          gfx.lineStyle(3.4, 0xffffff, 0.9 * a);
+          gfx.moveTo(sx - dx * L / 2, sy - dy * L / 2); gfx.lineTo(sx + dx * L / 2, sy + dy * L / 2);
+        });
+        if (!done && life >= SHATTER_AT){
+          done = true;
+          sePlay('shatter');
+          pixiBurst(cx, cy, { count: 24, colors: [0xffffff, 0xff8a70, 0xff4a3c], power: 1.6 });
+          if (onShatter) onShatter();
+        }
+      });
+      return true;
     }
     /* 048 ダーククイーン：紫の鎖が大きく巻きつくように集まり、最後に紫の閃光 */
     function fxDarkQueenFx(cx, cy, w, h){
@@ -9320,26 +9421,88 @@
         setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 1050 + i * 130);
       });
     }
+    /* 046 ミラージュのステージ出現（第7弾）：カードは最初は隠し、空間の
+       斬り刻み→割れ（fxMirageFx）が終わる瞬間に、割れた向こうから
+       勢いよく現れる。出現と同時に残像（mirageEcho）を出す。
+       fx-spawn 系の CSS アニメーションは opacity／transform を上書きする
+       ため、隠す前にクラスを外して WAAPI で出現を担う。演出が使えない
+       環境では即座に表示へ倒し、保険タイマーでも必ず表示に戻す */
+    function stageMirageSummonFx(cx, cy, w, h, stageEl){
+      var revealed = false;
+      var reveal = function(){
+        if (revealed) return;
+        revealed = true;
+        if (!stageEl) return;
+        stageEl.style.opacity = '';
+        try {
+          stageEl.animate([
+            { opacity: 0, transform: 'scale(1.14)', filter: 'brightness(2.4)' },
+            { opacity: 1, transform: 'scale(1)', filter: 'brightness(1)' }
+          ], { duration: 340, easing: 'ease-out', fill: 'backwards' });
+        } catch (e) {}
+        mirageEcho(stageEl);
+      };
+      if (stageEl){
+        stageEl.classList.remove('fx-spawn', 'fx-spawn-mythic');
+        stageEl.style.opacity = '0';
+      }
+      if (!fxMirageFx(cx, cy, w, h, reveal)){ reveal(); return; }
+      setTimeout(reveal, 2300); /* 保険：何があってもカードは必ず現れる */
+    }
+    /* 52ex EX-キャリバーのステージ出現（第7弾）：カードは剣が降りる間は
+       隠し、剣が地面に刺さった瞬間（400ms＝太い波動が広がる拍）に、
+       波動に押し出されるように「ブワッ」と勢いよく現れる（拡大＋放射の
+       明滅）。波動そのものは第6弾の fxExcaliburFx が担い、ここでは出現の
+       タイミングと勢いだけを同期させる。Pixi が描けない環境では
+       従来どおり最初から表示する */
+    function stageExcaliburSummonFx(cx, cy, feet, w, h, stageEl){
+      fxExcaliburFx(cx, cy, feet, w, h);
+      if (!stageEl) return;
+      if (!(FxKit.available() || pixiFx.enabled)) return;
+      stageEl.classList.remove('fx-spawn', 'fx-spawn-mythic');
+      stageEl.style.opacity = '0';
+      var revealed = false;
+      var reveal = function(){
+        if (revealed) return;
+        revealed = true;
+        stageEl.style.opacity = '';
+        try {
+          stageEl.animate([
+            { opacity: 0, transform: 'scale(.78)', filter: 'brightness(3)' },
+            { opacity: 1, transform: 'scale(1.08)', filter: 'brightness(1.7)', offset: 0.55 },
+            { opacity: 1, transform: 'scale(1)', filter: 'brightness(1)' }
+          ], { duration: 400, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
+        } catch (e) {}
+      };
+      setTimeout(reveal, 400); /* 着地＝波動の瞬間に同期 */
+      setTimeout(reveal, 1300); /* 保険 */
+    }
     /* ===== 召喚台（一時表示版：演出チェック画面の再生用） =====
-       ステージカードの足元に石／光の台座を敷く。魔法陣と同じタイミングで
+       カードの背面に円盤状の台座を重ねる。魔法陣と同じタイミングで
        フワッと現れ、指定時間で退場する。実戦の台座は下の常駐版
-       （stagePedActivate）が担い、こちらは演出チェック画面で
-       「待機中の常駐台座の上に光る台座を重ねる」ために残してある。
+       （stagePedActivate）が担い、こちらは演出チェック画面と SD
+       フィニッシュの登場で使う。引数の feetY は従来どおり「カードの
+       足元」の Y で、円盤の中心はそこからカード中心の高さだけ上に置く。
        神話は .mythic で光柱付きの豪華版になる。
        戻り値は台座要素（_dismiss(ms) で退場）。 */
     function summonPedestal(cx, feetY, w, mythic){
       if (HEADLESS) return null;
       var ped = document.createElement('div');
       ped.className = 'fx-pedestal' + (mythic ? ' mythic' : '');
+      var discW = Math.round(w * (mythic ? 2.05 : 1.65));
+      /* 円盤中心＝カード中心。中心から足元までの距離は円盤幅に対する
+         カード縦比率（神話 0.354／通常 0.439）で見積もる */
+      var cy = feetY - discW * (mythic ? 0.354 : 0.439);
       ped.style.left = cx + 'px';
-      ped.style.top = (feetY - 7) + 'px';
-      ped.style.width = Math.round(w * (mythic ? 2.05 : 1.65)) + 'px';
-      ped.innerHTML = '<div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-top"></div><div class="ped-body"></div>';
+      ped.style.top = Math.round(cy) + 'px';
+      ped.style.width = discW + 'px';
+      ped.style.setProperty('--pfw', mythic ? '53%' : '64%');
+      ped.innerHTML = '<div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-disc"></div><div class="ped-frame"></div>';
       document.body.appendChild(ped);
       try {
         ped.animate([
-          { opacity: 0, transform: 'translate(-50%,12px) scale(.7)' },
-          { opacity: 1, transform: 'translate(-50%,0) scale(1)' }
+          { opacity: 0, transform: 'translate(-50%,-50%) scale(.7)' },
+          { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' }
         ], { duration: stageReducedMotion ? 120 : 300, easing: 'ease-out', fill: 'forwards' });
       } catch (e) { ped.style.opacity = '1'; }
       var gone = false;
@@ -9349,8 +9512,8 @@
         var d = ms || 320;
         try {
           ped.animate([
-            { opacity: 1, transform: 'translate(-50%,0) scale(1)' },
-            { opacity: 0, transform: 'translate(-50%,8px) scale(.86)' }
+            { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' },
+            { opacity: 0, transform: 'translate(-50%,-50%) scale(.86)' }
           ], { duration: d, easing: 'ease-in', fill: 'forwards' });
         } catch (e) {}
         setTimeout(function(){ if (ped.parentNode) ped.parentNode.removeChild(ped); }, d + 60);
@@ -9377,12 +9540,14 @@
       ped = document.createElement('div');
       ped.className = 'fx-pedestal persistent ped-hidden';
       ped.setAttribute('aria-hidden', 'true');
-      ped.innerHTML = '<div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-top"></div><div class="ped-body"></div>';
+      ped.innerHTML = '<div class="ped-pillar"></div><div class="ped-glow"></div><div class="ped-disc"></div><div class="ped-frame"></div>';
       document.body.appendChild(ped);
       stagePeds[scope] = ped;
       return ped;
     }
-    /* 台座の基準寸法：ステージカード（通常倍率1.3）の足元位置と待機時の幅。
+    /* 台座の基準寸法：円盤の中心（＝ステージカードの中心）と待機時の幅。
+       あわせて、SDフィニッシュの登場位置が参照する「ステージカードの
+       足元」の Y（_anchorFeetY）もここで決める。
        オンラインのユニットは実物があればその実測、無ければ標準サイズで代用 */
     function stagePedMetrics(scope){
       var center = stageCenterFor(scope);
@@ -9397,17 +9562,21 @@
         cardW = br.width ? (br.width - 24) / 5 : 84;
         cardH = br.height || 110;
       }
-      return { x: center.x, feetY: center.y + cardH * 1.3 / 2, idleW: Math.round(cardW * 2.0) };
+      return { x: center.x, cy: center.y, anchorFeetY: center.y + cardH * 1.3 / 2 + 1, idleW: Math.round(cardW * 2.0) };
     }
     function stagePedLayout(scope){
       var ped = stagePeds[scope];
       if (!ped) return;
       var m = stagePedMetrics(scope);
       var cx = (ped._active && ped._cx != null) ? ped._cx : m.x;
-      var feetY = (ped._active && ped._feetY != null) ? ped._feetY : m.feetY;
+      var cy = (ped._active && ped._cy != null) ? ped._cy : m.cy;
       ped.style.left = cx + 'px';
-      ped.style.top = (feetY - 7) + 'px';
-      if (!ped._active) ped.style.width = m.idleW + 'px';
+      ped.style.top = cy + 'px';
+      ped._anchorFeetY = (ped._active && ped._activeAnchor != null) ? ped._activeAnchor : m.anchorFeetY;
+      if (!ped._active){
+        ped.style.width = m.idleW + 'px';
+        ped.style.setProperty('--pfw', '53%');
+      }
     }
     /* 対戦画面が見えている時だけ台座を出す。タイトル・結果・各種モーダル
        表示中は隠す（カード詳細シートは台座より前面に出るため対象外） */
@@ -9452,24 +9621,29 @@
       var ovGameEl = document.getElementById('ovGame');
       if (ovGameEl) obs.observe(ovGameEl, { attributes: true, attributeFilter: ['style'] });
     }
-    /* 召喚時の点灯：常駐台座をステージカードの足元に合わせて光らせる。
-       従来の一時台座と同じ _dismiss／_removeNow を持たせてあり、呼び出し側の
-       後始末は「要素を消す」ではなく「待機状態へ戻す」動作になる */
-    function stagePedActivate(scope, cx, feetY, w, mythic){
+    /* 召喚時の点灯：常駐台座の円盤をステージカードの背面中心に合わせて
+       光らせる（神話は円盤も拡大する）。従来の一時台座と同じ
+       _dismiss／_removeNow を持たせてあり、呼び出し側の後始末は
+       「要素を消す」ではなく「待機状態へ戻す」動作になる。
+       引数は円盤中心（cx, cy）とステージカードの幅 w・高さ h */
+    function stagePedActivate(scope, cx, cy, w, h, mythic){
       var ped = stagePedEnsure(scope);
       if (!ped) return null;
-      ped._active = true; ped._cx = cx; ped._feetY = feetY;
+      ped._active = true; ped._cx = cx; ped._cy = cy;
+      ped._activeAnchor = cy + h / 2 + 1;
+      ped._anchorFeetY = ped._activeAnchor;
       ped.classList.toggle('mythic', !!mythic);
       ped.style.left = cx + 'px';
-      ped.style.top = (feetY - 7) + 'px';
+      ped.style.top = cy + 'px';
       ped.style.width = Math.round(w * (mythic ? 2.05 : 1.65)) + 'px';
+      ped.style.setProperty('--pfw', mythic ? '53%' : '64%');
       ped.classList.remove('ped-hidden');
       ped.classList.add('active');
       if (!stageReducedMotion){
         try {
           ped.animate([
-            { transform: 'translate(-50%,10px) scale(.86)' },
-            { transform: 'translate(-50%,0) scale(1)' }
+            { transform: 'translate(-50%,-50%) scale(.88)' },
+            { transform: 'translate(-50%,-50%) scale(1)' }
           ], { duration: 300, easing: 'ease-out' });
         } catch (e) {}
       }
@@ -9480,7 +9654,7 @@
     function stagePedDeactivate(scope){
       var ped = stagePeds[scope];
       if (!ped) return;
-      ped._active = false; ped._cx = null; ped._feetY = null;
+      ped._active = false; ped._cx = null; ped._cy = null; ped._activeAnchor = null;
       ped.classList.remove('active');
       ped.classList.remove('mythic');
       stagePedLayout(scope);
@@ -9514,10 +9688,10 @@
       if (!mythic){ pixiNormalSummonFx(cx, cy, r.width, r.height, feet); return; } /* 通常召喚：着地演出（光の広がり＋少量の粒子＋波紋1回）。神話は従来の格のまま */
       if (id === '52' || id === '53'){ fx3ShardEggFx(cx, cy, feet, r.width, r.height, id); return; } /* 第3弾：欠片／卵は魔法陣まわりだけ第2弾と質感を揃える */
       if (id === '39') fxCelestiaFx(cx, cy, feet, r.width, r.height);
-      else if (id === '46'){ fxMirageFx(cx, cy, r.width, r.height); mirageEcho(stageEl); }
+      else if (id === '46'){ stageMirageSummonFx(cx, cy, r.width, r.height, stageEl); }
       else if (id === '48') fxDarkQueenFx(cx, cy, r.width, r.height);
       else if (id === '51') fxTiamatFx(cx, cy, feet, r.width, r.height);
-      else if (id === '52ex') fxExcaliburFx(cx, cy, feet, r.width, r.height);
+      else if (id === '52ex') stageExcaliburSummonFx(cx, cy, feet, r.width, r.height, stageEl);
       else if (id === '54') fxLonginusFx(cx, cy, r.width, r.height);
     }
     /* 既存ユニットの整列スライド（FLIP）：再描画前の実位置から新しい
@@ -9603,16 +9777,22 @@
       clone.style.height = h + 'px';
       clone.style.visibility = 'visible';
       document.body.appendChild(clone);
-      /* 召喚台：常駐台座をカードの足元に合わせて点灯させる
+      /* 召喚台：常駐台座の円盤をカードの背面中心に合わせて点灯させる
          （スライド開始時に待機状態へ戻し、台自体は消えない） */
-      var ped = stagePedActivate(item.scope, center.x, center.y + h / 2, w, item.mythic);
+      var ped = stagePedActivate(item.scope, center.x, center.y, w, h, item.mythic);
       /* Pixi召喚エフェクトはステージ出現のタイミングで発火させる */
       stageSummonFx(item.cardId, clone, item.mythic);
       /* 滞在：通常カードは0.3秒前後、神話は少し長め。個別専用エフェクトを持つ
-         神話は演出が読める長さまで延ばすが、スライド（0.38秒）と合わせて
-         全体で約1.2秒を上限にする。後続が詰まっていたら短縮する */
+         神話は演出が読める長さまで延ばす。ミラージュ（第7弾：斬り刻み→
+         割れて召喚、出現は約1.42秒）と EX（着地の波動で出現、約0.4秒＋
+         出現の読み時間）は専用の長さにし、後続が詰まっていても出現前に
+         スライドが始まらない下限を守る */
       var dwell = item.mythic ? (STAGE_FX_IDS[String(item.cardId)] ? 800 : 620) : 300;
+      if (String(item.cardId) === '46') dwell = 1750;
+      if (String(item.cardId) === '52ex') dwell = 1020;
       if (stageQueue.length >= 2) dwell = Math.min(dwell, 140);
+      if (String(item.cardId) === '46') dwell = Math.max(dwell, 1560);
+      if (String(item.cardId) === '52ex') dwell = Math.max(dwell, 600);
       setTimeout(function(){
         if (ped) ped._dismiss(360); /* 台は消えず、待機状態（控えめな明るさ）へ戻る */
         var el2 = stageFindEl(item.key);
@@ -9778,7 +9958,97 @@
       sePlay('summonMythic');
     }
 
-    function fxGhost(el){
+    /* ===== 破壊演出（第7弾）：ヒビが広がってカードが砕け飛ぶ =====
+       破壊されたユニット（destroyed=true で渡された消滅）には、カード全体へ
+       放射状のヒビが一瞬で広がり、次の瞬間にカードが扇形の破片へ砕けて
+       飛散・落下しながら消える表現を使う。割れる瞬間にガラスの破砕SE
+       （'shatter'）を鳴らす（sePlay の同一音スロットルで、同時多発でも
+       実質1回に抑えられ、音量も控えめにしてある）。尺は旧破壊演出と
+       同程度（ヒビ約135ms＋破片約500〜620ms ≒ 700ms）。
+       連続破壊（全体破壊など）でも破片がスマホの予算を超えないよう、
+       生存中の破片総数を数えて上限管理する（上限間近では破片数を絞り、
+       超過時はヒビ＋フェードのみ）。バウンス／コントロール奪取など
+       破壊でない離脱には使わず、従来のゴーストフェードのままにする。
+       破壊かどうかの判定は呼び出し側（fxPlanCpu は destroyFollower の
+       登録、fxPlanOv は奪取・バウンスのヒューリスティクス）が行う。
+       死亡時効果の解決順序・タイミングには一切触らない（見た目だけ）。 */
+    var GLASS_CRACK_PATHS =
+      '<polyline points="50,46 50,4" /><polyline points="50,46 86,10" /><polyline points="50,46 98,44" />' +
+      '<polyline points="50,46 90,86" /><polyline points="50,46 56,98" /><polyline points="50,46 16,90" />' +
+      '<polyline points="50,46 3,46" /><polyline points="50,46 12,12" />' +
+      '<polyline points="50,24 71,32 76,52 64,72 45,76 27,63 25,39 36,25 50,24" />' +
+      '<polyline points="71,32 84,26" /><polyline points="27,63 14,66" /><polyline points="64,72 72,84" />';
+    var GLASS_CRACK_SVG =
+      '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+      '<g stroke="rgba(240,248,255,.8)" stroke-width="3.6">' + GLASS_CRACK_PATHS + '</g>' +
+      '<g stroke="rgba(16,22,34,.85)" stroke-width="1.6">' + GLASS_CRACK_PATHS + '</g>' +
+      '</g></svg>';
+    var fxShatterPieceLive = 0; /* 上限管理：現在表示中の破片ピース総数 */
+    /* destroyFollower が破壊を登録するレジストリ（fxPlanCpu が消費する）。
+       バウンス／奪取は destroyFollower を通らないため登録されず、
+       破壊演出の対象から自然に外れる */
+    var fxDestroyedReg = {};
+    function fxMarkDestroyed(key){ if (!HEADLESS) fxDestroyedReg[key] = true; }
+    function fxGhostShatter(g, r){
+      /* 1) ヒビ：ゴースト全面に放射状のヒビが一瞬で広がり、小さく震える */
+      var cracks = document.createElement('div');
+      cracks.className = 'fx-glass-cracks';
+      cracks.innerHTML = GLASS_CRACK_SVG;
+      g.appendChild(cracks);
+      try {
+        g.animate([
+          { transform: 'translate(0px,0px)' }, { transform: 'translate(1.5px,-1px)' },
+          { transform: 'translate(-1.5px,1px)' }, { transform: 'translate(0px,0px)' }
+        ], { duration: 130, easing: 'ease-out' });
+      } catch (e) {}
+      /* 2) 砕ける：破砕音とともに、中心から放射状に切り分けた破片が
+         外側へ飛び散り、回転しながら落下して消える */
+      setTimeout(function(){
+        if (g.parentNode) g.parentNode.removeChild(g);
+        sePlay('shatter');
+        var pts = [[2,0],[50,-2],[98,0],[102,40],[98,102],[55,102],[0,98],[-2,45]];
+        var total = pts.length;
+        var count = fxShatterPieceLive >= 64 ? 0 : (fxShatterPieceLive >= 32 ? 4 : total);
+        if (!count) return;
+        var seed = 733.7 + r.left * 0.31 + r.top * 0.47;
+        var step = total / count;
+        var made = [];
+        for (var i = 0; i < count; i++){
+          var i0 = Math.floor(i * step) % total, i1 = (i0 + 1) % total;
+          var a = pts[i0], b = pts[i1];
+          var p = g.cloneNode(true);
+          var pc = p.querySelector('.fx-glass-cracks');
+          if (pc) pc.remove();
+          p.classList.remove('fx-ghost-shatter');
+          p.classList.add('fx-shard-piece');
+          p.style.left = r.left + 'px'; p.style.top = r.top + 'px';
+          p.style.width = r.width + 'px'; p.style.height = r.height + 'px';
+          p.style.clipPath = 'polygon(50% 50%, ' + a[0] + '% ' + a[1] + '%, ' + b[0] + '% ' + b[1] + '%)';
+          document.body.appendChild(p);
+          made.push(p);
+          var gx = (50 + a[0] + b[0]) / 3, gy = (50 + a[1] + b[1]) / 3;
+          var dxu = (gx - 50) / 50, dyu = (gy - 50) / 50;
+          var dist = 13 + fxFinRand(seed + i * 7.3) * 24;
+          var fall = 48 + fxFinRand(seed + i * 3.9) * 30;
+          var rot = (fxFinRand(seed + i * 5.1) - 0.5) * 34;
+          var dur = 470 + fxFinRand(seed + i * 9.7) * 150;
+          try {
+            p.animate([
+              { transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+              { transform: 'translate(' + (dxu * dist * 0.72) + 'px,' + (dyu * dist * 0.72 - 7) + 'px) rotate(' + (rot * 0.4) + 'deg)', opacity: 1, offset: 0.3 },
+              { transform: 'translate(' + (dxu * dist) + 'px,' + (dyu * dist + fall) + 'px) rotate(' + rot + 'deg)', opacity: 0 }
+            ], { duration: dur, easing: 'cubic-bezier(.3,.55,.6,1)', fill: 'forwards' });
+          } catch (e) { p.style.opacity = '0'; }
+          p._fxDur = dur;
+        }
+        fxShatterPieceLive += made.length;
+        setTimeout(function(){
+          made.forEach(function(p){ if (p.parentNode) p.parentNode.removeChild(p); });
+          fxShatterPieceLive = Math.max(0, fxShatterPieceLive - made.length);
+        }, 700);
+      }, 135);
+    }
+    function fxGhost(el, destroyed){
       if (!el || !el.getBoundingClientRect) return;
       var r = el.getBoundingClientRect();
       if (!r.width || !r.height) return;
@@ -9788,19 +10058,23 @@
       g.classList.remove('fx-spawn','fx-spawn-mythic','fx-hit','fx-lunge-up','fx-lunge-down','fx-finish-up','fx-finish-down','can-attack','targetable','buffable','selected-attacker','selected');
       g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
       g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+      if (destroyed && !stageReducedMotion){
+        /* 破壊：第7弾の「ヒビ→砕け飛ぶ」演出（旧・破片粒子＋残像フェードは置き換え） */
+        g.classList.add('fx-ghost-shatter');
+        document.body.appendChild(g);
+        fxGhostShatter(g, r);
+        return;
+      }
       g.classList.add('fx-ghost');
       document.body.appendChild(g);
       setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 520);
-      /* 第2弾【3】破壊の重み：残像フェード（少し大きく滲んだ複製を遅れて消す）
-         ＋破片粒子（FxKitスコープ。落下しながら消える）。死亡時効果の発動
-         タイミング・処理順には一切触らない（これは見た目だけの追加） */
+      /* 破壊でない離脱（バウンス／奪取など）は従来の残像フェードのみ */
       if (!stageReducedMotion){
         var g2 = g.cloneNode(true);
         g2.classList.add('fx-ghost-after');
         document.body.appendChild(g2);
         setTimeout(function(){ if (g2.parentNode) g2.parentNode.removeChild(g2); }, 720);
       }
-      pixiDestroyFx(r.left + r.width / 2, r.top + r.height / 2, r.width, r.height);
     }
     function fxPopFixed(el, text, cls){
       if (!el || !el.getBoundingClientRect) return;
@@ -9835,6 +10109,9 @@
        破壊されたユニットのゴーストはこの時点で切り取る。 */
     function fxPlanCpu(){
       var plan = { spawn: [], hit: [], hatch: [], rects: stageCaptureRects('cpu') };
+      /* 破壊登録は毎回のプランで消費する（登録した破壊はこの再描画で場から
+         消える個体に対応する。バウンス／奪取は登録されない） */
+      var destroyedReg = fxDestroyedReg; fxDestroyedReg = {};
       if (!fxCpuPrev){ fxClearSpawnReg('cpu'); return plan; }
       var now = fxSnapshotCpu().units;
       var nowCid = fxCpuCidMap();
@@ -9861,7 +10138,7 @@
       Object.keys(fxCpuPrev.units).forEach(function(k){
         if (!(k in now)){
           var el = document.querySelector('[data-fol="' + k + '"]');
-          if (el) fxGhost(el);
+          if (el) fxGhost(el, !!destroyedReg[k]); /* 破壊登録がある消滅だけ第7弾の破壊演出にする */
         }
       });
       return plan;
@@ -10030,6 +10307,7 @@
       if (idx < 0) return;
       side.board.splice(idx, 1);
       logMsg(f.name + ' は倒れた。');
+      fxMarkDestroyed(sideKey + '-' + uid); /* 演出：第7弾の破壊演出（ヒビ→砕ける）の対象として登録（fxPlanCpu が消費） */
       sePlay('destroy'); /* 演出：破壊音（HEADLESS時は sePlay 側で無効） */
       if (f.effectKind === 'lastwordDraw' && !S.over){
         logMsg(f.name + ' の効果：' + side.label + 'はカードを1枚引く。', 'sys');
@@ -13408,7 +13686,7 @@
     var FXCHECK_ITEMS = [
       { key:'normal', cardId:1,      mythic:false, label:'通常召喚（魔法陣）',       desc:'通常カード「大剣の戦乙女 ルミナ」の召喚エフェクト' },
       { key:'m39',    cardId:39,     mythic:true,  label:'セレスティア（039）',     desc:'登場エフェクト：光柱と浄化の波紋' },
-      { key:'m46',    cardId:46,     mythic:true,  label:'ミラージュ（046）',       desc:'登場エフェクト：赤い2対の斬撃と残像' },
+      { key:'m46',    cardId:46,     mythic:true,  label:'ミラージュ（046）',       desc:'登場エフェクト：空間を斬り刻み、割れて召喚' },
       { key:'m48',    cardId:48,     mythic:true,  label:'ダーククイーン（048）',   desc:'登場エフェクト：奪う紫の鎖' },
       { key:'m51',    cardId:51,     mythic:true,  label:'ティアマト（051）',       desc:'登場エフェクト：咆哮と衝撃波' },
       { key:'m52ex',  cardId:'52ex', mythic:true,  label:'EX-キャリバー（52ex）',   desc:'登場エフェクト：合体の剣光が降る' },
@@ -13468,7 +13746,8 @@
       var pedEl = fxStageEl.querySelector('.fxcheck-ped');
       var pr = pedEl ? pedEl.getBoundingClientRect() : null;
       var cx = (pr && pr.width) ? pr.left + pr.width / 2 : r.left + r.width / 2;
-      var feet = (pr && pr.width) ? pr.top + 10 : r.top + r.height / 2 + h / 2;
+      /* 第7弾：カードは円盤の中心に収まる配置（足元＝円盤中心＋カード高さの半分） */
+      var feet = (pr && pr.width) ? pr.top + pr.height / 2 + h / 2 : r.top + r.height / 2 + h / 2;
       fxStageCard.style.width = w + 'px';
       fxStageCard.style.height = h + 'px';
       fxStageCard.style.left = Math.round(cx - w / 2) + 'px';
@@ -13502,11 +13781,12 @@
       fxCheckCaption(item.label + ' のエフェクト再生中');
       fxStageEl.scrollIntoView({ block: 'start' });
       fxCheckPlaceCard();
-      /* 召喚台も実戦と同じものを足元に敷く（最終配置の後に置いて位置を合わせる） */
+      /* 召喚台も実戦と同じ円盤をカードの背面に重ねる（最終配置の後に置いて位置を合わせる）。
+         ミラージュは演出が約2.1秒に伸びたため、退場もそれに合わせる */
       var pr = el.getBoundingClientRect();
       if (pr.width){
         var ped = summonPedestal(pr.left + pr.width / 2, pr.bottom, pr.width, item.mythic);
-        if (ped) setTimeout(function(){ ped._dismiss(420); }, item.mythic ? 1080 : 720);
+        if (ped) setTimeout(function(){ ped._dismiss(420); }, item.key === 'm46' ? 1950 : (item.mythic ? 1080 : 720));
       }
     }
     function fxCheckPlayHatch(){
@@ -13567,7 +13847,7 @@
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖がパネル全体に被さり、闇の渦へ引きずり込む' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスしてパネルを爆発させる' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手パネルへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）してパネルに光の裂け目を走らせ、真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して上空へ消え、巨大な顎が横から現れてパネルを飲み込む' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が真上の画面外から降ってきてパネルを上から飲み込む' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスが攻撃側から長い距離を一気に突進し、槍の一突きでドンッと止まって放射状のヒビを入れる' }
     ];
     function fxCheckPlayFinish(item){
@@ -14667,6 +14947,13 @@
       if (!prev){ fxClearSpawnReg('ov'); return plan; }
       if (prev.winner != null && v.winner == null){ fxClearSpawnReg('ov'); return plan; } /* リマッチ開始はベースライン扱い */
       var now = fxOvSnapshot(v).units;
+      /* 第7弾：破壊演出の対象判定用に、今回の更新で増えたログから
+         バウンス（手札に戻す／トークン消滅）の痕跡を拾う */
+      var ovFreshLog = [];
+      var ovPrevLog = prev.log || [], ovNowLog = v.log || [];
+      if (ovNowLog.length >= ovPrevLog.length && ovPrevLog.every(function(l, i){ return ovNowLog[i] === l; })) ovFreshLog = ovNowLog.slice(ovPrevLog.length);
+      else ovFreshLog = ovNowLog.filter(function(l){ return ovPrevLog.indexOf(l) === -1; });
+      var ovBounceHint = ovFreshLog.some(function(l){ return l.indexOf('手札に戻') >= 0 || l.indexOf('消滅した') >= 0; });
       var damaged = { me: [], opp: [] };
       var alDropped = [];   /* 残り攻撃回数が減ったユニット（＝攻撃した個体） */
       Object.keys(now).forEach(function(k){
@@ -14704,8 +14991,13 @@
         if (!(k in now)){
           plan.destroyed++;
           var parts = k.split('-');
-          var el = fxOvUnitEl(parts[0], parts.slice(1).join('-'));
-          if (el) fxGhost(el);
+          var goneUid = parts.slice(1).join('-');
+          var el = fxOvUnitEl(parts[0], goneUid);
+          /* 破壊かどうかの判定：同じ uid が相手側の場にいれば奪取、
+             今回のログにバウンスの痕跡があればバウンス（どちらも破壊でない）。
+             それ以外の消滅は破壊として第7弾の破壊演出にする */
+          var stolenOv = ((parts[0] === 'me' ? 'opp-' : 'me-') + goneUid) in now;
+          if (el) fxGhost(el, !stolenOv && !ovBounceHint);
         }
       });
       if (v.me.life !== prev.meLife) plan.leaderPops.push({ id: 'ovMyPanel', text: (v.me.life - prev.meLife > 0 ? '+' : '') + (v.me.life - prev.meLife), cls: v.me.life > prev.meLife ? 'heal' : '' });
