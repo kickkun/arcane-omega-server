@@ -5326,6 +5326,8 @@
         later(function(){
           sdDust(ax, feetY, true);
           sdWind(ax, feetY - sdH * 0.5, angDash, sdH * 1.5, 0xf2e7bd);
+          /* 第4弾：突進の光跡リボン（SDの突進200msに同期。描画のみ） */
+          pixiFinLonginusTrailFx(sdCx, sdCy, Math.round(sdCx + lx + Math.cos(angDash * Math.PI / 180) * sdH * 0.42), Math.round(sdCy + ly + Math.sin(angDash * Math.PI / 180) * sdH * 0.42), 430);
           sdWind(ax + lx * 0.5, feetY + ly * 0.5 - sdH * 0.5, angDash, sdH * 1.3, 0xffffff);
           fxFinAnimate(sd, [
             { transform: sdT(Math.round(-lx * 0.07), Math.round(-ly * 0.07) + 5, 0.97), opacity: 1 },
@@ -5349,7 +5351,7 @@
           sdImpact(true, [0xffffff, 0xf2e7bd]);
           sdDust(pcx, r.bottom, true);
         }, 850);
-        later(function(){ pixiCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1750, 8); }, 1250);
+        later(function(){ if (!pixiFinCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1750, 8, 0xe8ecf5)) pixiCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1750, 8); }, 1250); /* 第4弾：ヒビを発光の亀裂へ */
         later(function(){
           fxQuake('fx-quake-sm', 480);
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
@@ -5401,7 +5403,7 @@
         }
         function warpTo(hp, dur){
           afterimage(curHop);
-          sdDust(ax + curHop[0], feetY + curHop[1], false);
+          if (!pixiFinDustFx(ax + curHop[0], feetY + curHop[1], false, 0xd6c09c)) sdDust(ax + curHop[0], feetY + curHop[1], false); /* 第4弾：寿命カーブの砂煙（使えない環境では従来の砂煙） */
           var from = curHop; curHop = hp;
           var angW = Math.atan2(hp[1] - from[1], hp[0] - from[0]) * 180 / Math.PI;
           sdWind(ax + (from[0] + hp[0]) / 2, feetY + (from[1] + hp[1]) / 2 - sdH * 0.5, angW, sdH * 1.5, 0xff8a70);
@@ -5412,7 +5414,7 @@
             { transform: sdT(hp[0], hp[1], 1), opacity: 1 }
           ], { duration: dur || 170, easing: 'ease-in-out', fill: 'forwards' });
           fxQuake('fx-quake-sm', 300);
-          sdDust(ax + hp[0], feetY + hp[1], false);
+          if (!pixiFinDustFx(ax + hp[0], feetY + hp[1], false, 0xd6c09c)) sdDust(ax + hp[0], feetY + hp[1], false); /* 第4弾：出現側の砂煙も寿命カーブ粒子へ */
           pixiBurst(ax + hp[0], feetY + hp[1] - sdH * 0.5, { count: 8, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 0.7 });
         }
         hops.forEach(function(hp, i){
@@ -5427,7 +5429,7 @@
               { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(1)', opacity: 1, offset: 0.25 },
               { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(0.98)', opacity: 0 }
             ], { duration: 430, easing: 'ease-out', fill: 'forwards' });
-            pixiSlashFx(pcx, pcy, rotS, w * 1.5, 0xff5a4d, 420);
+            if (!pixiFinMirageSlashFx(pcx, pcy, w * 1.5, rotS, 460)) pixiSlashFx(pcx, pcy, rotS, w * 1.5, 0xff5a4d, 420); /* 第4弾：斬撃のリボン化 */
             pixiBurst(pcx, pcy, { count: 14, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.2 });
           }, ms);
         });
@@ -5449,8 +5451,8 @@
             { transform: 'translate(-50%,-50%) rotate(16deg) scale(1)', opacity: 1, offset: 0.3 },
             { transform: 'translate(-50%,-50%) rotate(16deg) scale(0.98)', opacity: 0 }
           ], { duration: 480, delay: 90, easing: 'ease-out', fill: 'forwards' });
-          pixiSlashFx(pcx, pcy, -14, w * 1.8, 0xff5a4d, 460);
-          pixiSlashFx(pcx, pcy, 16, w * 1.6, 0xffffff, 460);
+          if (!pixiFinMirageSlashFx(pcx, pcy, w * 1.8, -14, 500)) pixiSlashFx(pcx, pcy, -14, w * 1.8, 0xff5a4d, 460); /* 第4弾：最終斬撃もリボン化 */
+          if (!pixiFinMirageSlashFx(pcx, pcy, w * 1.6, 16, 500)) pixiSlashFx(pcx, pcy, 16, w * 1.6, 0xffffff, 460);
           sdImpact(true, [0xff5a4d, 0xff8a70, 0xffffff]);
         }, 2230);
         later(function(){
@@ -5487,7 +5489,7 @@
             { transform: 'translate(-50%,-50%) scale(1.05) rotate(2deg)', opacity: 1, offset: 0.8 },
             { transform: 'translate(-50%,-50%) scale(1.02)', opacity: 0 }
           ], { duration: 1900, easing: 'ease-out', fill: 'forwards' });
-          pixiChainsFx(pcx, pcy, Math.max(w, h) * 0.85, 1500);
+          if (!pixiFinQueenChainsFx(pcx, pcy, Math.max(w, h) * 0.85, 1500)) pixiChainsFx(pcx, pcy, Math.max(w, h) * 0.85, 1500); /* 第4弾：鎖のリボン化 */
         }, 550);
         later(function(){
           fxFinFlash(0.32, 480);
@@ -5505,6 +5507,7 @@
           vortex.style.left = (w / 2 - vsize / 2) + 'px';
           vortex.style.top = (h - vsize * 0.28) + 'px';
           mk.wrap.appendChild(vortex);
+          pixiFinQueenVortexFx(pcx, r.bottom - Math.round(h * 0.05), w * 0.52, 1700); /* 第4弾：渦への引き込みに歪みを重ねる（描画のみ） */
           fxFinAnimate(vortex, [
             { transform: 'rotate(0deg) scale(.35)', opacity: 0 },
             { transform: 'rotate(200deg) scale(1)', opacity: 1, offset: 0.35 },
@@ -5564,6 +5567,9 @@
            標的を少し通り過ぎるまで伸ばし、交差する様子が読めるようにする。
            各ビームは外側グロー／色／白い芯の3層。放出中は画面とパネルが震える */
         later(function(){
+          /* 第4弾：紅と蒼の双ビームをリボン化（白熱コア＋流れのノイズ）。
+             Pixi が使えない環境では従来の描画3層ラインへフォールバック */
+          if (!pixiFinTiamatBeamFx(srcL, tgtL, srcR, tgtR, sdH, 1750)){
           pixiAnim(1750, function(gfx, t, life){
             gfx.clear();
             var env = Math.min(1, t / 0.12) * (t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1);
@@ -5580,6 +5586,7 @@
             beam(srcL, tgtL, 0xff4030);
             beam(srcR, tgtR, 0x4a90ff);
           });
+          }
           fxFinAnimate(panelEl, [
             { transform: baseTx51 + 'translate(0px,0px)' }, { transform: baseTx51 + 'translate(-3px,1px)' },
             { transform: baseTx51 + 'translate(3px,-1px)' }, { transform: baseTx51 + 'translate(0px,0px)' }
@@ -5648,6 +5655,9 @@
            （外側グロー／中間／白い芯）を重ね、着弾点では光が弾ける。
            太さは従来（帯0.36／グロー0.55）から明確に太くした */
         later(function(){
+          /* 第4弾：うねるリボン3層＋シェーダ発光の光の波（Pixi が使えない
+             環境では従来の DOM 帯＋描画3層ラインへフォールバック） */
+          if (!pixiFinCelestiaWaveFx(handX, handY, pcx, pcy, sdH, 1500)){
           var bd = sdFinNode('div', 'fx-sd-beamdiv');
           var bhC = Math.round(sdH * 0.66);
           bd.style.left = handX + 'px'; bd.style.top = (handY - bhC / 2) + 'px';
@@ -5673,6 +5683,7 @@
             gfx.lineStyle(Math.max(5, sdH * 0.24), 0xffffff, 0.95 * env * fl);
             gfx.moveTo(handX, handY); gfx.lineTo(pcx, pcy);
           });
+          }
           pixiBurst(handX, handY, { count: 18, colors: [0xffffff, 0xffeeb0], power: 1.0 });
           pixiBurst(pcx, pcy, { count: 34, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.8 });
           fxFinFlash(0.62, 520);
@@ -5720,7 +5731,7 @@
         /* 追加はこの2点だけ：飛び立つ瞬間に足元へ砂煙、上昇中に風切り
            （顎のサイズ・動き・タイミングと、消えてから顎が出るまでの流れは不変） */
         later(function(){
-          sdDust(ax, feetY, true);
+          if (!pixiFinDustFx(ax, feetY, true, 0xbfb0d4)) sdDust(ax, feetY, true); /* 第4弾：飛び立ちの砂煙を寿命カーブ粒子へ（顎まわりは不変） */
           sdWind(ax, feetY - sdH * 0.55, -90, sdH * 1.15, 0xd6bcff);
         }, 470);
         later(function(){ sdWind(ax + 6, feetY - sdH * 1.5, -90, sdH * 0.95, 0xffffff); }, 720);
@@ -5748,6 +5759,7 @@
           later(function(){
             fxQuake('fx-quake-md', 560);
             pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
+            pixiFinAgitoBiteFx(pcx, pcy, jawW); /* 第4弾：噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（顎の動きは不変） */
             fxFinAnimate(jaw, [
               { transform: 'translateX(0px) rotate(0deg)' },
               { transform: 'translateX(-9px) rotate(-1.1deg)' },
@@ -7394,6 +7406,635 @@
       }, function(){ scope.dispose(); });
       return true;
     }
+    /* ===== 演出総見直し 第4弾：神話フィニッシュ×7の描画格上げ（FxKit の上に構築） =====
+       対象は SD方式フィニッシュの「描画」だけ。振付（登場位置・動きの流れ・
+       タイミング・総尺・黒帯と暗転・決めセリフ・専用SE・スローと
+       ヒットストップ・テーマカラーのオーラパッケージ）は全キャラ確定済みの
+       ため一切変更せず、呼び出し側（mythicSdFinishFx）の拍と尺は現行のまま、
+       その内側の描き方を FxKit（リボン／シェーダ発光／寿命カーブ粒子／
+       後片付けスコープ）へ差し替える：
+       ・ミラージュ（046）：斬撃をリボン化（赤い流れテクスチャの帯＋白熱
+         コア帯。先端が伸びて軌跡の光がなめらかにつながる）。ワープの砂煙は
+         寿命カーブ粒子（広がりながら薄れる土煙）へ。
+       ・セレスティア（039）：両手の光球→パネルの光の波を、うねるリボン
+         3層（金／金／白芯）＋シェーダの流れに格上げ。起点（手元）と着弾点に
+         シェーダ発光を置き、従の光柱が立つ着弾点で光がつながって見える形に。
+       ・ダーククイーン（048）：紫の鎖をリボン化（渦巻きながらパネル中心へ
+         締まる5本の帯）。闇の渦への引き込みには歪みリング
+         （fx3DistortRing：屈折＋色収差フリンジ）を重ねる。
+       ・ティアマト（051）：右下・左下から交差する紅と蒼の双ビームを
+         リボン化（色別の流れテクスチャ＋白熱コア帯）。帯に流れのノイズ
+         （2周波のうねり）を加え、着弾点はシェーダ発光でまとめる。
+       ・ロンギヌス（054）：突進に光跡リボン（銀の帯＋白芯。頭が伸び、
+         尾が追って消える彗星型）。着弾の放射状ヒビは発光の亀裂へ格上げ
+         （pixiFinCrackFx：広いグロー／色の中層／白い芯の3層＋枝分かれ＋
+         中心の閃光コア。形の生成規則と尺は pixiCrackFx と同一）。
+         速度感（突進200ms・拍）は現行維持。
+       ・黒のアギト（53ag）：顎のサイズ計算・動き・タイミング・飲み込みの
+         流れは一切変更しない。飛び立ちの砂煙を寿命カーブ粒子へ差し替え、
+         噛み砕きの瞬間に紫の縁光（放射グラデーションの発光＋紫の衝撃粒子）
+         を足すだけに留める。
+       ・EX-キャリバー（52ex）：第1弾で完成した形をそのまま維持し、変更しない。
+       発光の矩形対策（第3弾の教訓）：新規の発光はすべて FxKit.glowQuad
+       （プリマルチプライ出力のシェーダ放射発光）か fx2GlowTexture
+       （放射グラデーションで縁が完全に透明へ落ちるスプライト）で描き、
+       矩形の角が見える発光は作らない。リボンの帯テクスチャも横方向の
+       両端が透明へ落ちる生成手順（fx3FlowTexture／FxKit 共有）のみを使う。
+       後片付け規律：全演出は fx2Scope（fx2Scopes 登録制）に閉じ、自然終了は
+       onDone の dispose、中断・画面遷移は fx2DisposeAll、および
+       fxMythicExtraCleanup への相乗り（fx4ChainCleanup）で、レイヤー子要素と
+       アニメ登録が即時ゼロに戻る。フィルタは歪みリング内の局所化
+       （filterArea 設定＋dispose で filters=null）のみ。
+       Pixi が使えない環境では FxKit.available() が false で全関数が false を
+       返し、呼び出し側が従来描画（pixiSlashFx／pixiChainsFx／pixiCrackFx／
+       Graphics の3層ライン／DOM ビーム／sdDust）へフォールバックする。
+       HEADLESS・モーション低減時は SD方式自体に入らないため従来どおり */
+    /* FX4-MOCK-BEGIN */
+    /* 2次ベジェの部分曲線 [0..u] の制御点と終点（リボンの先端成長用） */
+    function fx4SubBezier(p0, cp, p1, u){
+      var qx = p0.x + (cp.x - p0.x) * u, qy = p0.y + (cp.y - p0.y) * u;
+      return { cp: { x: qx, y: qy }, p1: { x: qx + (p1.x - qx) * u, y: qy + (p1.y - qy) * u } };
+    }
+    /* 中断時の後片付けを既存経路（fxMythicExtraCleanup）へ相乗りさせる。
+       pixiExConvergeFx と同じ型：前の登録（召喚台の点灯解除など）を保った
+       まま、自分のスコープの dispose を連鎖の先頭へ足す。dispose は冪等 */
+    function fx4ChainCleanup(scope){
+      var prev = fxMythicExtraCleanup;
+      fxMythicExtraCleanup = function(){
+        try { scope.dispose(); } catch (e) {}
+        if (prev){ try { prev(); } catch (e) {} }
+      };
+    }
+    /* うねりながら進む帯のサンプル列：始点→終点を結ぶ直線に、進行方向と
+       直交するうねり waveFn(u)（両端は sin(πu) で 0 に落とす）を重ねる。
+       hwFn(u) が各点の半幅を返す。戻り値は fillStrip 用のサンプル列 */
+    function fx4WaveSamples(x0, y0, x1, y1, seg, waveAmp, waveFn, hwFn){
+      var dx = x1 - x0, dy = y1 - y0;
+      var len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var px = -dy / len, py = dx / len;
+      var pts = [];
+      for (var i = 0; i <= seg; i++){
+        var u = i / seg;
+        var wv = waveFn(u) * Math.sin(Math.PI * u);
+        pts.push({ x: x0 + dx * u + px * wv * waveAmp, y: y0 + dy * u + py * wv * waveAmp });
+      }
+      var out = [];
+      for (var j = 0; j <= seg; j++){
+        var pA = pts[Math.max(0, j - 1)], pB = pts[Math.min(seg, j + 1)];
+        var tx = pB.x - pA.x, ty = pB.y - pA.y;
+        var tl = Math.sqrt(tx * tx + ty * ty) || 1;
+        out.push({ x: pts[j].x, y: pts[j].y, ax: -ty / tl, ay: tx / tl, hw: hwFn(j / seg) });
+      }
+      return out;
+    }
+    /* --- ミラージュ：リボン斬撃 ---
+       中心 (cx,cy) を通る角度 deg の一閃を、わずかに弧を描くリボン帯で描く。
+       先端が最初の30%で伸び切り、軌跡の光が面でつながる。外側は赤い流れ
+       テクスチャの帯、内側は白熱コア帯。先端からは寿命カーブの火花が散る */
+    function pixiFinMirageSlashFx(cx, cy, len, deg, dur){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var rad = deg * Math.PI / 180;
+      var dx = Math.cos(rad), dy = Math.sin(rad);
+      var p0 = { x: cx - dx * len / 2, y: cy - dy * len / 2 };
+      var p1 = { x: cx + dx * len / 2, y: cy + dy * len / 2 };
+      var cp = { x: cx - dy * len * 0.10, y: cy + dx * len * 0.10 };
+      var redTex = fx3FlowTexture('fin-mirage', '255,64,40', '255,122,80');
+      var outer = fx3Ribbon(scope, cont, 24, { tex: redTex, alpha: 0.85, core: 0.3, dir: 0 });
+      var core = fx3Ribbon(scope, cont, 24, { alpha: 0.95, core: 1.15, dir: 0 });
+      var em = scope.emitter(cont, { max: 60 });
+      var seed = 913.7 + cx * 0.17 + cy * 0.11;
+      var lastLife = 0, lastSpark = -100;
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var head = Math.min(1, t / 0.30);
+        var env = Math.min(1, t / 0.05 + 0.25) * (t > 0.55 ? Math.max(0, 1 - (t - 0.55) / 0.45) : 1);
+        var sub = fx4SubBezier(p0, cp, p1, Math.max(0.02, head));
+        var maxHW = len * 0.072;
+        FxKit.fillStrip(outer.strip, FxKit.bezierSamples(p0, sub.cp, sub.p1, 25, function(u){
+          return Math.max(0.4, maxHW * Math.pow(Math.sin(Math.PI * u), 0.75)) * env;
+        }));
+        FxKit.fillStrip(core.strip, FxKit.bezierSamples(p0, sub.cp, sub.p1, 25, function(u){
+          return Math.max(0.3, maxHW * 0.34 * Math.pow(Math.sin(Math.PI * u), 0.6)) * env;
+        }));
+        outer.mat.uniforms.uFlow = life * 0.005;
+        core.mat.uniforms.uFlow = life * 0.007;
+        outer.mat.uniforms.uAlpha = 0.85 * env;
+        core.mat.uniforms.uAlpha = 0.95 * env;
+        /* 先端の火花：帯が伸びている間だけ、先端位置から小さく撒く */
+        if (head < 1 && life - lastSpark > 26){
+          lastSpark = life;
+          var hp = sub.p1;
+          em.burst(2, function(bi){
+            var ba = fxFinRand(seed + life * 0.31 + bi * 7.7) * Math.PI * 2;
+            var bs = 40 + fxFinRand(seed + bi * 5.3 + life * 0.07) * 130;
+            return { x: hp.x, y: hp.y, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs,
+              life: 240 + fxFinRand(seed + bi * 3.9) * 160, size: 0.36, sizeEnd: 0.05,
+              colA: [1, 0.85, 0.75], colB: [1, 0.3, 0.2], grav: 120, curve: 'o', pow: 1.2 };
+          });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* 柔らかい粒子のドライバ（砂煙・塵専用）：FxKit エミッタの粒子は
+       硬い円テクスチャ（pixiFx.tex）のため、小さい火花では気にならない
+       縁が、大きく膨らむ砂煙では「円盤」に見えてしまう。こちらは
+       放射グラデーション（fx2GlowTexture）のスプライトで寿命カーブ
+       （位置・大きさ・α）を自前で回す。通常合成で煙らしく重ね、
+       後片付けはスコープの onDispose に相乗りする（dispose で全破棄） */
+    function fx4SoftPuffs(scope, cont){
+      var parts = [];
+      var dead = false;
+      scope.onDispose(function(){
+        dead = true;
+        for (var i = 0; i < parts.length; i++){
+          var sp0 = parts[i].sp;
+          try { if (sp0.parent) sp0.parent.removeChild(sp0); } catch (e) {}
+          try { sp0.destroy(); } catch (e) {}
+        }
+        parts = [];
+      });
+      return {
+        spawn: function(o){
+          if (dead || parts.length >= 60) return;
+          var sp = new PIXI.Sprite(fx2GlowTexture());
+          sp.anchor.set(0.5);
+          sp.tint = o.tint || 0xffffff;
+          sp.position.set(o.x, o.y);
+          sp.alpha = 0;
+          cont.addChild(sp);
+          parts.push({ sp: sp, vx: o.vx || 0, vy: o.vy || 0, grav: o.grav || 0, damp: o.damp != null ? o.damp : 1,
+            life: 0, max: o.life || 600, s0: o.size || 20, s1: o.sizeEnd != null ? o.sizeEnd : 40, aMax: o.alpha != null ? o.alpha : 0.3 });
+        },
+        burst: function(n, fn){ for (var i = 0; i < n; i++){ var o = fn(i); if (o) this.spawn(o); } },
+        step: function(dt){
+          if (dead) return;
+          for (var i = parts.length - 1; i >= 0; i--){
+            var p = parts[i];
+            p.life += dt;
+            var k = p.life / p.max;
+            if (k >= 1){
+              if (p.sp.parent) p.sp.parent.removeChild(p.sp);
+              try { p.sp.destroy(); } catch (e) {}
+              parts.splice(i, 1); continue;
+            }
+            p.vy += p.grav * dt / 1000;
+            if (p.damp !== 1){ var df = Math.pow(p.damp, dt / 1000); p.vx *= df; p.vy *= df; }
+            p.sp.position.x += p.vx * dt / 1000;
+            p.sp.position.y += p.vy * dt / 1000;
+            p.sp.scale.set((p.s0 + (p.s1 - p.s0) * k) / 128);
+            p.sp.alpha = p.aMax * Math.sin(Math.PI * k);
+          }
+        }
+      };
+    }
+    /* --- 共通：寿命カーブの砂煙（ミラージュのワープ／アギトの飛び立ち用） ---
+       足元から地面を這うように広がり、大きく膨らみながら薄れて消える土煙。
+       sdDust（Graphics のベタ塗り円）の差し替えで、柔らかい放射
+       グラデーションの粒（fx4SoftPuffs）を寿命カーブで回す。
+       tint は煙の色（砂色／紫がかった灰など） */
+    function pixiFinDustFx(x, y, big, tint){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      scope.add(cont);
+      var puffs = fx4SoftPuffs(scope, cont);
+      var seed = 431.9 + x * 0.19 + y * 0.13;
+      var n = big ? 9 : 6;
+      puffs.burst(n, function(bi){
+        var f = fxFinRand(seed + bi * 6.31);
+        var side = (bi - (n - 1) / 2) / ((n - 1) / 2 || 1);
+        return { x: x + side * 14 * (big ? 1.3 : 1), y: y - 3,
+          vx: side * (26 + f * 44) * (big ? 1.25 : 1), vy: -12 - f * 20,
+          life: (big ? 640 : 480) * (0.8 + f * 0.45),
+          size: (16 + f * 10) * (big ? 1.5 : 1.1), sizeEnd: (44 + f * 26) * (big ? 1.5 : 1.15),
+          tint: tint, alpha: 0.32, grav: 22, damp: 0.42 };
+      });
+      var lastLife = 0;
+      scope.anim(big ? 680 : 500, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        puffs.step(dt);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- セレスティア：うねる光の波（リボン3層＋シェーダ発光） ---
+       手元の光球 (x0,y0) からパネル中心 (x1,y1) へ、2周波のうねりを
+       持つ金の帯（外／中）と白芯の帯を重ねる。先端は従来ビームと同じ
+       16%で届き、起点と着弾点のシェーダ発光が光の出所と受け口を作る
+       （着弾点の発光が、従として添える光柱の足元と光をつなぐ） */
+    function pixiFinCelestiaWaveFx(x0, y0, x1, y1, sdH, dur){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var goldTex = fx3FlowTexture('fin-celestia', '255,190,80', '255,224,150');
+      var SEG = 26;
+      var wOuter = fx3Ribbon(scope, cont, SEG, { tex: goldTex, alpha: 0.8, core: 0.5, dir: 0 });
+      var wMid = fx3Ribbon(scope, cont, SEG, { tex: goldTex, alpha: 0.9, core: 0.8, dir: 0 });
+      var wCore = fx3Ribbon(scope, cont, SEG, { alpha: 0.95, core: 1.3, dir: 0 });
+      var gHand = FxKit.glowQuad(0xffeeb0, { intensity: 0, pulse: 0.3, speed: 7.0 });
+      gHand.position.set(x0, y0); cont.addChild(gHand);
+      var gHit = FxKit.glowQuad(0xfff3c4, { intensity: 0, pulse: 0.22, speed: 6.0 });
+      gHit.position.set(x1, y1); cont.addChild(gHit);
+      var em = scope.emitter(cont, { max: 90 });
+      var seed = 287.3 + x0 * 0.13 + y1 * 0.17;
+      var lastLife = 0;
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var head = Math.min(1, t / 0.16);
+        var env = Math.min(1, t / 0.10 + 0.2) * (t > 0.74 ? Math.max(0, 1 - (t - 0.74) / 0.26) : 1);
+        var ph = life * 0.016;
+        function wave(u){ return Math.sin(u * Math.PI * 2.3 - ph) + 0.45 * Math.sin(u * Math.PI * 5.1 - ph * 1.7); }
+        var hx = x0 + (x1 - x0) * head, hy = y0 + (y1 - y0) * head;
+        var amp = sdH * 0.085;
+        FxKit.fillStrip(wOuter.strip, fx4WaveSamples(x0, y0, hx, hy, SEG, amp, wave, function(u){
+          return Math.max(0.5, 2.5 + sdH * 0.30 * Math.pow(Math.sin(Math.PI * u), 0.8)) * env;
+        }));
+        FxKit.fillStrip(wMid.strip, fx4WaveSamples(x0, y0, hx, hy, SEG, amp, wave, function(u){
+          return Math.max(0.5, 1.8 + sdH * 0.17 * Math.pow(Math.sin(Math.PI * u), 0.8)) * env;
+        }));
+        FxKit.fillStrip(wCore.strip, fx4WaveSamples(x0, y0, hx, hy, SEG, amp, wave, function(u){
+          return Math.max(0.4, 1.2 + sdH * 0.075 * Math.pow(Math.sin(Math.PI * u), 0.7)) * env;
+        }));
+        wOuter.mat.uniforms.uFlow = life * 0.005;
+        wMid.mat.uniforms.uFlow = life * 0.0066;
+        wCore.mat.uniforms.uFlow = life * 0.008;
+        wOuter.mat.uniforms.uAlpha = 0.8 * env;
+        wMid.mat.uniforms.uAlpha = 0.9 * env;
+        wCore.mat.uniforms.uAlpha = 0.95 * env;
+        var hu = gHand.material.uniforms;
+        hu.uTime = life / 1000;
+        hu.uIntensity = 1.15 * env * (0.75 + 0.25 * Math.sin(life * 0.02));
+        gHand.scale.set(sdH * 0.62);
+        var iu = gHit.material.uniforms;
+        iu.uTime = life / 1000;
+        iu.uIntensity = (head >= 1 ? 1.0 : head * 0.6) * env;
+        gHit.scale.set(sdH * (0.9 + 0.25 * Math.sin(life * 0.013)));
+        /* 奔流に沿って漂う光屑 */
+        if (t < 0.8){
+          em.burst(2, function(bi){
+            var uu = 0.15 + fxFinRand(seed + life * 0.23 + bi * 9.7) * 0.8;
+            return { x: x0 + (x1 - x0) * uu, y: y0 + (y1 - y0) * uu,
+              vx: (fxFinRand(seed + bi * 4.3 + life * 0.05) - 0.5) * 30, vy: -22 - fxFinRand(seed + bi * 6.1) * 30,
+              life: 380 + fxFinRand(seed + bi * 7.9) * 220, size: 0.34, sizeEnd: 0.05,
+              colA: [1, 0.97, 0.85], colB: [1, 0.84, 0.42], curve: 'io', pow: 1.2 };
+          });
+        }
+        /* 着弾点で弾ける粒（周期的に小さく撒く） */
+        if (head >= 1 && t < 0.75 && (life % 90) < 34){
+          em.burst(3, function(bi){
+            var ba = fxFinRand(seed + 60 + life * 0.29 + bi * 8.3) * Math.PI * 2;
+            var bs = 50 + fxFinRand(seed + 60 + bi * 5.7) * 130;
+            return { x: x1, y: y1, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 26,
+              life: 300 + fxFinRand(seed + 60 + bi * 4.1) * 200, size: 0.4, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [1, 0.85, 0.45], grav: 140, curve: 'o', pow: 1.15 };
+          });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- ダーククイーン：リボンの鎖 ---
+       パネルの周囲5方向から、渦を巻くベジェ軌道の紫の帯が中心へ締まる。
+       鎖の輪の連なりは帯の太さのうねりで表現し、中心には紫のシェーダ
+       発光を置く。尺・出現の拍は従来の pixiChainsFx と同じ */
+    function pixiFinQueenChainsFx(cx, cy, R, dur){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var purpTex = fx3FlowTexture('fin-queen', '110,50,230', '168,120,255');
+      var chains = [];
+      var NCH = 5;
+      for (var ci = 0; ci < NCH; ci++){
+        chains.push({
+          rb: fx3Ribbon(scope, cont, 20, { tex: purpTex, alpha: 0.85, core: 0.4, dir: 0 }),
+          ang: (ci / NCH) * Math.PI * 2 + 0.5,
+          swirl: (ci % 2 ? -1 : 1) * (0.9 + (ci % 3) * 0.22)
+        });
+      }
+      var glow = FxKit.glowQuad(0x8a5cff, { intensity: 0, pulse: 0.3, speed: 5.0 });
+      glow.position.set(cx, cy); cont.addChild(glow);
+      scope.anim(dur, function(_, t, life){
+        var env = Math.min(1, t / 0.14 + 0.15) * (t > 0.75 ? Math.max(0, 1 - (t - 0.75) / 0.25) : 1);
+        var shrink = 1 - 0.20 * Math.min(1, t / 0.8);
+        var rot = t * 0.9;
+        chains.forEach(function(ch){
+          var a0 = ch.ang + rot;
+          var sx = cx + Math.cos(a0) * R * 1.18 * shrink, sy = cy + Math.sin(a0) * R * 1.18 * 0.92 * shrink;
+          var tang = a0 + ch.swirl;
+          var cpx = cx + Math.cos(tang) * R * 0.55 * shrink, cpy = cy + Math.sin(tang) * R * 0.55 * 0.92 * shrink;
+          FxKit.fillStrip(ch.rb.strip, FxKit.bezierSamples({ x: sx, y: sy }, { x: cpx, y: cpy }, { x: cx, y: cy }, 21, function(u){
+            return Math.max(0.4, (8.5 - 5.2 * u) * (0.85 + 0.15 * Math.sin(u * 36 + life * 0.01))) * env;
+          }));
+          ch.rb.mat.uniforms.uFlow = life * 0.006 + ch.ang;
+          ch.rb.mat.uniforms.uAlpha = 0.85 * env;
+        });
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = 0.55 * env;
+        glow.scale.set(R * 1.5);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- ダーククイーン：闇の渦の歪み ---
+       パネル下部の渦の位置に、屈折の歪みリング（うねる輪郭＋色収差
+       フリンジ）を重ね、紫の塵が外周から中心へ吸い込まれる粒子を添える。
+       DOM の渦・引き込みアニメ（従来どおり）の上に質感だけを足す */
+    function pixiFinQueenVortexFx(cx, vy, maxR, dur){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var ring = fx3DistortRing(scope, cont, cx, vy, { maxR: maxR, squish: 0.62, color: 0xa678ff, width: 4.5, alpha: 0.8, wobble: 0.09, distort: 22, fringe: 0x5a2bd6, fringeDx: 2.5 });
+      var em = scope.emitter(cont, { max: 60 });
+      var seed = 733.1 + cx * 0.11;
+      var lastLife = 0;
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.min(1, t / 0.10 + 0.1) * (t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1);
+        ring.draw(Math.min(1, t * 1.25), env);
+        if (t < 0.8){
+          em.burst(2, function(bi){
+            var ba = fxFinRand(seed + life * 0.27 + bi * 8.9) * Math.PI * 2;
+            var br = maxR * (0.8 + fxFinRand(seed + bi * 5.1) * 0.5);
+            var sx = cx + Math.cos(ba) * br, sy = vy + Math.sin(ba) * br * 0.5;
+            var pLife = 420 + fxFinRand(seed + bi * 6.7) * 200;
+            return { x: sx, y: sy, vx: (cx - sx) / (pLife / 1000), vy: (vy - sy) / (pLife / 1000),
+              life: pLife, size: 0.38, sizeEnd: 0.05,
+              colA: [0.85, 0.7, 1], colB: [0.45, 0.25, 0.95], curve: 'io', pow: 1.1 };
+          });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- ティアマト：紅と蒼の双ビーム（リボン化） ---
+       左下→パネル右寄り（紅）と右下→パネル左寄り（蒼）がX字に交差する
+       2本の帯。各ビームは色別の流れテクスチャの帯＋白熱コア帯で、帯には
+       流れのノイズ（2周波のうねり＋明滅）を加える。包絡（12%で立ち上がり
+       80%から消える）と標的の10%の突き抜けは従来の3層ラインと同じ */
+    function pixiFinTiamatBeamFx(srcL, tgtL, srcR, tgtR, sdH, dur){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var SEG = 26;
+      function beamSet(texKey, edge, mid){
+        var tex = fx3FlowTexture(texKey, edge, mid);
+        return {
+          outer: fx3Ribbon(scope, cont, SEG, { tex: tex, alpha: 0.85, core: 0.3, dir: 0 }),
+          core: fx3Ribbon(scope, cont, SEG, { alpha: 0.95, core: 1.15, dir: 0 })
+        };
+      }
+      var bL = beamSet('fin-tiamat-r', '255,64,40', '255,130,70');
+      var bR = beamSet('fin-tiamat-b', '50,110,255', '130,180,255');
+      var hitX = (tgtL.x + tgtR.x) / 2, hitY = (tgtL.y + tgtR.y) / 2;
+      var gHit = FxKit.glowQuad(0xffffff, { intensity: 0, pulse: 0.15, speed: 4.0 });
+      gHit.position.set(hitX, hitY); cont.addChild(gHit);
+      var em = scope.emitter(cont, { max: 80 });
+      var seed = 619.7 + hitX * 0.13;
+      var lastLife = 0;
+      function drawBeam(set, s, tg, phase, env, life){
+        var ex = tg.x + (tg.x - s.x) * 0.10, ey = tg.y + (tg.y - s.y) * 0.10;
+        var fl = 0.84 + 0.16 * Math.sin(life * 0.055 + phase) * Math.sin(life * 0.021 + phase + 1.1);
+        function wob(u){
+          return Math.sin(u * 9 - life * 0.030 + phase) * 0.7 + Math.sin(u * 23 + life * 0.052 + phase * 2.0) * 0.3;
+        }
+        FxKit.fillStrip(set.outer.strip, fx4WaveSamples(s.x, s.y, ex, ey, SEG, sdH * 0.05, wob, function(u){
+          return Math.max(0.5, 3 + sdH * 0.46 * Math.pow(Math.sin(Math.PI * u), 0.7)) * env * fl;
+        }));
+        FxKit.fillStrip(set.core.strip, fx4WaveSamples(s.x, s.y, ex, ey, SEG, sdH * 0.05, wob, function(u){
+          return Math.max(0.4, 1.2 + sdH * 0.105 * Math.pow(Math.sin(Math.PI * u), 0.6)) * env * fl;
+        }));
+        set.outer.mat.uniforms.uFlow = life * 0.009 + phase;
+        set.core.mat.uniforms.uFlow = life * 0.012 + phase;
+        set.outer.mat.uniforms.uAlpha = 0.85 * env;
+        set.core.mat.uniforms.uAlpha = 0.95 * env;
+      }
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.min(1, t / 0.12) * (t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1);
+        drawBeam(bL, srcL, tgtL, 0, env, life);
+        drawBeam(bR, srcR, tgtR, 2.4, env, life);
+        var gu = gHit.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = 0.9 * env;
+        gHit.scale.set(sdH * 1.5 * (0.9 + 0.1 * Math.sin(life * 0.02)));
+        if (t > 0.1 && t < 0.8 && (life % 80) < 34){
+          em.burst(3, function(bi){
+            var tg = bi % 2 ? tgtR : tgtL;
+            var ba = fxFinRand(seed + life * 0.33 + bi * 7.3) * Math.PI * 2;
+            var bs = 60 + fxFinRand(seed + bi * 5.9 + life * 0.03) * 160;
+            return { x: tg.x, y: tg.y, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 30,
+              life: 260 + fxFinRand(seed + bi * 4.7) * 200, size: 0.42, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: bi % 2 ? [0.35, 0.55, 1] : [1, 0.45, 0.25], grav: 200, curve: 'o', pow: 1.15 };
+          });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- ロンギヌス：突進の光跡リボン ---
+       SDの突進（約200ms）に同期して、開始点→槍先の到達点へ銀の帯が
+       伸び、頭が届いた後は尾が追って消える彗星型。帯の中心はわずかに
+       弧を描く。速度感は現行の突進そのまま（尺は残光込みで 430ms） */
+    function pixiFinLonginusTrailFx(x0, y0, x1, y1, dur){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var dx = x1 - x0, dy = y1 - y0;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var p0 = { x: x0, y: y0 }, p1 = { x: x1, y: y1 };
+      var cp = { x: (x0 + x1) / 2 - dy / dist * dist * 0.05, y: (y0 + y1) / 2 + dx / dist * dist * 0.05 };
+      var silvTex = fx3FlowTexture('fin-longinus', '185,198,228', '228,234,246');
+      var SEG = 22;
+      var outer = fx3Ribbon(scope, cont, SEG, { tex: silvTex, alpha: 0.75, core: 0.5, dir: 0 });
+      var core = fx3Ribbon(scope, cont, SEG, { alpha: 0.95, core: 1.2, dir: 0 });
+      var em = scope.emitter(cont, { max: 40 });
+      var seed = 353.9 + x0 * 0.11 + y1 * 0.13;
+      var baseHW = Math.max(6.5, Math.min(14, dist * 0.055));
+      var lastLife = 0;
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var head = Math.min(1, t / 0.45);
+        var tail = t <= 0.45 ? 0 : Math.min(0.9, (t - 0.45) / 0.5);
+        var env = t > 0.55 ? Math.max(0, 1 - (t - 0.55) / 0.45) : 1;
+        function hwF(scaleW){
+          return function(u){
+            var tm = Math.max(0, Math.min(1, (u - tail) / 0.18));
+            var hm = Math.max(0, Math.min(1, (head - u) / 0.10 + 0.15));
+            return Math.max(0.3, baseHW * scaleW * Math.pow(Math.sin(Math.PI * u), 0.6)) * tm * hm * env;
+          };
+        }
+        FxKit.fillStrip(outer.strip, FxKit.bezierSamples(p0, cp, p1, SEG + 1, hwF(1)));
+        FxKit.fillStrip(core.strip, FxKit.bezierSamples(p0, cp, p1, SEG + 1, hwF(0.38)));
+        outer.mat.uniforms.uFlow = life * 0.008;
+        core.mat.uniforms.uFlow = life * 0.01;
+        outer.mat.uniforms.uAlpha = 0.75 * env;
+        core.mat.uniforms.uAlpha = 0.95 * env;
+        if (head < 1){
+          var sub = fx4SubBezier(p0, cp, p1, Math.max(0.02, head));
+          em.spawn({ x: sub.p1.x, y: sub.p1.y, vx: (fxFinRand(seed + life * 0.41) - 0.5) * 40, vy: (fxFinRand(seed + life * 0.37) - 0.5) * 40,
+            life: 220, size: 0.34, sizeEnd: 0.05, colA: [1, 1, 1], colB: [0.85, 0.88, 1], curve: 'io', pow: 1.2 });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- ロンギヌス：発光の亀裂 ---
+       放射状ヒビの形（種からのジグザグ経路・成長0.38・消散0.68〜）と尺は
+       pixiCrackFx と同一に保ち、描画だけを発光の亀裂へ差し替える：
+       広いグロー／色の中層／白い芯の3層で引き、途中から枝分かれを足し、
+       中心にはシェーダ発光の閃光コアと寿命カーブの火花を置く */
+    function pixiFinCrackFx(cx, cy, maxLen, dur, rays, colHex){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var col = colHex || 0xffffff;
+      var core = FxKit.glowQuad(col, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(cx, cy);
+      cont.addChild(core);
+      var em = scope.emitter(cont, { max: 50 });
+      var seedBase = Math.random() * 100 + 1;
+      var paths = [];
+      for (var i = 0; i < rays; i++){
+        var ang = (i / rays) * Math.PI * 2 + fxFinRand(seedBase + i * 3.1) * 0.55;
+        var L = maxLen * (0.55 + fxFinRand(seedBase + i * 7.7) * 0.45);
+        var pts = [[cx, cy]];
+        for (var s = 1; s <= 4; s++){
+          var f = s / 4;
+          var off = (fxFinRand(seedBase + i * 17.3 + s * 7.9) - 0.5) * 0.38 * (1 - f * 0.45);
+          var a2 = ang + off;
+          pts.push([cx + Math.cos(a2) * L * f, cy + Math.sin(a2) * L * f]);
+        }
+        var bAng = ang + (fxFinRand(seedBase + i * 23.7) > 0.5 ? 0.6 : -0.6);
+        var bLen = L * 0.34;
+        var bBase = pts[2];
+        var branch = [bBase,
+          [bBase[0] + Math.cos(bAng) * bLen * 0.55, bBase[1] + Math.sin(bAng) * bLen * 0.55],
+          [bBase[0] + Math.cos(bAng + 0.2) * bLen, bBase[1] + Math.sin(bAng + 0.2) * bLen]];
+        paths.push({ pts: pts, branch: branch });
+      }
+      var sparked = false;
+      var lastLife = 0;
+      scope.anim(dur, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var grow = Math.min(1, t / 0.38);
+        var fade = t > 0.68 ? Math.max(0, 1 - (t - 0.68) / 0.32) : 1;
+        gfx.clear();
+        function stroke(pts2, upto, width, color, alpha){
+          if (alpha <= 0 || upto <= 0) return;
+          gfx.lineStyle(width, color, alpha);
+          var total = (pts2.length - 1) * Math.min(1, upto);
+          var nSeg = Math.floor(total);
+          for (var si = 0; si < nSeg; si++){ gfx.moveTo(pts2[si][0], pts2[si][1]); gfx.lineTo(pts2[si + 1][0], pts2[si + 1][1]); }
+          var fr = total - nSeg;
+          if (nSeg < pts2.length - 1 && fr > 0){
+            gfx.moveTo(pts2[nSeg][0], pts2[nSeg][1]);
+            gfx.lineTo(pts2[nSeg][0] + (pts2[nSeg + 1][0] - pts2[nSeg][0]) * fr, pts2[nSeg][1] + (pts2[nSeg + 1][1] - pts2[nSeg][1]) * fr);
+          }
+        }
+        paths.forEach(function(pth){
+          stroke(pth.pts, grow, 8.5, col, 0.16 * fade);
+          stroke(pth.pts, grow, 3.4, col, 0.5 * fade);
+          stroke(pth.pts, grow, 1.7, 0xffffff, 0.95 * fade);
+          if (grow > 0.5){
+            stroke(pth.branch, (grow - 0.5) * 2, 2.2, col, 0.45 * fade);
+            stroke(pth.branch, (grow - 0.5) * 2, 1.1, 0xffffff, 0.8 * fade);
+          }
+        });
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = (t < 0.1 ? t / 0.1 : Math.max(0, 1 - (t - 0.1) / 0.5)) * 1.1 * fade;
+        core.scale.set(maxLen * 0.85);
+        if (!sparked && grow >= 0.55){
+          sparked = true;
+          em.burst(16, function(bi){
+            var ba = fxFinRand(seedBase + 300 + bi * 9.3) * Math.PI * 2;
+            var bs = 60 + fxFinRand(seedBase + 300 + bi * 6.1) * 200;
+            return { x: cx, y: cy, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 20,
+              life: 300 + fxFinRand(seedBase + 300 + bi * 4.3) * 220, size: 0.4, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [0.8, 0.85, 1], grav: 300, curve: 'o', pow: 1.15 };
+          });
+        }
+        em.step(dt, fade);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 黒のアギト：噛み砕きの紫の縁光＋衝撃粒子 ---
+       顎そのもの（サイズ・動き・タイミング）には一切触れず、噛み砕きの
+       拍にだけ重ねる。縁光は放射グラデーションのスプライト（縁が完全に
+       透明へ落ちるため板は出ない）を顎の後ろで一瞬だけ膨らませ、紫の
+       衝撃粒子（速い破片＋ゆっくり膨らむ塵）を寿命カーブで散らす */
+    function pixiFinAgitoBiteFx(cx, cy, jawW){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      fx4ChainCleanup(scope);
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var glow = new PIXI.Sprite(fx2GlowTexture());
+      glow.anchor.set(0.5);
+      glow.tint = 0x9a6cff;
+      glow.blendMode = PIXI.BLEND_MODES.ADD;
+      glow.position.set(cx, cy);
+      glow.alpha = 0;
+      cont.addChild(glow);
+      var em = scope.emitter(cont, { max: 70 });
+      var puffs = fx4SoftPuffs(scope, cont);
+      var seed = 557.7 + cx * 0.17 + cy * 0.19;
+      em.burst(20, function(bi){
+        var ba = fxFinRand(seed + bi * 8.7) * Math.PI * 2;
+        var bs = 70 + fxFinRand(seed + bi * 5.9) * 220;
+        return { x: cx, y: cy, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 40,
+          life: 320 + fxFinRand(seed + bi * 4.9) * 260, size: 0.5 + fxFinRand(seed + bi * 3.3) * 0.3, sizeEnd: 0.05,
+          colA: [0.9, 0.8, 1], colB: [0.5, 0.3, 1], grav: 420, damp: 0.5, curve: 'o', pow: 1.1 };
+      });
+      /* ゆっくり膨らむ紫の塵は柔らかい粒（fx4SoftPuffs）で出す
+         （硬い円テクスチャだと大きな円盤に見えてしまうため） */
+      puffs.burst(10, function(bi){
+        var ba2 = fxFinRand(seed + 80 + bi * 7.1) * Math.PI * 2;
+        var bs2 = 30 + fxFinRand(seed + 80 + bi * 6.3) * 90;
+        return { x: cx + (fxFinRand(seed + 80 + bi * 2.7) - 0.5) * jawW * 0.4, y: cy + jawW * 0.14,
+          vx: Math.cos(ba2) * bs2, vy: -20 - fxFinRand(seed + 80 + bi * 4.1) * 40,
+          life: 480 + fxFinRand(seed + 80 + bi * 5.5) * 240, size: 26, sizeEnd: 64,
+          tint: 0x8f7fb8, alpha: 0.30, grav: 60, damp: 0.4 };
+      });
+      var lastLife = 0;
+      scope.anim(620, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.sin(Math.PI * Math.min(1, t * 1.06));
+        glow.alpha = 0.38 * env;
+        glow.scale.set(jawW * (0.85 + 0.35 * t) / 128);
+        em.step(dt, 1);
+        puffs.step(dt);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* FX4-MOCK-END */
     /* ===== EX-キャリバー専用：飛翔しながら超巨大化する三日月斬撃（帯メッシュ方式） =====
        旧方式（Graphics の lineStyle で巨大な円弧の輪郭を描く）は、弧が
        「分度器」のような図形として画面に残り、飛翔感も出なかったため廃止。
