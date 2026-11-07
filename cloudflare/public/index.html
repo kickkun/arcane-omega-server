@@ -5891,8 +5891,9 @@
       } else if (id === '53ag'){
         /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて巨大な顎が
            真上の画面外から降ってきて、パネルを上からガブッと飲み込む
-           （第7弾で登場方向を横→真上へ変更。SDが真上へ飛ぶ前段の動きと
-           整合し、素材・大きさ・間・総尺・SEは従来どおり） */
+           （第7弾で登場方向を横→真上へ変更。第8弾で顎の向きを頭ごと
+           時計回りに90°回転させ、吻と口が真下を向く形に変更。素材・
+           大きさ・間・総尺・SEは従来どおり） */
         later(function(){
           var up = feetY + sdH + 90;
           fxFinAnimate(sd, [
@@ -5917,20 +5918,25 @@
             { transform: 'translate(0px,0px)' }, { transform: 'translate(-2.5px,1px)' },
             { transform: 'translate(2.5px,-1px)' }, { transform: 'translate(0px,0px)' }
           ], { duration: 300, iterations: 2 });
-          /* 顎素材は右向きの横顔：最終位置（口の中心がパネル中心に重なる）は
-             従来どおりとし、真上の画面外からまっすぐ降ってくる。
-             開始オフセットは顎全体が画面上端の外に出切る量にする
-             （素材は横長で高さ≦幅のため、幅基準で見積もれば必ず画面外） */
+          /* 顎素材は右向きの横顔（吻が右向き）。第8弾：頭全体を時計回りに
+             90°回転させ、吻と口が真下を向く向きで真上から降ろし、口を
+             下に向けてパネルに噛みつく形にする。回転の中心は口の位置
+             （従来の最終位置でパネル中心に重なる点＝要素の左上から
+             (0.70×jawW, 0.60×jawW) の点）に取り、回転しても口がパネル
+             中心から動かないようにする。最終位置・大きさは従来どおり。
+             開始オフセットは回転後の見かけの高さ（＝素材の幅 jawW）基準で、
+             顎全体が画面上端の外に出切る量にする */
           var jawW = Math.round(Math.max(w * 2.35, 330));
           var jaw = sdFinNode('img', 'fx-sd-char');
           jaw.src = conf.fx; jaw.alt = '';
           jaw.style.width = jawW + 'px';
+          jaw.style.transformOrigin = (jawW * 0.70) + 'px ' + (jawW * 0.60) + 'px';
           var finL = pcx - jawW * 0.70, finT = pcy - jawW * 0.60;
           jaw.style.left = finL + 'px'; jaw.style.top = finT + 'px';
           var startOffY = -(finT + jawW + 40);
           fxFinAnimate(jaw, [
-            { transform: 'translateY(' + startOffY + 'px)', opacity: 1 },
-            { transform: 'translateY(0px)', opacity: 1 }
+            { transform: 'translateY(' + startOffY + 'px) rotate(90deg)', opacity: 1 },
+            { transform: 'translateY(0px) rotate(90deg)', opacity: 1 }
           ], { duration: 540, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'forwards' });
           /* 噛み砕く：顎が上下に震え、パネルは口の中へ上向きに吸い込まれて消える */
           later(function(){
@@ -5938,11 +5944,11 @@
             pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
             pixiFinAgitoBiteFx(pcx, pcy, jawW); /* 第4弾：噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（拍は従来どおり） */
             fxFinAnimate(jaw, [
-              { transform: 'translateY(0px) rotate(0deg)' },
-              { transform: 'translateY(8px) rotate(0.7deg)' },
-              { transform: 'translateY(-6px) rotate(-0.8deg)' },
-              { transform: 'translateY(4px) rotate(0.4deg)' },
-              { transform: 'translateY(0px) rotate(0deg)' }
+              { transform: 'translateY(0px) rotate(90deg)' },
+              { transform: 'translateY(8px) rotate(90.7deg)' },
+              { transform: 'translateY(-6px) rotate(89.2deg)' },
+              { transform: 'translateY(4px) rotate(90.4deg)' },
+              { transform: 'translateY(0px) rotate(90deg)' }
             ], { duration: 460, easing: 'ease-in-out', fill: 'forwards' });
             fxFinAnimate(cl, [
               { transform: 'translate(0px,0px) scale(1)', opacity: 1 },
@@ -5953,8 +5959,8 @@
           /* 飲み込んだ顎は真上へ退場する */
           later(function(){
             fxFinAnimate(jaw, [
-              { transform: 'translateY(0px)', opacity: 1 },
-              { transform: 'translateY(' + Math.round(startOffY * 0.55) + 'px)', opacity: 0 }
+              { transform: 'translateY(0px) rotate(90deg)', opacity: 1 },
+              { transform: 'translateY(' + Math.round(startOffY * 0.55) + 'px) rotate(90deg)', opacity: 0 }
             ], { duration: 270, easing: 'ease-in', fill: 'forwards' });
           }, 1060);
         }, 1120);
@@ -7019,135 +7025,209 @@
       }, function(){ scope.dispose(); });
       return true;
     }
-    /* 046 ミラージュ（第7弾で作り替え：「空間の斬り刻み→割れて召喚」）：
-       カードが現れる前の空間へ、赤い斬撃が1本ずつ順番に現れて全て残り、
-       累積していく。段階は手描き図の順で、＼1本 → ／が加わりX字 →
-       さらにもう1本追加 → 密度が上がる → 浅い角度の斬撃も混ざって全面が
-       網目状に斬り刻まれる、の5段階。斬撃のたびに短い風切りSE。
-       最終段階まで刻まれたところで空間（カード型の領域）がパリンッと
-       ガラス・鏡のように割れて砕け（破砕SE＋破片の飛散・落下）、割れた
-       向こうからカードが現れる（出現は onShatter コールバックで呼び出し
-       側が担う）。この「空間が割れる」表現はミラージュの登場専用。
-       尺は約2.1秒。破片は通常合成の Graphics ポリゴンで描き（加算の
-       四角い板を出さない）、後片付けは fx2Scope の dispose に閉じる */
+    /* 046 ミラージュの斬撃の軌跡（第8弾：手描き図の再読解に合わせて定義）。
+       空間（カード型の領域、中心 cx,cy・幅 w・高さ h）を正面から見た座標で、
+       各斬撃を「始点→制御点→終点」の2次ベジェとして定義する（座標は空間の
+       左上を (0,0)、右下を (1,1) とする比率。辺の外側は 0 未満／1 超）。
+       全ての斬撃は空間の辺を突き抜け、両端が外側へはみ出す長さ（全長は
+       空間の幅の約1.3〜1.5倍）で、浅めの斜めを主体に1本ずつ累積する：
+       段階1＝左上の角の少し外側から浅い右下がり（約28°）で右辺の中央付近へ／
+       段階2＝左辺の下寄りから右上がり（約40°）で右上角付近へ（1本目と空間の
+       中央右寄りで交差してX状）／段階3＝左辺のやや下（高さ約80%位置）から
+       緩やかな弧で右下がりに進み、下辺を抜けて右下の外側へ／段階4＝左辺の
+       中央付近から緩い右下がり（約18°）で右辺の下寄りへ（4本が交差する
+       格子状）／段階5＝短い間隔でさらに3本が加わり、浅い角度と急な角度が
+       混ざって全面を覆う密な網目状になる（計7本）。
+       FxKit 版と Graphics フォールバック版で同じ軌跡・同じ拍を共有する */
+    function fxMirageSlashLines(cx, cy, w, h){
+      function X(f){ return cx + (f - 0.5) * w; }
+      function Y(f){ return cy + (f - 0.5) * h; }
+      var defs = [
+        { at: 120,  p0: [-0.18, -0.06], pc: [0.44, 0.16], p1: [1.05, 0.43], wMul: 1 },
+        { at: 460,  p0: [-0.10, 0.82],  pc: [0.48, 0.30], p1: [1.08, 0.06], wMul: 1 },
+        { at: 800,  p0: [-0.14, 0.80],  pc: [0.45, 0.88], p1: [1.08, 1.18], wMul: 1 },
+        { at: 1140, p0: [-0.12, 0.50],  pc: [0.47, 0.60], p1: [1.06, 0.78], wMul: 1 },
+        { at: 1460, p0: [0.16, -0.14],  pc: [0.33, 0.48], p1: [0.52, 1.10], wMul: 0.85 },
+        { at: 1570, p0: [-0.10, 0.24],  pc: [0.50, 0.40], p1: [1.10, 0.60], wMul: 0.9 },
+        { at: 1680, p0: [-0.08, 0.34],  pc: [0.40, 0.06], p1: [0.86, -0.16], wMul: 0.9 }
+      ];
+      return defs.map(function(d){
+        var p0 = { x: X(d.p0[0]), y: Y(d.p0[1]) };
+        var pc = { x: X(d.pc[0]), y: Y(d.pc[1]) };
+        var p1 = { x: X(d.p1[0]), y: Y(d.p1[1]) };
+        var pts = [];
+        for (var i = 0; i <= 24; i++){
+          var u = i / 24, v = 1 - u;
+          pts.push({
+            x: v * v * p0.x + 2 * v * u * pc.x + u * u * p1.x,
+            y: v * v * p0.y + 2 * v * u * pc.y + u * u * p1.y
+          });
+        }
+        return { at: d.at, pts: pts, wMul: d.wMul, seDone: false };
+      });
+    }
+    /* 046 ミラージュ（第8弾で作り替え：「空間の斬り刻み→割れて召喚」）：
+       カードが現れる前の空間は、四角い輪郭が演出中ずっと見えている。その
+       空間へ、辺を突き抜ける長い斬撃が1本ずつ追加され、前の斬撃は一切
+       消えずに残り続ける（累積）。各斬撃は風切りSEとともに一瞬で走り、
+       その軌跡が光る線として残る。段階の間隔は約0.34秒（仕上げの段階5
+       だけ約0.11秒間隔で3本が加わる）。全ての斬撃が揃った後（約1.9秒）、
+       空間全体が斬撃の線に沿ってパリンッと割れ（ガラス音SE）、破片が
+       飛散・落下し、割れた向こうからカードが現れる（出現は onShatter
+       コールバックで呼び出し側が担う）。総尺は約2.48秒。この「空間が
+       割れる」表現はミラージュの登場専用。
+       輪郭と破片は通常合成の Graphics ポリゴンで描き（加算の四角い板を
+       出さない）、中心の残光も放射グラデーションテクスチャのスプライト
+       に限定する。後片付けは fx2Scope の dispose に閉じる */
     function fx3MirageFx(cx, cy, w, h, onShatter){
       if (!FxKit.available()) return false;
       var scope = fx2Scope();
+      var x0 = cx - w / 2, y0 = cy - h / 2;
+      /* 輪郭・破片は通常合成、斬撃は加算の別コンテナ */
+      var frameCont = new PIXI.Container();
+      scope.add(frameCont);
+      var frameGfx = new PIXI.Graphics();
+      frameCont.addChild(frameGfx);
       var cont = new PIXI.Container();
       cont.blendMode = PIXI.BLEND_MODES.ADD;
       scope.add(cont);
-      var diag = Math.sqrt(w * w + h * h);
-      var redTex = fx3FlowTexture('red', '255,64,40', '255,120,84');
-      var MIRAGE_STAGES = [
-        { at: 90,   list: [{ deg: 34, dx: 0, dy: -0.04, len: 1.04 }] },
-        { at: 330,  list: [{ deg: -40, dx: 0, dy: 0.02, len: 1.06 }] },
-        { at: 570,  list: [{ deg: 52, dx: -0.05, dy: 0.16, len: 0.98 }, { deg: -16, dx: 0.04, dy: -0.2, len: 0.94 }] },
-        { at: 820,  list: [{ deg: 22, dx: -0.1, dy: 0.05, len: 1.0 }, { deg: -56, dx: 0.09, dy: -0.08, len: 0.97 }, { deg: 64, dx: 0.02, dy: 0.3, len: 0.9 }] },
-        { at: 1080, list: [{ deg: 11, dx: 0, dy: -0.3, len: 1.02 }, { deg: -9, dx: -0.02, dy: 0.12, len: 1.0 }, { deg: 17, dx: 0.03, dy: 0.34, len: 0.96 }, { deg: -24, dx: 0.06, dy: -0.34, len: 0.93 }] }
-      ];
-      var MIRAGE_SHATTER_AT = 1420;
-      var slashes = [];
-      MIRAGE_STAGES.forEach(function(st){
-        st.list.forEach(function(sp){
-          var rb = fx3Ribbon(scope, cont, 16, { alpha: 0.95, core: 0.75, dir: 0, tex: redTex });
-          rb.mesh.visible = false;
-          slashes.push({ at: st.at, sp: sp, rb: rb, rad: sp.deg * Math.PI / 180, seDone: false });
-        });
-      });
-      /* 割れた破片は通常合成の別コンテナ（Graphics の半透明ポリゴン）で描く */
       var shardCont = new PIXI.Container();
       scope.add(shardCont);
       var shardGfx = new PIXI.Graphics();
       shardCont.addChild(shardGfx);
+      var redTex = fx3FlowTexture('red', '255,64,40', '255,120,84');
+      var lines = fxMirageSlashLines(cx, cy, w, h);
+      var DRAW_MS = 150;      /* 斬撃1本が走り切る時間 */
+      var SHATTER_AT = 1900;  /* 全ての斬撃が揃ってから割れる拍 */
+      lines.forEach(function(ln){
+        ln.rb = fx3Ribbon(scope, cont, 24, { alpha: 0.95, core: 0.75, dir: 0, tex: redTex });
+        ln.rb.mesh.visible = false;
+      });
+      /* 中心の残光：放射グラデーションのスプライト
+         （矩形プレーンの加算グローは四角い板が出るため使わない） */
+      var glow = new PIXI.Sprite(fx2GlowTexture());
+      glow.anchor.set(0.5);
+      glow.tint = 0xff5a40;
+      glow.blendMode = PIXI.BLEND_MODES.ADD;
+      glow.position.set(cx, cy);
+      glow.scale.set(Math.max(w, h) * 1.15 / 128);
+      glow.alpha = 0;
+      cont.addChild(glow);
+      /* 破片：空間をジッター付き格子で三角形に割っておき、割れた瞬間に
+         各破片が中心から外へ飛び、回転しながら落下する */
       var seed = 467.3 + cx * 0.13 + cy * 0.19;
       var shards = [];
-      for (var si = 0; si < 18; si++){
-        var sa = fxFinRand(seed + si * 12.7) * Math.PI * 2;
-        var sr0 = fxFinRand(seed + si * 5.3);
-        shards.push({
-          x: cx + (fxFinRand(seed + si * 3.1) - 0.5) * w * 0.84,
-          y: cy + (fxFinRand(seed + si * 4.3) - 0.5) * h * 0.84,
-          vx: Math.cos(sa) * (40 + sr0 * 150), vy: Math.sin(sa) * (30 + sr0 * 90) - 60,
-          size: 5 + fxFinRand(seed + si * 6.9) * 13,
-          rot: fxFinRand(seed + si * 8.1) * Math.PI * 2,
-          vr: (fxFinRand(seed + si * 9.4) - 0.5) * 9,
-          tone: fxFinRand(seed + si * 11.7)
-        });
-      }
-      var glowA = FxKit.glowQuad(0xff4a3c, { intensity: 0, pulse: 0, speed: 1 });
-      glowA.position.set(cx, cy); glowA.scale.set(diag * 0.36); cont.addChild(glowA);
-      var shatterDone = false;
-      var lastLife = 0;
-      scope.anim(2080, function(_, t, life){
-        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
-        var dtS = dt / 1000;
-        slashes.forEach(function(sl, j){
-          var local = (life - sl.at) / 170; /* 1本の描き込みは約170ms */
-          if (local <= 0){ sl.rb.mesh.visible = false; return; }
-          if (!sl.seDone){ sl.seDone = true; sePlay('slashWind'); }
-          sl.rb.mesh.visible = true;
-          var head = Math.min(1, local * 1.6); head = 1 - Math.pow(1 - head, 3);
-          var tail = Math.max(0, head - 0.7);
-          /* 出現した斬撃は消えずに残る（累積）。割れる瞬間に閃いて一緒に消える */
-          var aEnv = Math.min(1, local / 0.12) * 0.92;
-          if (life >= MIRAGE_SHATTER_AT) aEnv *= Math.max(0, 1 - (life - MIRAGE_SHATTER_AT) / 130);
-          var dx = Math.cos(sl.rad), dy = Math.sin(sl.rad);
-          var px = -dy, py = dx;
-          var L = diag * sl.sp.len;
-          var scx = cx + sl.sp.dx * w, scy = cy + sl.sp.dy * h;
-          var samples = [];
-          for (var i = 0; i <= 16; i++){
-            var s = i / 16;
-            var u = tail + (head - tail) * s;
-            var along = (u - 0.5) * L;
-            var arc = Math.sin(s * Math.PI) * L * 0.026;
-            samples.push({ x: scx + dx * along + px * arc, y: scy + dy * along + py * arc,
-              ax: px, ay: py, hw: (1.5 + 8 * Math.sin(Math.PI * s)) * Math.min(1, local * 3) });
+      (function(){
+        var COLS = 4, ROWS = 5, grid = [], r, c, i, j;
+        for (r = 0; r <= ROWS; r++){
+          grid.push([]);
+          for (c = 0; c <= COLS; c++){
+            var gx = c / COLS, gy = r / ROWS;
+            if (c > 0 && c < COLS) gx += (fxFinRand(seed + r * 31.7 + c * 7.9) - 0.5) * 0.10;
+            if (r > 0 && r < ROWS) gy += (fxFinRand(seed + r * 13.1 + c * 17.3) - 0.5) * 0.08;
+            grid[r].push({ x: x0 + gx * w, y: y0 + gy * h });
           }
-          FxKit.fillStrip(sl.rb.strip, samples);
-          sl.rb.mat.uniforms.uFlow = life * 0.011 + j * 0.7;
-          sl.rb.mat.uniforms.uAlpha = 0.95 * aEnv;
+        }
+        function mkShard(pa, pb, pc2, k){
+          var mx = (pa.x + pb.x + pc2.x) / 3, my = (pa.y + pb.y + pc2.y) / 3;
+          var dx = mx - cx, dy = my - cy;
+          var dl = Math.sqrt(dx * dx + dy * dy) || 1;
+          var sp = 46 + fxFinRand(seed + k * 6.3) * 150;
+          shards.push({
+            rel: [{ x: pa.x - mx, y: pa.y - my }, { x: pb.x - mx, y: pb.y - my }, { x: pc2.x - mx, y: pc2.y - my }],
+            x: mx, y: my,
+            vx: dx / dl * sp + (fxFinRand(seed + k * 3.7) - 0.5) * 60,
+            vy: dy / dl * sp * 0.7 - 40 - fxFinRand(seed + k * 4.9) * 50,
+            vr: (fxFinRand(seed + k * 8.7) - 0.5) * 8,
+            tone: fxFinRand(seed + k * 11.3)
+          });
+        }
+        var k2 = 0;
+        for (i = 0; i < ROWS; i++){
+          for (j = 0; j < COLS; j++){
+            mkShard(grid[i][j], grid[i][j + 1], grid[i + 1][j], k2++);
+            mkShard(grid[i][j + 1], grid[i + 1][j + 1], grid[i + 1][j], k2++);
+          }
+        }
+      })();
+      var shatterDone = false;
+      scope.anim(2480, function(_, t, life){
+        /* 空間の輪郭：演出中ずっと見えていて、割れる瞬間に消える */
+        frameGfx.clear();
+        if (life < SHATTER_AT){
+          var fIn = Math.min(1, life / 130);
+          frameGfx.beginFill(0x140404, 0.30 * fIn);
+          frameGfx.drawRect(x0, y0, w, h);
+          frameGfx.endFill();
+          frameGfx.lineStyle(2.2, 0xff7a5c, 0.9 * fIn);
+          frameGfx.drawRect(x0, y0, w, h);
+          frameGfx.lineStyle(1, 0xffffff, 0.38 * fIn);
+          frameGfx.drawRect(x0 + 2.5, y0 + 2.5, w - 5, h - 5);
+        }
+        /* 斬撃：1本ずつ走っては残り続ける（累積。割れる瞬間まで消えない） */
+        lines.forEach(function(ln, j){
+          var local = (life - ln.at) / DRAW_MS;
+          if (local <= 0){ ln.rb.mesh.visible = false; return; }
+          if (!ln.seDone){ ln.seDone = true; sePlay('slashWind'); }
+          ln.rb.mesh.visible = true;
+          var grow = Math.min(1, local); grow = 1 - Math.pow(1 - grow, 3);
+          var aEnv = Math.min(1, local / 0.1) * 0.95;
+          if (life >= SHATTER_AT) aEnv *= Math.max(0, 1 - (life - SHATTER_AT) / 120);
+          var N = 24, samples = [];
+          for (var i = 0; i <= N; i++){
+            var fi = (i / N) * grow * 24;
+            var i0 = Math.min(23, Math.floor(fi)), fr = fi - i0;
+            var pa = ln.pts[i0], pb = ln.pts[i0 + 1];
+            var px2 = pa.x + (pb.x - pa.x) * fr, py2 = pa.y + (pb.y - pa.y) * fr;
+            var qa = ln.pts[Math.max(0, i0 - 1)], qb = ln.pts[Math.min(24, i0 + 2)];
+            var tx = qb.x - qa.x, ty = qb.y - qa.y;
+            var tl = Math.sqrt(tx * tx + ty * ty) || 1;
+            var s = i / N;
+            samples.push({ x: px2, y: py2, ax: -ty / tl, ay: tx / tl,
+              hw: (1.2 + 7.6 * Math.sin(Math.PI * s)) * ln.wMul * Math.min(1, local * 3) });
+          }
+          FxKit.fillStrip(ln.rb.strip, samples);
+          ln.rb.mat.uniforms.uFlow = life * 0.011 + j * 0.7;
+          ln.rb.mat.uniforms.uAlpha = 0.95 * aEnv;
         });
         /* 中心の残光：斬撃が増えるほど溜まって光り、割れと共に弾ける */
-        var gu = glowA.material.uniforms;
-        gu.uTime = life / 1000;
-        gu.uIntensity = life < MIRAGE_SHATTER_AT
-          ? 0.25 + 0.5 * Math.min(1, life / MIRAGE_SHATTER_AT)
-          : Math.max(0, 0.9 * (1 - (life - MIRAGE_SHATTER_AT) / 220));
+        glow.alpha = life < SHATTER_AT
+          ? 0.30 * Math.min(1, life / SHATTER_AT)
+          : Math.max(0, 0.42 * (1 - (life - SHATTER_AT) / 200));
         /* 割れる瞬間：破砕SE＋コールバック（割れた向こうからカードが現れる） */
-        if (!shatterDone && life >= MIRAGE_SHATTER_AT){
+        if (!shatterDone && life >= SHATTER_AT){
           shatterDone = true;
           sePlay('shatter');
           if (onShatter) onShatter();
         }
-        /* 破片の飛散・落下と、割れた瞬間のヒビの閃光（放射状の白線） */
+        /* 破片の飛散・落下と、割れた瞬間の斬撃ラインの閃光 */
         shardGfx.clear();
         if (shatterDone){
-          var st = (life - MIRAGE_SHATTER_AT) / 1000;
-          if (st < 0.16){
-            var ca = 0.85 * (1 - st / 0.16);
-            shardGfx.lineStyle(1.6, 0xffffff, ca);
-            for (var ci = 0; ci < 8; ci++){
-              var cang = ci * Math.PI / 4 + 0.35;
-              shardGfx.moveTo(cx, cy);
-              shardGfx.lineTo(cx + Math.cos(cang) * w * 0.62, cy + Math.sin(cang) * h * 0.62);
-            }
+          var st = (life - SHATTER_AT) / 1000;
+          if (st < 0.13){
+            var fa = 1 - st / 0.13;
+            lines.forEach(function(ln){
+              shardGfx.lineStyle(6, 0xff4a3c, 0.45 * fa);
+              ln.pts.forEach(function(p, pi){ if (pi === 0) shardGfx.moveTo(p.x, p.y); else shardGfx.lineTo(p.x, p.y); });
+              shardGfx.lineStyle(2.2, 0xffffff, 0.95 * fa);
+              ln.pts.forEach(function(p, pi){ if (pi === 0) shardGfx.moveTo(p.x, p.y); else shardGfx.lineTo(p.x, p.y); });
+            });
           }
-          shards.forEach(function(sh){
-            sh.x += sh.vx * dtS; sh.y += sh.vy * dtS;
-            sh.vy += 620 * dtS; sh.rot += sh.vr * dtS;
-            var al = st < 0.32 ? 0.75 : Math.max(0, 0.75 * (1 - (st - 0.32) / 0.3));
-            if (al <= 0) return;
-            var c1 = Math.cos(sh.rot), s1 = Math.sin(sh.rot);
-            var c2 = Math.cos(sh.rot + 2.4), s2 = Math.sin(sh.rot + 2.4);
-            var c3 = Math.cos(sh.rot + 4.4), s3 = Math.sin(sh.rot + 4.4);
-            var col = sh.tone > 0.66 ? 0xffd9d2 : (sh.tone > 0.33 ? 0xfff4ee : 0xff9a86);
-            shardGfx.beginFill(col, al * 0.85);
-            shardGfx.moveTo(sh.x + c1 * sh.size, sh.y + s1 * sh.size);
-            shardGfx.lineTo(sh.x + c2 * sh.size * 0.7, sh.y + s2 * sh.size * 0.7);
-            shardGfx.lineTo(sh.x + c3 * sh.size * 0.85, sh.y + s3 * sh.size * 0.85);
-            shardGfx.closePath(); shardGfx.endFill();
-          });
+          var sal = st < 0.30 ? 1 : Math.max(0, 1 - (st - 0.30) / 0.25);
+          if (sal > 0){
+            shards.forEach(function(sh){
+              var mx2 = sh.x + sh.vx * st, my2 = sh.y + sh.vy * st + 330 * st * st;
+              var rot = sh.vr * st, cs = Math.cos(rot), sn = Math.sin(rot);
+              var col = sh.tone > 0.66 ? 0xffd9d2 : (sh.tone > 0.33 ? 0xf2f7ff : 0xff9a86);
+              shardGfx.lineStyle(0.75, 0xffffff, 0.45 * sal);
+              shardGfx.beginFill(col, 0.62 * sal);
+              sh.rel.forEach(function(rp, ri){
+                var wx = mx2 + rp.x * cs - rp.y * sn, wy = my2 + rp.x * sn + rp.y * cs;
+                if (ri === 0) shardGfx.moveTo(wx, wy); else shardGfx.lineTo(wx, wy);
+              });
+              shardGfx.closePath(); shardGfx.endFill();
+            });
+          }
         }
       }, function(){ scope.dispose(); });
       return true;
@@ -8857,43 +8937,53 @@
       setTimeout(function(){ pixiRing(cx, feet, { maxR: w * 1.4, dur: 740, color: 0xeccd7e }); }, 170);
       pixiBurst(cx, feet - 8, { count: 38, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 });
     }
-    /* 046 ミラージュ（第7弾）：「空間の斬り刻み→割れて召喚」は fx3MirageFx
+    /* 046 ミラージュ（第8弾）：「空間の斬り刻み→割れて召喚」は fx3MirageFx
        （FxKit 版）が本体。FxKit が使えない環境では Graphics の斬撃線で
-       同じ拍（5段階の累積→1420ms で割れる）を再現する簡易版に倒し、
-       どちらも使えない場合は false を返して呼び出し側がカードを即座に
-       表示する（従来どおり演出なしで進行）。残像は出現後に DOM 側の
-       mirageEcho が担当する */
+       同じ軌跡・同じ拍（辺を突き抜ける長い斬撃7本の累積→1900ms で割れる）を
+       再現する簡易版に倒し、どちらも使えない場合は false を返して呼び出し側が
+       カードを即座に表示する（従来どおり演出なしで進行）。残像は出現後に
+       DOM 側の mirageEcho が担当する */
     function fxMirageFx(cx, cy, w, h, onShatter){
-      if (fx3MirageFx(cx, cy, w, h, onShatter)) return true; /* 第7弾：FxKit 版 */
+      if (fx3MirageFx(cx, cy, w, h, onShatter)) return true; /* 第8弾：FxKit 版 */
       if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return false;
-      var diag = Math.sqrt(w * w + h * h);
-      var specs = [
-        { at: 90, deg: 34, dx: 0, dy: -0.04, len: 1.04 },
-        { at: 330, deg: -40, dx: 0, dy: 0.02, len: 1.06 },
-        { at: 570, deg: 52, dx: -0.05, dy: 0.16, len: 0.98 }, { at: 570, deg: -16, dx: 0.04, dy: -0.2, len: 0.94 },
-        { at: 820, deg: 22, dx: -0.1, dy: 0.05, len: 1.0 }, { at: 820, deg: -56, dx: 0.09, dy: -0.08, len: 0.97 }, { at: 820, deg: 64, dx: 0.02, dy: 0.3, len: 0.9 },
-        { at: 1080, deg: 11, dx: 0, dy: -0.3, len: 1.02 }, { at: 1080, deg: -9, dx: -0.02, dy: 0.12, len: 1.0 }, { at: 1080, deg: 17, dx: 0.03, dy: 0.34, len: 0.96 }, { at: 1080, deg: -24, dx: 0.06, dy: -0.34, len: 0.93 }
-      ];
-      var SHATTER_AT = 1420;
+      var lines = fxMirageSlashLines(cx, cy, w, h);
+      var SHATTER_AT = 1900;
       var done = false;
-      pixiAnim(2080, function(gfx, t, life){
+      pixiAnim(2480, function(gfx, t, life){
         gfx.clear();
-        specs.forEach(function(sp){
-          if (life < sp.at) return;
-          if (!sp.seDone){ sp.seDone = true; sePlay('slashWind'); }
-          var local = Math.min(1, (life - sp.at) / 170);
-          var a = Math.min(1, local / 0.12) * 0.9;
-          if (life >= SHATTER_AT) a *= Math.max(0, 1 - (life - SHATTER_AT) / 130);
+        /* 空間の輪郭：演出中ずっと見えていて、割れる瞬間に消える */
+        if (life < SHATTER_AT){
+          var fIn = Math.min(1, life / 130);
+          gfx.beginFill(0x140404, 0.30 * fIn);
+          gfx.drawRect(cx - w / 2, cy - h / 2, w, h);
+          gfx.endFill();
+          gfx.lineStyle(2.2, 0xff7a5c, 0.9 * fIn);
+          gfx.drawRect(cx - w / 2, cy - h / 2, w, h);
+        }
+        /* 斬撃：1本ずつ走っては残り続ける（累積） */
+        lines.forEach(function(ln){
+          if (life < ln.at) return;
+          if (!ln.seDone){ ln.seDone = true; sePlay('slashWind'); }
+          var local = Math.min(1, (life - ln.at) / 150);
+          var a = Math.min(1, local / 0.1) * 0.92;
+          if (life >= SHATTER_AT) a *= Math.max(0, 1 - (life - SHATTER_AT) / 120);
           if (a <= 0) return;
-          var rad = sp.deg * Math.PI / 180, dx = Math.cos(rad), dy = Math.sin(rad);
           var grow = 1 - Math.pow(1 - local, 3);
-          var L = diag * sp.len * (0.4 + 0.6 * grow);
-          var sx = cx + sp.dx * w, sy = cy + sp.dy * h;
+          var upto = Math.max(1, Math.round(grow * 24));
+          var i, p;
           gfx.lineStyle(9, 0xff4a3c, 0.30 * a);
-          gfx.moveTo(sx - dx * L / 2, sy - dy * L / 2); gfx.lineTo(sx + dx * L / 2, sy + dy * L / 2);
-          gfx.lineStyle(3.4, 0xffffff, 0.9 * a);
-          gfx.moveTo(sx - dx * L / 2, sy - dy * L / 2); gfx.lineTo(sx + dx * L / 2, sy + dy * L / 2);
+          for (i = 0; i <= upto; i++){ p = ln.pts[i]; if (i === 0) gfx.moveTo(p.x, p.y); else gfx.lineTo(p.x, p.y); }
+          gfx.lineStyle(3.2, 0xffffff, 0.9 * a);
+          for (i = 0; i <= upto; i++){ p = ln.pts[i]; if (i === 0) gfx.moveTo(p.x, p.y); else gfx.lineTo(p.x, p.y); }
         });
+        /* 割れた瞬間：斬撃ラインが白く閃く */
+        if (done && life - SHATTER_AT < 130){
+          var fa2 = 1 - (life - SHATTER_AT) / 130;
+          lines.forEach(function(ln){
+            gfx.lineStyle(2.2, 0xffffff, 0.95 * fa2);
+            ln.pts.forEach(function(p, pi){ if (pi === 0) gfx.moveTo(p.x, p.y); else gfx.lineTo(p.x, p.y); });
+          });
+        }
         if (!done && life >= SHATTER_AT){
           done = true;
           sePlay('shatter');
@@ -9783,15 +9873,15 @@
       /* Pixi召喚エフェクトはステージ出現のタイミングで発火させる */
       stageSummonFx(item.cardId, clone, item.mythic);
       /* 滞在：通常カードは0.3秒前後、神話は少し長め。個別専用エフェクトを持つ
-         神話は演出が読める長さまで延ばす。ミラージュ（第7弾：斬り刻み→
-         割れて召喚、出現は約1.42秒）と EX（着地の波動で出現、約0.4秒＋
+         神話は演出が読める長さまで延ばす。ミラージュ（第8弾：斬り刻み→
+         割れて召喚、出現は約1.9秒）と EX（着地の波動で出現、約0.4秒＋
          出現の読み時間）は専用の長さにし、後続が詰まっていても出現前に
          スライドが始まらない下限を守る */
       var dwell = item.mythic ? (STAGE_FX_IDS[String(item.cardId)] ? 800 : 620) : 300;
-      if (String(item.cardId) === '46') dwell = 1750;
+      if (String(item.cardId) === '46') dwell = 2200;
       if (String(item.cardId) === '52ex') dwell = 1020;
       if (stageQueue.length >= 2) dwell = Math.min(dwell, 140);
-      if (String(item.cardId) === '46') dwell = Math.max(dwell, 1560);
+      if (String(item.cardId) === '46') dwell = Math.max(dwell, 2030);
       if (String(item.cardId) === '52ex') dwell = Math.max(dwell, 600);
       setTimeout(function(){
         if (ped) ped._dismiss(360); /* 台は消えず、待機状態（控えめな明るさ）へ戻る */
@@ -13782,11 +13872,11 @@
       fxStageEl.scrollIntoView({ block: 'start' });
       fxCheckPlaceCard();
       /* 召喚台も実戦と同じ円盤をカードの背面に重ねる（最終配置の後に置いて位置を合わせる）。
-         ミラージュは演出が約2.1秒に伸びたため、退場もそれに合わせる */
+         ミラージュは演出が約2.48秒に伸びたため、退場もそれに合わせる */
       var pr = el.getBoundingClientRect();
       if (pr.width){
         var ped = summonPedestal(pr.left + pr.width / 2, pr.bottom, pr.width, item.mythic);
-        if (ped) setTimeout(function(){ ped._dismiss(420); }, item.key === 'm46' ? 1950 : (item.mythic ? 1080 : 720));
+        if (ped) setTimeout(function(){ ped._dismiss(420); }, item.key === 'm46' ? 2400 : (item.mythic ? 1080 : 720));
       }
     }
     function fxCheckPlayHatch(){
@@ -13847,7 +13937,7 @@
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖がパネル全体に被さり、闇の渦へ引きずり込む' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスしてパネルを爆発させる' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手パネルへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）してパネルに光の裂け目を走らせ、真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が真上の画面外から降ってきてパネルを上から飲み込む' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が口を下に向けて真上の画面外から降ってきてパネルを上から飲み込む' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスが攻撃側から長い距離を一気に突進し、槍の一突きでドンッと止まって放射状のヒビを入れる' }
     ];
     function fxCheckPlayFinish(item){
