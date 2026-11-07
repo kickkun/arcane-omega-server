@@ -171,11 +171,26 @@
       .dmg-pop{
         position:absolute; left:50%; top:34%; transform:translate(-50%,-50%); z-index:5;
         font-size:24px; font-weight:900; color:#ff6a55; text-shadow:0 2px 0 #5c130c,0 0 10px rgba(0,0,0,.8);
-        pointer-events:none; animation:popUp .85s ease-out forwards;
+        pointer-events:none; animation:popUp .85s ease-out forwards, popGlow .34s ease-out;
       }
-      .dmg-pop.heal{color:#7ed492; text-shadow:0 2px 0 #17401f,0 0 10px rgba(0,0,0,.8);}
-      .dmg-pop.buff{color:#8be0c8; font-size:19px; text-shadow:0 2px 0 #0d3830,0 0 10px rgba(0,0,0,.8);}
+      .dmg-pop.heal{color:#7ed492; text-shadow:0 2px 0 #17401f,0 0 10px rgba(0,0,0,.8); animation:popUp .85s ease-out forwards, popGlowHeal .34s ease-out;}
+      .dmg-pop.buff{color:#8be0c8; font-size:19px; text-shadow:0 2px 0 #0d3830,0 0 10px rgba(0,0,0,.8); animation:popUp .85s ease-out forwards;}
       .leader .dmg-pop{font-size:30px;}
+      /* ===== 数字ポップ第2弾：出現時の発光＋大きさの段階表現 =====
+         出現直後の一瞬だけ filter で強く光らせる（ダメージ=暖色／回復=緑）。
+         transform は popUp 側が担うため、こちらは filter のみを動かす。
+         段階（pop-t1〜t3）は JS（popTierCls）が数値の大きさから付ける：
+         大きいダメージほど数字が大きく、縁のグローも強くなる。
+         可読性の土台（濃い縁取りの text-shadow）は全段階で維持する。
+         フィニッシュ特大数字（.finish）は後段の専用ルールが優先される */
+      @keyframes popGlow{0%{filter:brightness(2.5) drop-shadow(0 0 11px rgba(255,138,64,.95));}100%{filter:brightness(1) drop-shadow(0 0 0 rgba(255,138,64,0));}}
+      @keyframes popGlowHeal{0%{filter:brightness(2.3) drop-shadow(0 0 11px rgba(110,231,150,.95));}100%{filter:brightness(1) drop-shadow(0 0 0 rgba(110,231,150,0));}}
+      .dmg-pop.pop-t2{font-size:28px; text-shadow:0 2px 0 #5c130c,0 0 10px rgba(0,0,0,.8),0 0 13px rgba(255,110,55,.55);}
+      .dmg-pop.pop-t2.heal{text-shadow:0 2px 0 #17401f,0 0 10px rgba(0,0,0,.8),0 0 13px rgba(110,231,150,.5);}
+      .dmg-pop.pop-t3{font-size:34px; letter-spacing:.02em; text-shadow:0 2px 0 #5c130c,0 0 12px rgba(0,0,0,.85),0 0 20px rgba(255,96,40,.85),0 0 7px rgba(255,190,110,.8);}
+      .dmg-pop.pop-t3.heal{text-shadow:0 2px 0 #17401f,0 0 12px rgba(0,0,0,.85),0 0 20px rgba(80,220,130,.8),0 0 7px rgba(190,255,210,.75);}
+      .leader .dmg-pop.pop-t2{font-size:34px;}
+      .leader .dmg-pop.pop-t3{font-size:42px;}
       @keyframes popUp{0%{opacity:0; transform:translate(-50%,-30%) scale(.6);}18%{opacity:1; transform:translate(-50%,-60%) scale(1.15);}100%{opacity:0; transform:translate(-50%,-150%) scale(1);}}
       .banner{
         border-radius:10px; padding:9px 12px; font-size:13.5px; font-weight:700; line-height:1.5;
@@ -917,7 +932,12 @@
       .fx-hit{animation:fxHitReact .38s ease;}
       .fx-ghost{position:fixed; z-index:88; pointer-events:none; margin:0; animation:fxGhostFade .45s ease-out forwards;}
       @keyframes fxGhostFade{0%{opacity:1;}100%{opacity:0; transform:scale(.82) translateY(8px); filter:brightness(1.7);}}
-      .dmg-pop.fx-fixed{position:fixed; z-index:89; animation:popUpFixed .85s ease-out forwards;}
+      /* 破壊の残像：本体ゴーストの背後に、少し大きく滲んだ複製を遅れて
+         フェードさせる（消え方に重みを持たせる。合計時間は従来と同程度） */
+      .fx-ghost-after{z-index:87; animation:fxGhostAfter .6s ease-out .05s both;}
+      @keyframes fxGhostAfter{0%{opacity:.5; transform:scale(1.03); filter:blur(1.5px) brightness(1.6);}100%{opacity:0; transform:scale(.9) translateY(10px); filter:blur(3px) brightness(1.9);}}
+      .dmg-pop.fx-fixed{position:fixed; z-index:89; animation:popUpFixed .85s ease-out forwards, popGlow .34s ease-out;}
+      .dmg-pop.fx-fixed.heal{animation:popUpFixed .85s ease-out forwards, popGlowHeal .34s ease-out;}
       @keyframes popUpFixed{0%{opacity:0; transform:translate(-50%,-20%) scale(.6);}18%{opacity:1; transform:translate(-50%,-60%) scale(1.15);}100%{opacity:0; transform:translate(-50%,-170%) scale(1);}}
       .ov-player{position:relative;}
       /* 神話カード：手札・場のどちらでも枠の金色グローが穏やかに脈打つ。
@@ -3457,7 +3477,7 @@
     function newGame(opts){
       opts = opts || {};
       uidSeq = 1;
-      fxCpuPrev = null; fxCpuPrevCid = null; fxLungeQueue = []; /* 演出の差分ベースラインを張り直す */
+      fxCpuPrev = null; fxCpuPrevCid = null; fxLungeQueue = []; fxHitQueue = []; /* 演出の差分ベースラインを張り直す */
       fxResetFinish(); /* フィニッシュ演出の状態も張り直す */
       /* 先攻の決定：シミュレーション等で明示された場合はそれを使い、
          そうでなければタイトル画面の手番選択（先行／後攻／ランダム）に従う */
@@ -3613,6 +3633,18 @@
     logBackdropEl.addEventListener('click', function(){ setLogExpanded(false); });
     var pendingPops = [];
     function popOn(sel, text, cls){ if (HEADLESS) return; pendingPops.push({sel:sel, text:text, cls:cls||''}); }
+    /* 第2弾【4】数字ポップの段階表現：数値の大きさで pop-t1〜t3 を付け、
+       大きいダメージ／回復ほど数字が大きく・強く光る（CSS側で定義）。
+       フィニッシュ特大数字とバフ表示は従来の見た目を維持する */
+    function popTierCls(text, cls){
+      if (!cls) cls = '';
+      if ((' ' + cls + ' ').indexOf(' finish ') >= 0) return '';
+      if (cls.indexOf('buff') >= 0) return ' pop-t1';
+      var m = /-?\d+/.exec(String(text));
+      if (!m) return ' pop-t1';
+      var a = Math.abs(parseInt(m[0], 10));
+      return a >= 7 ? ' pop-t3' : (a >= 4 ? ' pop-t2' : ' pop-t1');
+    }
     function flushPops(){
       pendingPops.forEach(function(p){
         var el = document.querySelector(p.sel);
@@ -3623,7 +3655,7 @@
            CSS側の animation-delay が着弾（約0.5秒）に合わせてある。 */
         if ((' ' + (p.cls || '') + ' ').indexOf(' finish ') >= 0){ fxPopFixed(el, p.text, p.cls); return; }
         var span = document.createElement('span');
-        span.className = 'dmg-pop ' + p.cls;
+        span.className = 'dmg-pop ' + p.cls + popTierCls(p.text, p.cls);
         span.textContent = p.text;
         el.appendChild(span);
         setTimeout(function(){ if (span.parentNode) span.parentNode.removeChild(span); }, 900);
@@ -3933,6 +3965,7 @@
       fxFinishReg = {};
       fxFinishOverDelay = 1750;
       fxMythicGen++;
+      fx2DisposeAll(); /* 第2弾：対戦リセット時も通常演出の残留を即時ゼロにする */
       mythicFxCleanup();
       fxFinishTimers.forEach(clearTimeout); fxFinishTimers = [];
       document.body.classList.remove('fx-impact','fx-finish-dim');
@@ -6155,6 +6188,298 @@
         }
       };
     })();
+    /* ===== 演出総見直し 第2弾：通常演出の底上げ（FxKit の上に構築） =====
+       対象は通常召喚／攻撃／破壊／数字ポップの4系統。数字ポップは CSS＋
+       popTierCls（後段）で担い、ここは Pixi 側の3系統：
+       ・pixiNormalSummonFx：通常召喚の魔法陣へ、シェーダ発光の脈動＋
+         回転リング＋出現時の粒子ウェイク＋小さな光の柱の残滓を重ねる
+         （神話召喚は従来のまま据え置き、ここは通常専用）。
+       ・pixiHitFx：打撃点の寿命カーブ粒子（火花・破片）＋閃光コア
+         （加算ブレンドの glowQuad を一瞬だけ強く光らせる）。
+       ・pixiPierceFx：貫通の光跡。攻撃点から召喚士側へリボン帯を引き、
+         到達点に小さな閃光と火花を置く。
+       ・pixiDestroyFx：破壊点の破片粒子（重力で落ちながら消える）。
+       後片付け規律（第1弾の型を全系統に適用）：全演出は FxKit.scope を
+       1つ作り、表示物・粒子・アニメ登録をすべてその中に閉じる。自然終了
+       ではアニメの onDone が scope.dispose() を呼び、生存中の粒子も
+       寿命を待たず全破棄される。中断・画面遷移では fx2DisposeAll()
+       （pixiTick の blocked 検出／fxResetFinish 等から呼ばれる）が
+       登録済みスコープを即時すべて dispose し、レイヤー子要素と
+       アニメ登録はその瞬間に実行前の水準へ戻る。Pixi が使えない環境
+       （未読込・HEADLESS・モーション低減）では available() が false で
+       全関数が何もせず、従来演出のままゲームが進行する。
+       各演出の尺は従来と同程度（召喚680ms／打撃550ms／破壊700ms／
+       貫通460ms）に収め、対戦のテンポには影響しない（すべて非同期の
+       見た目のみで、ゲーム進行は一切待たせない）。 */
+    var fx2Scopes = [];
+    function fx2Scope(){
+      var scope = FxKit.scope(pixiFx.fxLayer);
+      fx2Scopes.push(scope);
+      var origDispose = scope.dispose;
+      scope.dispose = function(){
+        var i = fx2Scopes.indexOf(scope);
+        if (i >= 0) fx2Scopes.splice(i, 1);
+        return origDispose();
+      };
+      return scope;
+    }
+    function fx2DisposeAll(){
+      var list = fx2Scopes.slice();
+      for (var i = 0; i < list.length; i++){ try { list[i].dispose(); } catch (e) {} }
+    }
+    /* 検証用：新規演出の残留量（モック駆動・監査プローブから読む） */
+    function fx2DebugCounts(){
+      return {
+        scopes: fx2Scopes.length,
+        fxChildren: pixiFx.fxLayer ? pixiFx.fxLayer.children.length : -1,
+        anims: pixiFx.anims ? pixiFx.anims.length : -1,
+        bursts: pixiFx.bursts ? pixiFx.bursts.length : -1,
+        rings: pixiFx.rings ? pixiFx.rings.length : -1
+      };
+    }
+    /* --- 【1】通常召喚：魔法陣のシェーダ脈動＋回転＋ウェイク＋光柱の残滓 ---
+       DOM／SVG の魔法陣（summonMagicCircle、従来どおり）の上に重ねる。
+       ・中心グローは FxKit.glowQuad（シェーダ放射発光）。uIntensity を
+         出現→滞在→消散の包絡で脈動させ、魔法陣の発光のうねりを作る。
+       ・回転リングは Graphics の破線弧を2重に、互い違いへ回す。
+       ・ウェイクは FxKit エミッタ：足元から渦巻くように舞い上がる光の粒。
+       ・光の柱の残滓は細い3層の帯を足元へ立て、ゆっくり薄くする
+         （神話の光柱より小さく短く、格差は保つ）。 */
+    function pixiNormalSummonFx(cx, cy, w, h, feetY){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var R = Math.max(w, h) * 0.86;
+      var glow = FxKit.glowQuad(0x8fc4ff, { intensity: 0, pulse: 0.3, speed: 7.0 });
+      glow.position.set(cx, cy);
+      glow.scale.set(R * 1.25);
+      cont.addChild(glow);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var em = scope.emitter(cont, { max: 90 });
+      var lastLife = 0, wakeDone = false;
+      var seed = 811.7 + cx * 0.13 + cy * 0.07;
+      scope.anim(680, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var env = Math.min(1, t / 0.16) * (t > 0.66 ? Math.max(0, 1 - (t - 0.66) / 0.34) : 1);
+        /* シェーダ発光の脈動：出現で立ち上がり、滞在中は息づき、消散で落ちる */
+        var gu = glow.material.uniforms;
+        gu.uTime = life / 1000;
+        gu.uIntensity = (0.35 + 0.75 * Math.min(1, t / 0.3)) * env;
+        glow.scale.set(R * (1.18 + 0.14 * Math.sin(life * 0.011)));
+        gfx.clear();
+        /* 回転リング（外＝時計回り／内＝反時計回り、魔法陣の回転と同期する速度感） */
+        var rot = life * 0.0026;
+        gfx.lineStyle(2.4, 0xaed8ff, 0.75 * env);
+        for (var q = 0; q < 4; q++){
+          var a0 = rot + q * Math.PI / 2;
+          gfx.arc(cx, cy, R * 0.98, a0, a0 + 1.05);
+        }
+        gfx.lineStyle(1.6, 0xffe9a8, 0.65 * env);
+        for (var q2 = 0; q2 < 3; q2++){
+          var b0 = -rot * 1.45 + q2 * Math.PI * 2 / 3;
+          gfx.arc(cx, cy, R * 0.74, b0, b0 + 1.35);
+        }
+        /* 光の柱の残滓：出現直後に細く立ち、魔法陣より長く薄く残る */
+        var pilA = Math.min(1, t / 0.10) * (t > 0.45 ? Math.max(0, 1 - (t - 0.45) / 0.55) : 1);
+        if (pilA > 0.01){
+          var pw = w * 0.30, ph = h * 1.05;
+          gfx.beginFill(0x8fc4ff, 0.10 * pilA); gfx.drawRect(cx - pw, feetY - ph, pw * 2, ph); gfx.endFill();
+          gfx.beginFill(0xd8ecff, 0.16 * pilA); gfx.drawRect(cx - pw * 0.45, feetY - ph, pw * 0.9, ph); gfx.endFill();
+          gfx.beginFill(0xffffff, 0.20 * pilA); gfx.drawRect(cx - pw * 0.14, feetY - ph, pw * 0.28, ph); gfx.endFill();
+        }
+        /* ウェイク：出現の最初の約300ms、足元の円周から内向き＋上向きに
+           光の粒を撒く（軌跡を引いて中心へ集まりながら消える） */
+        if (t < 0.46){
+          em.burst(3, function(bi){
+            var ba = fxFinRand(seed + life * 0.37 + bi * 11.3) * Math.PI * 2;
+            var br = R * (0.55 + fxFinRand(seed + bi * 5.7 + life * 0.11) * 0.4);
+            var sx = cx + Math.cos(ba) * br, sy = feetY - 4 + Math.sin(ba) * br * 0.22;
+            return { x: sx, y: sy,
+              vx: (cx - sx) * 1.5 + (fxFinRand(seed + bi * 3.3) - 0.5) * 30,
+              vy: -55 - fxFinRand(seed + bi * 7.9 + life * 0.05) * 85,
+              life: 340 + fxFinRand(seed + bi * 9.1) * 260, size: 0.34 + fxFinRand(seed + bi * 4.7) * 0.3, sizeEnd: 0.05,
+              colA: [0.85, 0.93, 1], colB: [1, 0.85, 0.5], curve: 'io', pow: 1.2 };
+          });
+        } else if (!wakeDone){ wakeDone = true; }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 【2】攻撃：打撃点の火花・破片＋閃光コア ---
+       power は大きさ倍率（通常1、召喚士への直撃などは1.35）。
+       閃光コアは glowQuad を加算で一瞬だけ強く焚き、寿命カーブ粒子が
+       火花（速く・重力弱め）と破片（遅く・重力強め）を広げて消す */
+    function pixiHitFx(x, y, opt){
+      if (!FxKit.available()) return false;
+      opt = opt || {};
+      var power = opt.power || 1;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var core = FxKit.glowQuad(opt.color || 0xffb066, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(x, y);
+      core.scale.set(30 * power);
+      cont.addChild(core);
+      var gfx = new PIXI.Graphics();
+      cont.addChild(gfx);
+      var em = scope.emitter(cont, { max: 70 });
+      var seed = 517.3 + x * 0.21 + y * 0.17;
+      var burstDone = false;
+      var lastLife = 0;
+      scope.anim(560, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        /* 閃光コア：最初の60msで最大、そこから急減衰（局所グローのみ） */
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = t < 0.11 ? (t / 0.11) * 1.5 : Math.max(0, 1.5 * (1 - (t - 0.11) / 0.5));
+        core.scale.set((30 + 46 * Math.min(1, t / 0.3)) * power);
+        /* 小さな衝撃リング */
+        gfx.clear();
+        if (t < 0.5){
+          var rk = t / 0.5;
+          gfx.lineStyle(2.2 * (1 - rk) + 0.4, 0xffd9a0, 0.7 * (1 - rk));
+          gfx.drawEllipse(x, y, (6 + rk * 40) * power, (6 + rk * 40) * power * 0.62);
+        }
+        if (!burstDone){
+          burstDone = true;
+          /* 火花：放射状に速く、色は白→橙へ */
+          em.burst(Math.round(14 * power), function(bi){
+            var ba = fxFinRand(seed + bi * 12.9) * Math.PI * 2;
+            var bs = (120 + fxFinRand(seed + bi * 7.3) * 300) * power;
+            return { x: x, y: y, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 30,
+              life: 280 + fxFinRand(seed + bi * 5.1) * 240, size: 0.42 + fxFinRand(seed + bi * 3.7) * 0.4, sizeEnd: 0.05,
+              colA: [1, 1, 1], colB: [1, 0.55, 0.2], grav: 340, damp: 0.32, curve: 'o', pow: 1.15 };
+          });
+          /* 破片：少し大きく遅く、重力で落ちる */
+          em.burst(Math.round(7 * power), function(bi){
+            var ba2 = fxFinRand(seed + 90 + bi * 9.7) * Math.PI * 2;
+            var bs2 = (50 + fxFinRand(seed + 90 + bi * 6.1) * 130) * power;
+            return { x: x, y: y, vx: Math.cos(ba2) * bs2, vy: Math.sin(ba2) * bs2 - 60,
+              life: 380 + fxFinRand(seed + 90 + bi * 4.3) * 180, size: 0.55 + fxFinRand(seed + 90 + bi * 8.3) * 0.45, sizeEnd: 0.1,
+              colA: [1, 0.85, 0.6], colB: [0.85, 0.4, 0.25], grav: 620, curve: 'o', pow: 1 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 【2b】貫通：抜けた先の召喚士側へ小さな光跡 ---
+       攻撃点→召喚士パネルの縁へ、わずかに弧を描くリボン帯（FxKit の
+       ストリップ＋流れシェーダ）を引き、到達の拍で小さな閃光と火花。
+       尺は460msで、貫通ダメージの数字ポップとほぼ同時に読める */
+    function pixiPierceFx(x1, y1, x2, y2){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var strip = FxKit.strip(18);
+      var mat = FxKit.ribbonMaterial({ alpha: 0.9, core: 0.7, dir: 0 });
+      var mesh = new PIXI.Mesh(strip.geo, mat);
+      mesh.blendMode = PIXI.BLEND_MODES.ADD;
+      cont.addChild(mesh);
+      scope.onDispose(function(){
+        try { if (mat.destroy) mat.destroy(); } catch (e) {}
+        try { strip.geo.destroy(); } catch (e) {}
+      });
+      var dx = x2 - x1, dy = y2 - y1;
+      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      var cpx = (x1 + x2) / 2 - dy / dist * dist * 0.10;
+      var cpy = (y1 + y2) / 2 + dx / dist * dist * 0.10 - dist * 0.05;
+      var core = FxKit.glowQuad(0xc9a2ff, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(x2, y2);
+      core.scale.set(20);
+      cont.addChild(core);
+      var em = scope.emitter(cont, { max: 40 });
+      var seed = 233.9 + x1 * 0.11 + y2 * 0.19;
+      var hitDone = false;
+      var lastLife = 0;
+      scope.anim(460, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var head = Math.min(1, t / 0.42); /* 先端の到達 */
+        var env = t < 0.55 ? Math.min(1, t / 0.08 + 0.2) : Math.max(0, 1 - (t - 0.55) / 0.45);
+        var samples = FxKit.bezierSamples({ x: x1, y: y1 }, { x: cpx, y: cpy }, { x: x1 + dx * head, y: y1 + dy * head }, 19, function(u){
+          return (1.5 + 7 * Math.sin(Math.PI * u)) * (0.4 + 0.6 * head);
+        });
+        FxKit.fillStrip(strip, samples);
+        mat.uniforms.uFlow = life * 0.004;
+        mat.uniforms.uAlpha = 0.9 * env;
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = hitDone ? Math.max(0, 1.2 * (1 - (t - 0.42) / 0.5)) : 0;
+        core.scale.set(20 + 22 * Math.max(0, t - 0.42));
+        if (!hitDone && t >= 0.42){
+          hitDone = true;
+          em.burst(9, function(bi){
+            var ba = fxFinRand(seed + bi * 13.7) * Math.PI * 2;
+            var bs = 70 + fxFinRand(seed + bi * 6.9) * 170;
+            return { x: x2, y: y2, vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 20,
+              life: 240 + fxFinRand(seed + bi * 4.1) * 180, size: 0.4, sizeEnd: 0.05,
+              colA: [0.9, 0.8, 1], colB: [0.55, 0.35, 1], grav: 260, curve: 'o', pow: 1.2 };
+          });
+        }
+        /* 軌跡上の光屑：先端の少し後ろから小さく撒く */
+        if (t < 0.5){
+          var hp = FxKit.bezierSamples({ x: x1, y: y1 }, { x: cpx, y: cpy }, { x: x1 + dx * head, y: y1 + dy * head }, 3, null)[1];
+          if (hp) em.spawn({ x: hp.x, y: hp.y, vx: (fxFinRand(seed + life * 0.31) - 0.5) * 36, vy: -14,
+            life: 260, size: 0.3, sizeEnd: 0.05, colA: [0.85, 0.75, 1], colB: [0.6, 0.4, 1], curve: 'io', pow: 1.2 });
+        }
+        em.step(dt, env);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
+    /* --- 【3】破壊：カードの破片が飛び散って落ちながら消える ---
+       fxGhost（残像フェード）と同時に、破壊点で破片粒子を出す。
+       破片は重力で落ち、寿命後半で急速に小さく・薄くなる。色は
+       カードの破片らしく金〜灰〜焦げ色へ遷移させる */
+    function pixiDestroyFx(x, y, w, h){
+      if (!FxKit.available()) return false;
+      var scope = fx2Scope();
+      var cont = new PIXI.Container();
+      cont.blendMode = PIXI.BLEND_MODES.ADD;
+      scope.add(cont);
+      var core = FxKit.glowQuad(0xffc9a0, { intensity: 0, pulse: 0, speed: 1 });
+      core.position.set(x, y);
+      core.scale.set(Math.max(w, h) * 0.5);
+      cont.addChild(core);
+      var em = scope.emitter(cont, { max: 80 });
+      var seed = 641.5 + x * 0.17 + y * 0.23;
+      var burstDone = false;
+      var lastLife = 0;
+      scope.anim(700, function(_, t, life){
+        var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
+        var cu = core.material.uniforms;
+        cu.uTime = life / 1000;
+        cu.uIntensity = t < 0.08 ? (t / 0.08) * 0.9 : Math.max(0, 0.9 * (1 - (t - 0.08) / 0.4));
+        if (!burstDone){
+          burstDone = true;
+          /* 破片：カード面全体から飛び散り、重力で落ちる */
+          em.burst(20, function(bi){
+            var ba = fxFinRand(seed + bi * 11.9) * Math.PI * 2;
+            var bs = 60 + fxFinRand(seed + bi * 6.7) * 190;
+            return { x: x + (fxFinRand(seed + bi * 3.1) - 0.5) * w * 0.7, y: y + (fxFinRand(seed + bi * 4.9) - 0.5) * h * 0.7,
+              vx: Math.cos(ba) * bs, vy: Math.sin(ba) * bs - 90,
+              life: 430 + fxFinRand(seed + bi * 8.7) * 240, size: 0.5 + fxFinRand(seed + bi * 5.3) * 0.55, sizeEnd: 0.06,
+              colA: [1, 0.9, 0.66], colB: [0.45, 0.32, 0.3], grav: 780, damp: 0.55, curve: 'o', pow: 0.9 };
+          });
+          /* 灰：ゆっくり舞い上がって消える細粒 */
+          em.burst(8, function(bi){
+            var ba2 = fxFinRand(seed + 140 + bi * 9.3) * Math.PI * 2;
+            var bs2 = 20 + fxFinRand(seed + 140 + bi * 7.7) * 50;
+            return { x: x + (fxFinRand(seed + 140 + bi * 2.9) - 0.5) * w * 0.6, y: y,
+              vx: Math.cos(ba2) * bs2, vy: -30 - fxFinRand(seed + 140 + bi * 6.3) * 40,
+              life: 520 + fxFinRand(seed + 140 + bi * 4.7) * 160, size: 0.3, sizeEnd: 0.05,
+              colA: [0.9, 0.85, 0.8], colB: [0.5, 0.45, 0.5], grav: -60, curve: 'io', pow: 1.3 };
+          });
+        }
+        em.step(dt, 1);
+      }, function(){ scope.dispose(); });
+      return true;
+    }
     /* ===== EX-キャリバー専用：飛翔しながら超巨大化する三日月斬撃（帯メッシュ方式） =====
        旧方式（Graphics の lineStyle で巨大な円弧の輪郭を描く）は、弧が
        「分度器」のような図形として画面に残り、飛翔感も出なかったため廃止。
@@ -6986,6 +7311,9 @@
         var blocked = PIXI_BLOCK_OVERLAYS.some(function(id){ var e = document.getElementById(id); return e && e.classList.contains('show'); });
         pixiFx.blocked = blocked; /* 常駐アンビエント粒子の停止判定にも使う */
         pixiFx.app.view.style.display = blocked ? 'none' : '';
+        /* 第2弾の通常演出：全面画面への遷移（中断）を検出したら、再生中の
+           スコープを即時すべて破棄して残像ゼロにする（後片付け規律） */
+        if (blocked) fx2DisposeAll();
         /* 画面遷移で残ったオーラを確実に掃除するため、定期的にも同期する */
         pixiSyncAuras();
       }
@@ -7068,6 +7396,8 @@
     var fxCpuPrev = null;   /* CPU戦盤面の前回スナップショット {units:{'me-uid':hp}} */
     var fxCpuPrevCid = null; /* 同・カードIDマップ {'me-uid':'53'}（孵化＝ID変化の検出用） */
     var fxLungeQueue = [];  /* CPU戦の突進キュー {sel, dir} */
+    var fxHitQueue = [];    /* 第2弾【2】攻撃の打撃点キュー（doAttack が積み、fxApplyCpu が再描画後に発火する）
+                               {kind:'leader', side} ＝召喚士への直撃／{kind:'pierce', x, y, side} ＝貫通の光跡（x,y は攻撃点の画面座標、side は貫かれた召喚士側） */
     /* ===== 召喚演出の継続記録 =====
        盤面は render() のたびに innerHTML で作り直されるため、クラスを付けた
        要素は次の render() で捨てられてアニメーションが消えてしまう（playCard は
@@ -7438,6 +7768,7 @@
       var r = stageEl.getBoundingClientRect();
       if (!r.width) return;
       var cx = r.left + r.width / 2, cy = r.top + r.height / 2, feet = r.bottom;
+      if (!mythic){ pixiNormalSummonFx(cx, cy, r.width, r.height, feet); return; } /* 第2弾：通常召喚の底上げ（魔法陣シェーダ脈動＋回転＋ウェイク＋光柱の残滓）。神話は従来の格のまま */
       if (id === '39') fxCelestiaFx(cx, cy, feet, r.width, r.height);
       else if (id === '46'){ fxMirageFx(cx, cy, r.width, r.height); mirageEcho(stageEl); }
       else if (id === '48') fxDarkQueenFx(cx, cy, r.width, r.height);
@@ -7714,13 +8045,23 @@
       g.classList.add('fx-ghost');
       document.body.appendChild(g);
       setTimeout(function(){ if (g.parentNode) g.parentNode.removeChild(g); }, 520);
+      /* 第2弾【3】破壊の重み：残像フェード（少し大きく滲んだ複製を遅れて消す）
+         ＋破片粒子（FxKitスコープ。落下しながら消える）。死亡時効果の発動
+         タイミング・処理順には一切触らない（これは見た目だけの追加） */
+      if (!stageReducedMotion){
+        var g2 = g.cloneNode(true);
+        g2.classList.add('fx-ghost-after');
+        document.body.appendChild(g2);
+        setTimeout(function(){ if (g2.parentNode) g2.parentNode.removeChild(g2); }, 720);
+      }
+      pixiDestroyFx(r.left + r.width / 2, r.top + r.height / 2, r.width, r.height);
     }
     function fxPopFixed(el, text, cls){
       if (!el || !el.getBoundingClientRect) return;
       var r = el.getBoundingClientRect();
       if (!r.width) return;
       var span = document.createElement('span');
-      span.className = 'dmg-pop fx-fixed ' + (cls || '');
+      span.className = 'dmg-pop fx-fixed ' + (cls || '') + popTierCls(text, cls || '');
       span.textContent = text;
       span.style.left = (r.left + r.width / 2) + 'px';
       span.style.top = (r.top + r.height * 0.4) + 'px';
@@ -7805,7 +8146,12 @@
       if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
       plan.hit.forEach(function(k){
         var el = document.querySelector('[data-fol="' + k + '"]');
-        if (el) el.classList.add('fx-hit');
+        if (el){
+          el.classList.add('fx-hit');
+          /* 第2弾【2】打撃点：寿命カーブ粒子（火花・破片）＋閃光コア */
+          var hitRect = el.getBoundingClientRect();
+          if (hitRect.width) pixiHitFx(hitRect.left + hitRect.width / 2, hitRect.top + hitRect.height / 2, {});
+        }
       });
       fxLungeQueue.forEach(function(l){
         var el = document.querySelector(l.sel);
@@ -7820,6 +8166,17 @@
         }
       });
       fxLungeQueue = [];
+      /* 第2弾【2】召喚士への直撃の閃光／貫通の光跡（doAttack が積んだキュー） */
+      fxHitQueue.forEach(function(q){
+        var leaderEl = document.getElementById(q.side === 'me' ? 'myLeader' : 'cpuLeader');
+        if (!leaderEl) return;
+        var lr = leaderEl.getBoundingClientRect();
+        if (!lr.width) return;
+        var lx = lr.left + lr.width / 2, ly = lr.top + lr.height / 2;
+        if (q.kind === 'leader') pixiHitFx(lx, ly, { power: 1.35 });
+        else if (q.kind === 'pierce') pixiPierceFx(q.x, q.y, lx, ly);
+      });
+      fxHitQueue = [];
       /* フィニッシュ演出を実要素へ付け直す（再描画で消えても位相を保って復元する） */
       fxFinishSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       /* 出現直後の render() で作り直された要素にも、召喚演出を付け直す */
@@ -8737,6 +9094,8 @@
         var lethalLeader = atk.atk > 0 && (sideObj(defSide).hp - atk.atk) <= 0;
         if (lethalLeader){ fxTriggerFinish(fxMythicFinishArg(atk, defSide)); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
         if (atk.atk > 0) sePlay('hit');
+        /* 第2弾【2】召喚士への直撃も打撃点演出の対象にする（発火は再描画後の fxApplyCpu） */
+        if (!HEADLESS && atk.atk > 0) fxHitQueue.push({ kind: 'leader', side: defSide });
         damageLeader(defSide, atk.atk);
         fxLeaderPopFinish = false;
       } else {
@@ -8791,6 +9150,15 @@
           /* 演出：貫通でとどめになる場合もフィニッシュ演出（ユニットの攻撃が起点のため）。
              神話（黒のアギト等）が刺せば神話個別フィニッシュになる */
           if ((sideObj(defSide).hp - penExcess) <= 0){ fxTriggerFinish(fxMythicFinishArg(atk, defSide)); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
+          /* 第2弾【2】貫通の光跡：抜けた位置（防御ユニットの現在位置）を
+             再描画前に控え、fxApplyCpu が召喚士側へ光跡を引く */
+          if (!HEADLESS){
+            var defElPen = document.querySelector('[data-fol="' + defSide + '-' + defUid + '"]');
+            if (defElPen){
+              var penRect = defElPen.getBoundingClientRect();
+              if (penRect.width) fxHitQueue.push({ kind: 'pierce', x: penRect.left + penRect.width / 2, y: penRect.top + penRect.height / 2, side: defSide });
+            }
+          }
           damageLeader(defSide, penExcess);
           fxLeaderPopFinish = false;
         }
@@ -12408,13 +12776,35 @@
       });
       plan.hit.forEach(function(h){
         var el = fxOvUnitEl(h.side, h.uid);
-        if (el) el.classList.add('fx-hit');
+        if (el){
+          el.classList.add('fx-hit');
+          /* 第2弾【2】打撃点：寿命カーブ粒子＋閃光コア（CPU戦と共通） */
+          var ovHitRect = el.getBoundingClientRect();
+          if (ovHitRect.width) pixiHitFx(ovHitRect.left + ovHitRect.width / 2, ovHitRect.top + ovHitRect.height / 2, {});
+        }
       });
       plan.pops.forEach(function(p){
         fxPopFixed(fxOvUnitEl(p.side, p.uid), p.text, p.cls);
       });
       plan.leaderPops.forEach(function(p){
-        fxPopFixed(document.getElementById(p.id), p.text, p.cls);
+        var panelEl = document.getElementById(p.id);
+        fxPopFixed(panelEl, p.text, p.cls);
+        /* 第2弾【2】オンライン：召喚士がダメージを受けた更新では、貫通の
+           光跡（その更新で倒れた自陣ユニットの位置→パネル）か、突進が
+           特定できていれば直撃の閃光を出す（見た目のみの近似） */
+        if (p.cls !== 'heal' && panelEl){
+          var pr2 = panelEl.getBoundingClientRect();
+          if (pr2.width){
+            var panelSide = p.id === 'ovMyPanel' ? 'me' : 'opp';
+            var deadRect = null;
+            Object.keys(plan.rects || {}).forEach(function(k){
+              var kp = k.split('|');
+              if (kp[1] === panelSide && !fxOvUnitEl(kp[1], kp.slice(2).join('|'))) deadRect = plan.rects[k];
+            });
+            if (deadRect) pixiPierceFx(deadRect.left + deadRect.width / 2, deadRect.top + deadRect.height / 2, pr2.left + pr2.width / 2, pr2.top + pr2.height / 2);
+            else if (plan.lunge) pixiHitFx(pr2.left + pr2.width / 2, pr2.top + pr2.height / 2, { power: 1.3 });
+          }
+        }
       });
       if (plan.lunge){
         var el = fxOvUnitEl(plan.lunge.side, plan.lunge.uid);
