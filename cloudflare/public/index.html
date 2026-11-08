@@ -3297,9 +3297,11 @@
       /* ===== レイアウト対称化：自分のプレートを最下段へ、操作は左右へ =====
          相手側（手札表示なし）と自分側（手札あり）の情報量差で上下の
          重心が崩れて見える問題への対策。自分の召喚士プレートを画面の
-         最下段中央に置き、ターン終了（左）とメニュー（右）を両サイドに
-         分けて、最上段（相手プレート中央＋デッキ右端）と構図を揃える。
-         デッキ束は従来どおり召喚士ラインの右端（メニューの上）に置く。
+         最下段中央に置き、メニュー（左）とデッキ束＋ターン終了（右）を
+         両サイドに分ける。ターン終了は毎ターン必ず押すため、右利きの
+         親指が届きやすい右下へ配置する（メニューとの左右入れ替え）。
+         デッキ束は従来どおり召喚士ラインの右端に残し、ターン終了の上に
+         積む。右列が縦に伸びる分は盤面側が吸収する（最低高さは保証済み）。
          手札は自分の場と最下段の間に収め、ターン終了のタップ領域とは
          行が分かれるため競合しない */
       #fieldWrap .leader-row.me-row{
@@ -3308,8 +3310,8 @@
       }
       #fieldWrap .leader-row.me-row .leader{margin:0; flex:0 0 auto;}
       #fieldWrap .bottom-cell{flex:1 1 0; min-width:0; display:flex; align-items:center;}
-      #fieldWrap .bottom-cell.cell-end{justify-content:flex-start; padding-left:2px;}
-      #fieldWrap .bottom-cell.cell-side{flex-direction:column; align-items:flex-end; justify-content:center; gap:6px; padding-right:2px;}
+      #fieldWrap .bottom-cell.cell-menu{justify-content:flex-start; padding-left:2px;}
+      #fieldWrap .bottom-cell.cell-side{flex-direction:column; align-items:flex-end; justify-content:center; gap:5px; padding-right:2px;}
       #fieldWrap .leader-row.me-row .deck-pile{
         position:static; transform:none; width:auto; margin:0;
         display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -3497,20 +3499,21 @@
         <div class="hand" id="hand"></div>
       </div>
       <!-- 最下段（対称化レイアウト）：自分の召喚士プレートを画面の最下段
-           中央に置き、ターン終了は左サイド、デッキ束＋メニューは右サイド
-           に分ける。相手側（最上段＝プレート中央＋デッキ右端）と上下の
-           重心を揃えるための配置。メニューは開くとこの最下段に被さって
+           中央に置き、メニューは左サイド、デッキ束＋ターン終了は右サイド
+           に分ける。ターン終了は毎ターン押すボタンなので右利きの親指に
+           合わせて右下へ置き、デッキ束は従来どおり右サイド上段（召喚士
+           ラインの右端）に残す。メニューは開くとこの最下段に被さって
            展開し、「閉じる」ボタンで必ず元に戻せる -->
       <div class="leader-row me-row">
-        <div class="bottom-cell cell-end">
-          <button class="btn-end" id="endTurnBtn" type="button">ターン終了</button>
+        <div class="bottom-cell cell-menu">
+          <button class="btn-sub menu-toggle" id="battleMenuBtn" type="button" aria-expanded="false" aria-controls="battleMenu">☰ メニュー</button>
         </div>
         <div class="leader me" id="myLeader"></div>
         <div class="bottom-cell cell-side">
           <div class="deck-pile">
             <div class="pile-stack"><span class="pile-card c1"></span><span class="pile-card c2"></span><span class="pile-card c3"></span><span class="pile-count" id="myDeckCount"></span></div>
           </div>
-          <button class="btn-sub menu-toggle" id="battleMenuBtn" type="button" aria-expanded="false" aria-controls="battleMenu">☰ メニュー</button>
+          <button class="btn-end" id="endTurnBtn" type="button">ターン終了</button>
         </div>
       </div>
       <div class="battle-menu" id="battleMenu" hidden>
