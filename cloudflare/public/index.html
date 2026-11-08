@@ -5452,7 +5452,76 @@
       fxMythicFxNodes.forEach(function(n){ if (n.parentNode) n.parentNode.removeChild(n); });
       fxMythicFxNodes = [];
       if (fxMythicHiddenPanel){ fxMythicHiddenPanel.style.visibility = ''; fxMythicHiddenPanel = null; }
+      finFxSweepAll(); /* 残存ゼロ保証：Pixi側の演出物を方式を問わず全経路で掃除する */
     }
+    /* ===== 残存ゼロの保証（全経路共通の後片付け） =====
+       フィニッシュの Pixi 後片付けは方式ごとに分散していた（新方式＝
+       finProtoTeardown／第2〜4弾＝fx2Scopes 登録制／汎用＝pixiFx.anims／
+       粒子・リング＝pixiFx.bursts・rings）。そのため、振り分けが現行方式へ
+       フォールバックした場合や、再生を中断・差し替えた場合に、方式側の
+       後片付けの対象外になった描画物が画面へ残り得た（演出チェック後に
+       エフェクトが残る事象の経路）。
+       ここでは mythicFxCleanup（全フィニッシュ共通の集約点で、正常終了・
+       中断・画面遷移・対戦リセットの全経路が必ず通る）の末尾から一括で
+       掃除し、「どの方式で再生され、どう終わっても Pixi 側の演出物は
+       ゼロに戻る」ことを構造で保証する。再入はガードで止める */
+    var finSweepBusy = false;
+    function finFxSweepAll(){
+      if (finSweepBusy) return;
+      finSweepBusy = true;
+      try {
+        /* 新方式：再生中ならティアダウン（ticker解除＋ツリー初期化＋再描画） */
+        if (typeof finProtoRun !== 'undefined' && finProtoRun) finProtoTeardown();
+        /* 第2〜4弾のスコープ演出：全 dispose（レイヤー子要素・フィルタ・
+           エミッタ粒子まで破棄される） */
+        if (typeof fx2DisposeAll === 'function') fx2DisposeAll();
+        /* 汎用アニメ登録：onDone を持つものは専用後片付け（フィルタ解除・
+           ジオメトリ／シェーダ破棄まで含む）を先に走らせ、それでも残った
+           ものは Graphics ごと強制撤去する */
+        if (typeof pixiFx !== 'undefined' && pixiFx && pixiFx.anims){
+          var guard = 0;
+          while (pixiFx.anims.length && guard++ < 400){
+            var rec = pixiFx.anims[0];
+            var handled = false;
+            if (rec.onDone){ try { handled = !!rec.onDone(); } catch (e) {} }
+            var ri = pixiFx.anims.indexOf(rec);
+            if (ri >= 0){
+              pixiFx.anims.splice(ri, 1);
+              if (!handled && rec.gfx){
+                try { if (rec.gfx.parent) rec.gfx.parent.removeChild(rec.gfx); } catch (e) {}
+                try { if (rec.gfx.destroy) rec.gfx.destroy({ children: true }); } catch (e) {}
+              }
+            }
+          }
+          pixiFx.anims.length = 0;
+        }
+        /* バースト粒子・光の輪：スプライト／Graphics を破棄して空にする */
+        if (typeof pixiFx !== 'undefined' && pixiFx && pixiFx.fxLayer){
+          if (pixiFx.bursts){
+            pixiFx.bursts.forEach(function(p){ try { if (p.sp.parent) p.sp.parent.removeChild(p.sp); p.sp.destroy(); } catch (e) {} });
+            pixiFx.bursts.length = 0;
+          }
+          if (pixiFx.rings){
+            pixiFx.rings.forEach(function(rg){ try { if (rg.gfx.parent) rg.gfx.parent.removeChild(rg.gfx); rg.gfx.destroy(); } catch (e) {} });
+            pixiFx.rings.length = 0;
+          }
+        }
+      } catch (e) {}
+      finSweepBusy = false;
+    }
+    /* 残量の自動検証（検証用フック）：全方式ぶんの残存量を1つにまとめて
+       返す。正常な終了直後は total が 0 になる。演出チェックの終了表示と
+       監査プローブの両方から使う */
+    window.__finResidueAudit = function(){
+      var out = { proto: null, fx2: null, domNodes: fxMythicFxNodes.length, extraCleanup: !!fxMythicExtraCleanup, total: 0 };
+      try { out.proto = window.__finProtoAudit ? window.__finProtoAudit() : null; } catch (e) {}
+      try { out.fx2 = (typeof fx2DebugCounts === 'function') ? fx2DebugCounts() : null; } catch (e) {}
+      var t = out.domNodes + (out.extraCleanup ? 1 : 0);
+      if (out.proto) t += (out.proto.runActive ? 1 : 0) + (out.proto.rootInStage ? 1 : 0) + out.proto.visibleNodes + out.proto.activeParticles;
+      if (out.fx2) t += out.fx2.scopes + Math.max(0, out.fx2.anims) + Math.max(0, out.fx2.bursts) + Math.max(0, out.fx2.rings);
+      out.total = t;
+      return out;
+    };
     /* ===== フィニッシュ診断モード（基本見直し ステップ1：犯人の切り分け） =====
        演出チェック画面でのみ使う。着弾の瞬間に重いのが DOM 側か Pixi 側かを
        実測で切り分けるため、同じフィニッシュを3モードで再生できるようにする：
@@ -7332,6 +7401,12 @@
       for (var oi2 = 0; oi2 < 8; oi2++){ var osp = PS(bake.dot); atkC.addChild(osp); N.orbits.push(osp); }
       space.addChild(atkC);
       N.atkC = atkC;
+      /* EX溜めの収束専用ノード（中心グロー＋輪の描画）。攻撃側SDの上に
+         重ね、輪が支点へ縮む読みを SD の手前で見せる */
+      N.convGlow = PS(bake.glow); N.convGlow.blendMode = PIXI.BLEND_MODES.ADD; N.convGlow.tint = 0xffd76a; N.convGlow.visible = false;
+      space.addChild(N.convGlow);
+      N.convG = new PIXI.Graphics(); N.convG.blendMode = PIXI.BLEND_MODES.ADD; N.convG.visible = false;
+      space.addChild(N.convG);
       /* 残像プール */
       N.aimgs = [];
       for (var ai2 = 0; ai2 < 5; ai2++){ var asp2 = PS(bake.white); asp2.visible = false; space.addChild(asp2); N.aimgs.push(asp2); }
@@ -7677,7 +7752,7 @@
       N.cshards.forEach(function(cs){ cs.cont.visible = false; cs.cont.alpha = 1; cs.cont.rotation = 0; });
       N.bshards.forEach(function(sp){ sp.visible = false; sp.alpha = 1; sp.rotation = 0; });
       N.embers.forEach(function(sp){ sp.visible = false; sp.alpha = 1; });
-      N.beams.forEach(function(b){ b.cont.visible = false; b.glow.alpha = 1; b.core.alpha = 1; b.glow.scale.set(1); b.core.scale.set(1); if (b.hit) b.hit.alpha = 0; if (b.src) b.src.alpha = 0; b.hitBase = 0; b.srcBase = 0; });
+      N.beams.forEach(function(b){ b.cont.visible = false; b.glow.alpha = 1; b.core.alpha = 1; b.glow.scale.set(1); b.core.scale.set(1); if (b.hit) b.hit.alpha = 0; if (b.src) b.src.alpha = 0; b.hitBase = 0; b.srcBase = 0; b.lastSpray = 0; });
       hide(N.fxBig); N.fxBig.alpha = 1; N.fxBig.rotation = 0; N.fxBig.scale.set(1);
       hide(N.orb); N.orb.alpha = 1; N.orb.rotation = 0; N.orb.scale.set(1);
       hide(N.orbGfx); N.orbGfx.alpha = 1;
@@ -7702,6 +7777,8 @@
       N.flyUnit.cont.visible = false; N.flyUnit.cont.alpha = 1;
       N.flyGhosts.forEach(function(g){ g.visible = false; g.alpha = 1; if (g.clear) g.clear(); });
       hide(N.fissure); N.fissure.alpha = 0; N.fissure.scale.set(1);
+      hide(N.convG); if (N.convG.clear) N.convG.clear(); N.convG.alpha = 1;
+      hide(N.convGlow); N.convGlow.alpha = 0;
       N.jawC.visible = false; N.jawC.alpha = 1; N.jawC.rotation = Math.PI / 2;
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.bandC.visible = false; N.bandC.alpha = 1;
@@ -7950,6 +8027,9 @@
            交差部が同等の大きさに読めるようにする */
         N.beams[0].hitBase = G.sdH * 1.2; N.beams[0].hit.tint = 0xffffff;
         N.beams[1].hitBase = G.sdH * 1.2; N.beams[1].hit.tint = 0xffffff;
+        /* 起点（画面外の口元）の発光も持たせる：紅は左下・蒼は右下 */
+        N.beams[0].srcBase = G.sdH * 0.85; N.beams[0].src.tint = 0xffa04a;
+        N.beams[1].srcBase = G.sdH * 0.85; N.beams[1].src.tint = 0x9cc4ff;
         N.beams[0].glow.clear(); N.beams[0].core.clear();
         N.beams[1].glow.clear(); N.beams[1].core.clear();
         R.beamCols = [[0xff4030, 0xffa04a], [0x4a90ff, 0x9cc4ff]];
@@ -8330,7 +8410,7 @@
          N.bshards, N.embers, N.aimgs, N.swordGhosts, N.rush].forEach(function(arr){
           arr.forEach(function(sp){ if (sp.visible) vis++; });
         });
-        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont].forEach(function(sp){ if (sp && sp.visible) vis++; });
+        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont, N.convG, N.convGlow].forEach(function(sp){ if (sp && sp.visible) vis++; });
         N.beams.forEach(function(b){ if (b.cont.visible) vis++; });
         N.parts.forEach(function(p){ if (p.on) partsOn++; if (p.sp.visible) vis++; });
         if (N.space.visible) vis++;
@@ -8509,6 +8589,8 @@
         return top.concat(bot.reverse());
       }
       var g = u.glow; g.clear();
+      /* ハロー：帯の外側へ光がにじむ最外層（面の量感を担う） */
+      finPDrawPoly(g, ribbon(3.6, sdH * 0.42, 0.9), 0xffd76a, 0.15);
       finPDrawPoly(g, ribbon(2.5, sdH * 0.30, 0.8), 0xffd76a, 0.34);
       finPDrawPoly(g, ribbon(1.8, sdH * 0.17, 0.8), 0xffe9a8, 0.50);
       var c = u.core; c.clear();
@@ -8519,6 +8601,19 @@
           c.beginFill(L[1], L[2]); c.drawCircle(len, 0, sdH * L[0]); c.endFill();
         });
       }
+      /* 流れの筋：帯の中を光が手元→着弾へ流れ続ける読みを作る細線。
+         うねりに追随させた3本を速い位相で明滅させ、「奔流」の質感を足す
+         （旧方式のリボンの流れテクスチャに相当する要素） */
+      [-0.5, 0, 0.5].forEach(function(fj, fi){
+        var pts = [], i2, s2, hw2;
+        for (i2 = 0; i2 <= 14; i2++){
+          s2 = i2 / 14;
+          hw2 = Math.max(0.5, 1.8 + sdH * 0.17 * Math.pow(Math.sin(Math.PI * s2), 0.8));
+          pts.push([len * s2, waveOff(s2) + hw2 * fj * 0.72]);
+        }
+        var fa = 0.30 + 0.22 * Math.sin(tF * 0.05 - fi * 2.1);
+        finPStrokePts(c, pts, Math.max(1.1, sdH * 0.016), 0xffffff, Math.max(0.08, fa));
+      });
     }
     /* 光波の更新（旧方式の包絡：出現は t/0.10+0.2、減衰は 0.74 から） */
     function finPCelestiaWaveUpdate(R, u, fx0, dur){
@@ -8538,6 +8633,14 @@
         var hs = u.hitBase * (0.9 + 0.25 * Math.sin(R.tF * 0.013));
         u.hit.width = hs; u.hit.height = hs;
         u.hit.alpha = (head >= 1 ? 0.9 : 0.45 * head) * env;
+      }
+      /* 着弾点の飛沫：帯が届いている間、受け口から光の粒が弾け続ける
+         （面だけでなく粒でも着弾の勢いを見せる） */
+      if (head >= 1 && (u.lastSpray == null || R.tF - u.lastSpray > 90)){
+        u.lastSpray = R.tF;
+        var rot = u.cont.rotation;
+        var hx = u.cont.position.x + Math.cos(rot) * u.len, hy = u.cont.position.y + Math.sin(rot) * u.len;
+        finPSpawnBurst(R, hx, hy, { count: 3, colors: [0xffffff, 0xffeeb0, 0xffd76a], power: 0.75 });
       }
       return true;
     }
@@ -8563,9 +8666,22 @@
         }
         finPDrawPoly(g, top.concat(bot.reverse()), col, alpha);
       }
+      band(4.5, sdH * 0.62, 0.8, colA, 0.13);       /* ハロー：外側のにじみ */
       band(3, sdH * 0.46, 0.7, colA, 0.34);         /* 外：色帯 */
       band(2, sdH * 0.27, 0.7, colB, 0.50);         /* 中：明色帯 */
       band(1.2, sdH * 0.105, 0.6, 0xffffff, 0.92);  /* 芯：白熱 */
+      /* 流れの筋：帯の中を速い位相で走る光の線。ブレスが「流れている」
+         質感（旧方式リボンの流れノイズに相当）を芯の両脇に足す */
+      [-0.35, 0.3].forEach(function(fj, fi){
+        var pts = [], i2, s2, hw3, wv3;
+        for (i2 = 0; i2 <= 14; i2++){
+          s2 = i2 / 14;
+          hw3 = Math.max(0.5, (2 + sdH * 0.27 * Math.pow(Math.sin(Math.PI * s2), 0.7)) * fl);
+          wv3 = (Math.sin(s2 * 9 - tF * 0.030 + seed) * 0.7 + Math.sin(s2 * 23 + tF * 0.052 + seed * 2.0) * 0.3) * sdH * 0.05 * Math.sin(Math.PI * s2);
+          pts.push([len * s2, wv3 + hw3 * fj]);
+        }
+        finPStrokePts(g, pts, Math.max(1.1, sdH * 0.018), 0xffffff, Math.max(0.06, 0.28 + 0.18 * Math.sin(tF * 0.06 + seed + fi * 2.4)));
+      });
     }
     /* 双ビームの更新（旧方式の包絡：12%で立ち上がり、80%から消える。
        帯は標的を10%突き抜ける長さで描く） */
@@ -8591,6 +8707,19 @@
         var hs2 = u.hitBase * (0.9 + 0.1 * Math.sin(R.tF * 0.02));
         u.hit.width = hs2; u.hit.height = hs2;
         u.hit.alpha = grow >= 1 ? 0.85 * env : 0;
+      }
+      /* 起点の発光：画面外の口元が光っている読みを持たせる */
+      if (u.src && u.srcBase){
+        var ss3 = u.srcBase * (0.9 + 0.18 * Math.sin(R.tF * 0.017 + u.seed));
+        u.src.width = ss3; u.src.height = ss3;
+        u.src.alpha = 0.8 * env;
+      }
+      /* 着弾点の飛沫：届いている間、交点から火花が弾け続ける */
+      if (grow >= 1 && (u.lastSpray == null || R.tF - u.lastSpray > 110)){
+        u.lastSpray = R.tF;
+        var rot2 = u.cont.rotation;
+        var hx2 = u.cont.position.x + Math.cos(rot2) * u.len, hy2 = u.cont.position.y + Math.sin(rot2) * u.len;
+        finPSpawnBurst(R, hx2, hy2, { count: 3, colors: [colB, 0xffffff], power: 0.8 });
       }
       return true;
     }
@@ -8632,8 +8761,59 @@
       var oa = -tF * 0.003;
       g.beginFill(0xffffff, 0.9); g.drawCircle(Math.cos(oa) * r * 1.18, Math.sin(oa) * r * 1.18, Math.max(1.6, r * 0.07)); g.endFill();
     }
+    /* --- 収束の輪（EX。旧方式 pixiExConvergeFx の幾何学をそのまま移植：
+       画面外周の半径 R0 から支点へ、加速しながら何重にも縮む金の輪。
+       輪は6本・寿命560ms・開始ずれ130ms で、中心グローと光屑は呼び出し側
+       （ディレクター）が担う。ローカル座標：中心が原点） --- */
+    function finPDrawConverge(g, lifeMs, R0){
+      g.clear();
+      var RINGS = 6, RING_LIFE = 560, RING_STAGGER = 130;
+      for (var i = 0; i < RINGS; i++){
+        var lt = lifeMs - i * RING_STAGGER;
+        if (lt < 0 || lt > RING_LIFE) continue;
+        var k = lt / RING_LIFE;
+        var rr = 10 + (R0 - 10) * Math.pow(1 - k, 2.1);
+        var al = Math.pow(Math.sin(Math.PI * Math.min(1, k * 1.05)), 1.15);
+        g.lineStyle(5.5, 0xffd76a, 0.30 * al);
+        g.drawCircle(0, 0, rr);
+        g.lineStyle(2.0, 0xfff6da, 0.75 * al);
+        g.drawCircle(0, 0, rr);
+        /* 輪の上のダイヤ目盛り：回転しながら一緒に収束する */
+        var rot = lifeMs * 0.0016 + i * 1.13;
+        g.lineStyle(3.2, 0xffe9a8, 0.8 * al);
+        for (var q = 0; q < 4; q++){
+          var a0 = rot + q * Math.PI / 2;
+          g.arc(0, 0, rr, a0, a0 + 0.16);
+        }
+      }
+    }
+    /* --- 内向きの光屑（粒子プール版）：目標点の周囲の円環上から生まれ、
+       中心へ届く速度で吸い込まれる。EX の収束とダーククイーンの渦の
+       吸い込みで共用する --- */
+    function finPSpawnMotes(R, tx, ty, opt){
+      opt = opt || {};
+      var count = opt.count || 3, rad = opt.radius || 120, cols = opt.colors || [0xffffff], spd = opt.speed || 300;
+      for (var i = 0; i < count; i++){
+        var p = finPFreePart(R);
+        if (!p) return;
+        var a = Math.random() * Math.PI * 2;
+        var rr = rad * (0.75 + Math.random() * 0.5);
+        var x = tx + Math.cos(a) * rr, y = ty + Math.sin(a) * rr;
+        var dur = Math.max(120, rr / spd * 1000);
+        p.on = true; p.kind = 'dot'; p.fx0 = R.tF; p.dur = dur;
+        p.x = x; p.y = y;
+        p.vx = (tx - x) / (dur / 1000); p.vy = (ty - y) / (dur / 1000);
+        p.grav = 0; p.damp = 1;
+        p.s0 = opt.size || 0.5; p.s1 = 0.08; p.aMax = 0.9;
+        p.sp.texture = finProtoState.bake.dot;
+        p.sp.tint = cols[Math.floor(Math.random() * cols.length)];
+        p.sp.position.set(x, y);
+        p.sp.visible = true;
+      }
+    }
     /* --- 鎖（ダーククイーン。ベジェの束＋環リンクを描く） --- */
-    function finPDrawChains(g, W, H){
+    function finPDrawChains(g, W, H, tF){
+      tF = tF || 0;
       g.clear();
       var strands = [
         [-0.52, -0.28, 0.05, -0.60, 0.52, 0.24],
@@ -8662,10 +8842,15 @@
       strands.forEach(function(s, si){
         var n = 15;
         for (var i = 0; i <= n; i++){
-          var t = i / n, p = qpt(s, t), pn = qpt(s, Math.min(1, t + 0.02));
+          var t = i / n, p0 = qpt(s, t), pn0 = qpt(s, Math.min(1, t + 0.02));
+          /* 締め付けの呼吸：束全体がわずかに脈動し、環のハイライトが
+             進行方向へ流れる（静止した絵にしないための最小の動き。
+             毎フレーム描き直す前提で tF から位相を取る） */
+          var brc = 1 + 0.016 * Math.sin(tF * 0.009 + si * 1.3);
+          var p = [p0[0] * brc, p0[1] * brc], pn = [pn0[0] * brc, pn0[1] * brc];
           var ang = Math.atan2(pn[1] - p[1], pn[0] - p[0]) + (((i + si) % 2) ? Math.PI / 2 : 0);
           link(p[0], p[1], W * 0.017, W * 0.0105, ang, 1, 0x241239, 0.95);
-          link(p[0], p[1], W * 0.0102, W * 0.0063, ang, 0.5, 0xc39bff, 0.55);
+          link(p[0], p[1], W * 0.0102, W * 0.0063, ang, 0.5, 0xc39bff, 0.42 + 0.26 * (0.5 + 0.5 * Math.sin(tF * 0.012 + si * 2.0 - i * 0.55)));
         }
       });
       /* 中心の締め環 */
@@ -8890,6 +9075,8 @@
             } else {
               finPSpawnBurst(R, G.cx, G.cy, { count: 14, colors: R.burstCols, power: 1.2 });
             }
+            /* 斬撃の風切り：ブレードと同じ角度へ風の筋を重ね、斬る勢いを足す */
+            finPSpawnWind(R, G.cx, G.cy, u.rot, u.len * 0.85, 0xff8a70);
           }
           if (!u.on) return;
           var up = finPProg(tFs, u.fx0, u.dur);
@@ -8964,7 +9151,7 @@
         /* ダーククイーン：鎖が被さる → 闇の渦へ引きずり込む */
         finPOnce(R, 'chains', tS, 550, function(){
           R.chFx0 = tFs;
-          finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2));
+          finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
           N.chainsC.position.set(G.cx, G.cy);
         });
         if (R.chFx0 != null){
@@ -8972,6 +9159,9 @@
           if (chp >= 1) N.chainsC.visible = false;
           else {
             N.chainsC.visible = true;
+            /* 鎖は毎フレーム描き直す：締め付けの呼吸と環のハイライトの
+               流れを持たせ、静止した絵にしない */
+            finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
             var chs = chp < 0.35 ? 0.45 + 0.55 * FINP_EZ.easeOut(chp / 0.35) : (chp < 0.8 ? 1 + 0.05 * ((chp - 0.35) / 0.45) : 1.05 - 0.03 * ((chp - 0.8) / 0.2));
             N.chainsC.scale.set(chs);
             N.chainsC.rotation = (chp < 0.35 ? -4 + 4 * (chp / 0.35) : (chp < 0.8 ? 2 * ((chp - 0.35) / 0.45) : 2)) * Math.PI / 180;
@@ -9014,10 +9204,44 @@
         /* EX-キャリバー：収束して溜める → 剣を振る → 三日月斬撃が飛翔 → 真っ二つ */
         if (tS >= 500 && tS < 1750) R.glowWhite = 0.68 * FINP_EZ.easeIn(finPProg(tS, 500, 1150));
         else if (tS >= 1750) R.glowWhite = Math.max(0, 0.68 - (tS - 1750) / 800);
+        /* 溜めの収束（旧方式 pixiExConvergeFx の移植。新方式には未移植で、
+           発光とバーストの代用だけになっていたのが「エネルギーチャージが
+           消えた」の正体）：画面外周から金の輪が何重にも剣の支点へ縮み、
+           内向きの光屑が吸い込まれ、中心グローが収束の進行で強まっていく。
+           振り（1750）の開始で消え、剣の発光へ受け渡す */
+        if (tS >= 500 && tS < 1750){
+          var cvLife = tS - 500;
+          var cvProg = Math.min(1, cvLife / 1210);
+          N.convG.visible = true;
+          N.convG.position.set(G.sdCx, G.sdCy);
+          finPDrawConverge(N.convG, cvLife, Math.max(vw, vh) * 0.66);
+          N.convGlow.visible = true;
+          N.convGlow.position.set(G.sdCx, G.sdCy);
+          var cvSize = (70 + 300 * cvProg) * (1 + 0.05 * Math.sin(tFs * 0.012));
+          N.convGlow.width = cvSize; N.convGlow.height = cvSize;
+          N.convGlow.alpha = 0.22 + 0.5 * cvProg;
+          /* 内向きの光屑：外周の円環上から生まれ、支点へ吸い込まれる */
+          if (R.convMoteFx == null || tFs - R.convMoteFx > 62){
+            R.convMoteFx = tFs;
+            finPSpawnMotes(R, G.sdCx, G.sdCy, { count: 2, radius: Math.max(vw, vh) * 0.42, colors: [0xfff3c4, 0xffd76a, 0xffffff], speed: 420, size: 0.5 });
+          }
+          /* 輪が支点へ届いた拍に小さな火花を重ねる */
+          if (!R.convArr) R.convArr = {};
+          for (var cvi = 0; cvi < 6; cvi++){
+            var cvlt = cvLife - cvi * 130;
+            if (cvlt >= 0 && cvlt / 560 >= 0.985 && !R.convArr[cvi]){
+              R.convArr[cvi] = true;
+              finPSpawnBurst(R, G.sdCx, G.sdCy, { count: 6, colors: [0xffffff, 0xffd76a], power: 0.55 });
+            }
+          }
+        } else {
+          N.convG.visible = false; N.convGlow.visible = false;
+          if (N.convG.clear) N.convG.clear();
+        }
         [620, 980, 1340].forEach(function(ms, bi){
           finPOnce(R, 'eb' + bi, tS, ms, function(){ finPSpawnBurst(R, G.ax, G.feetY - G.sdH * 0.35, { count: 14, rise: true, colors: R.burstCols, power: 0.8 }); });
         });
-        finPOnce(R, 'swing', tS, 1750, function(){ R.swingFx0 = tFs; finPSpawnDust(R, G.ax, G.feetY, false, 0xd6c09c); });
+        finPOnce(R, 'swing', tS, 1750, function(){ R.swingFx0 = tFs; finPSpawnDust(R, G.ax, G.feetY, false, 0xd6c09c); finPSpawnBurst(R, G.sdCx, G.sdCy, { count: 16, colors: [0xffffff, 0xffd76a], power: 1.1 }); });
         if (R.swingFx0 != null){
           var swp = finPProg(tFs, R.swingFx0, 700);
           if (swp < 1){
@@ -9115,11 +9339,17 @@
           } else R.dirOff = [6, -(G.feetY + G.sdH + 90)];
         }
         finPOnce(R, 'agWind', tS, 720, function(){ finPSpawnWind(R, G.ax + 6, G.feetY - G.sdH * 1.5, -90, G.sdH * 0.95, 0xffffff); });
+        finPOnce(R, 'jawDust', tS, R.destroyMs, function(){ finPSpawnDust(R, G.cx, G.cy + G.sumH * 0.42, true, 0xbfb0d4); });
         finPOnce(R, 'jawIn', tS, 1120, function(){ R.jawFx0 = tFs; });
         if (R.jawFx0 != null){
           N.jawC.visible = true;
           var jp = finPProg(tFs, R.jawFx0, 540);
           var je = FINP_EZ.jaw(jp);
+          /* 落下の風切り：顎が降りている間、その位置に風の筋を流し続ける */
+          if (jp > 0.05 && jp < 0.95 && (R.jawWindFx == null || tFs - R.jawWindFx > 120)){
+            R.jawWindFx = tFs;
+            finPSpawnWind(R, G.cx, N.jawC.position.y + G.sumH * 0.2, 90, G.sdH * 1.1, 0xd6bcff);
+          }
           N.jawC.position.y = G.cy + R.jawStartOff * (1 - je);
           /* 噛み砕きの震え（破壊拍から460ms） */
           if (tS >= R.destroyMs && tS < R.destroyMs + 460){
@@ -9282,6 +9512,11 @@
             R.trailPts.push({ x: N.atkC.position.x, y: N.atkC.position.y });
             if (R.trailPts.length > 18) R.trailPts.shift();
           }
+          /* 軌跡から零れる光屑：帯だけでなく粒でも速度を見せる */
+          if (R.trailShedFx == null || tFs - R.trailShedFx > 70){
+            R.trailShedFx = tFs;
+            finPSpawnBurst(R, N.atkC.position.x, N.atkC.position.y, { count: 2, colors: [0xffffff, 0xf2e7bd], power: 0.35 });
+          }
         }
         var tAlpha = 1;
         if (R.thFx0 == null && tS >= 1700) tAlpha = Math.max(0, 1 - finPProg(tS, 1700, 240));
@@ -9440,6 +9675,11 @@
             N.vortexG.scale.set(1, 0.62);
             N.vortexG.alpha = vo < 0.35 ? vo / 0.35 : (vo > 0.8 ? 1 - (vo - 0.8) / 0.2 : 1);
           } else N.vortexG.visible = false;
+          /* 吸い込みの塵：渦が回っている間、周囲の紫の塵が中心へ吸われる */
+          if (vo > 0 && vo < 1 && (R.vxMoteFx == null || tFs - R.vxMoteFx > 130)){
+            R.vxMoteFx = tFs;
+            finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 4, radius: G.fxW * 0.42, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff], speed: 300, size: 0.45 });
+          }
         } else if (R.breakStyle === 'explode'){
           var ex = finPProg(bl, 0, 1100);
           N.vicWhite.alpha = ex < 0.16 ? ex / 0.16 : Math.max(0, 1 - (ex - 0.16) / 0.5);
@@ -19104,7 +19344,17 @@
         setTimeout(function(){
           if (myToken !== fxFinCheckToken) return;
           if (!fxOverlay.classList.contains('show')) return;
-          fxCheckCaption(item.label + ' 再生終了');
+          /* 終了後の残存チェック：全方式ぶんの残量を数え、残っていたら
+             共通の後片付け（finFxSweepAll）で掃除してから結果を表示する。
+             「再生が終わったのにエフェクトが残る」をここで必ず検出する */
+          var res = null;
+          try { res = window.__finResidueAudit ? window.__finResidueAudit() : null; } catch (e) {}
+          if (res && res.total > 0){
+            try { finFxSweepAll(); } catch (e) {}
+            fxCheckCaption(item.label + ' 再生終了（残っていた演出 ' + res.total + ' 件を掃除しました）');
+          } else {
+            fxCheckCaption(item.label + ' 再生終了（残存チェック：異常なし）');
+          }
           finDiagResetActiveMode(); /* 再生終了：診断モードの適用を通常へ戻す（Pixi再開・DOM OFF解除）。計測結果は内部に保持される */
           if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
         }, ms);
@@ -19131,13 +19381,21 @@
         return;
       }
       /* SD素材の読み込み完了を少しだけ待ってから振り分ける（対戦中は待たず、
-         未読込なら従来演出へフォールバックする）。読み込み自体は開いた時点で開始済み */
-      if (sdFxPending(item.cardId) || sdImgState['fx/sd-chloe-summoner.webp'] === 0){
+         未読込なら従来演出へフォールバックする）。読み込み自体は開いた時点で開始済み。
+         あわせて新方式の先行構築（このボタンを押した時点で開始済み）の
+         完了も待つ：待たずに振り分けると、先行構築が間に合わない回だけ
+         現行方式で再生されてしまい、新方式の確認にならないため */
+      function fxFinProtoPending(){
+        if (finProtoState.failed) return false;
+        var C = finProtoTexCache[String(item.cardId) + '|chloe'];
+        return !(C && (C.ready || C.failed));
+      }
+      if (sdFxPending(item.cardId) || sdImgState['fx/sd-chloe-summoner.webp'] === 0 || fxFinProtoPending()){
         fxCheckCaption(item.label + '：SD素材を読み込んでいます…');
         var tries = 0;
         var iv = setInterval(function(){
           tries++;
-          if (!(sdFxPending(item.cardId) || sdImgState['fx/sd-chloe-summoner.webp'] === 0) || tries >= 20){
+          if (!(sdFxPending(item.cardId) || sdImgState['fx/sd-chloe-summoner.webp'] === 0 || fxFinProtoPending()) || tries >= 26){
             clearInterval(iv);
             if (!fxOverlay.classList.contains('show')) return;
             fxCheckCaption(item.label + ' 再生中');
