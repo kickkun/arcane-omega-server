@@ -562,6 +562,10 @@
         position:relative; z-index:3; margin:0; text-align:center; flex:0 0 auto;
         font-size:12.5px; font-weight:700; letter-spacing:.06em; color:#f4e8c8; text-shadow:0 1px 4px #000; pointer-events:none;
       }
+      /* フィニッシュ再生のフレーム計測パネル（カクつき診断の表示先） */
+      .fx-diag{margin-top:14px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:rgba(10,14,24,.55);}
+      .fx-diag-head{margin:0 0 4px; font-size:12px; font-weight:700; letter-spacing:.08em; color:#f4e8c8;}
+      .fx-diag-body{margin:0; font-size:12px; line-height:1.7; color:#dfe6f2;}
       /* 背の低い画面ではステージ（約570px）がビューポートの大半を占有して
          ボタン一覧がほぼ見えなくなるため、sticky を解除して通常スクロールに
          逃がす（再生時は JS が scrollIntoView でステージへ戻す） */
@@ -2062,6 +2066,23 @@
         -webkit-user-drag:none;
         user-drag:none;
       }
+      /* 対戦画面全体への長押しメニュー抑止（第2弾）：場・手札・召喚士
+         プレート（.plate-art 等は上のカード系セレクタに含まれない）・
+         デッキ束・ボタン類・盤面アートまで、対戦画面のコンテナ全体に
+         コールアウト／テキスト選択／画像ドラッグの抑止を効かせる。
+         #fieldWrap と #ovGame の中には入力欄が無いため、名前・コード
+         入力の選択／コピーは妨げない（contextmenu 側も入力欄を除外する
+         既存の判定と揃える）。タップ・なぞり・長押しで手札を広げる
+         操作はイベント処理側の変更なしで従来どおり動く */
+      #fieldWrap,#fieldWrap *,#ovGame,#ovGame *{
+        -webkit-touch-callout:none;
+        -webkit-user-select:none;
+        user-select:none;
+      }
+      #fieldWrap img,#ovGame img{
+        -webkit-user-drag:none;
+        user-drag:none;
+      }
       /* ===== 召喚アニメーション：中央ステージ出現＋場へスライド =====
          場の最終配置は「出た順に左から、列全体が常に中心」の1ルールに統一する。
          CPU戦の .board は5枠グリッドをやめて flex 中央寄せにし、ユニット幅は
@@ -2861,6 +2882,13 @@
         background:linear-gradient(135deg, #241d3d, #0b0817); border:1px solid rgba(190,180,255,.28);}
       /* 着弾3段化の衝撃波リング（着弾点から広がる短いバースト） */
       .fx-fin3-ring{position:absolute; border-radius:50%; pointer-events:none; will-change:transform,opacity;}
+      /* 吹き飛び開始（JSが .fx-blown を付ける）以降は、専用空間の常駐
+         アニメーションを止める。虚空は拡大して消え、陣は破片に置き
+         換わるため見た目は変わらず、拡大中の再描画だけが消える */
+      .fx-fin3-bg.fx-blown .fx-fin3-circle,
+      .fx-fin3-bg.fx-blown .fx-fin3-pool,
+      .fx-fin3-bg.fx-blown .fx-fin3-dot,
+      .fx-fin3-bg.fx-blown .fx-fin3-heat{animation-play-state:paused !important;}
       /* 魔法陣の破片：陣の輪郭の切片ごと切り取ったテーマ色の光片 */
       .fx-fin3-cshard{position:absolute; pointer-events:none; will-change:transform,opacity;}
       .fx-fin3-cshard svg{width:100%; height:100%; display:block;}
@@ -4108,6 +4136,11 @@
         <p class="fx-fin-head">神話フィニッシュ演出</p>
         <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスだけは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
+        <div class="fx-diag" id="fxDiagPanel" hidden>
+          <p class="fx-diag-head">フレーム計測・位置実測（直近の神話フィニッシュ再生）</p>
+          <p class="fx-diag-body" id="fxDiagBody"></p>
+          <p class="fx-diag-body" id="fxPosBody"></p>
+        </div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
     </div>
@@ -5381,6 +5414,130 @@
       fxMythicFxNodes = [];
       if (fxMythicHiddenPanel){ fxMythicHiddenPanel.style.visibility = ''; fxMythicHiddenPanel = null; }
     }
+    /* ===== フィニッシュ再生のフレーム計測（カクつき診断） =====
+       軽量化を推測で重ねるのをやめ、再生中のフレーム時間を実測するための
+       仕組み。振り分け（mythicFinishDispatch）の入口で計測を始め、
+       requestAnimationFrame の間隔が 26ms を超えたフレームを「再生開始
+       からの経過ms＋その時点の演出フェーズ」付きで記録する。結果は
+       window.__finDiagLast に残し、演出チェックでは再生終了後にパネルへ
+       表示する（実戦の画面には出ない）。
+       フェーズの区切り：第3世代＝FIN2_TOTAL_MS まで「間・場面転換」→
+       破壊拍まで「対峙・着弾」→+600ms「吹き飛び」→「白背景・余韻」。
+       従来方式＝破壊拍まで「登場・攻撃」→+600ms「破壊」→「余韻」 */
+    var finDiag = { raf: 0, cur: null };
+    function finDiagPhase(t, fin3, destroyAt){
+      if (fin3){
+        if (t < FIN2_TOTAL_MS) return '間・場面転換';
+        if (t < FIN2_TOTAL_MS + destroyAt) return '対峙・着弾';
+        if (t < FIN2_TOTAL_MS + destroyAt + 600) return '吹き飛び';
+        return '白背景・余韻';
+      }
+      if (t < destroyAt) return '登場・攻撃';
+      if (t < destroyAt + 600) return '破壊';
+      return '余韻';
+    }
+    function finDiagStart(cardId, panelEl){
+      finDiagStop();
+      if (HEADLESS || typeof requestAnimationFrame !== 'function' || typeof performance === 'undefined') return;
+      var id = String(cardId);
+      var sdReady = false, willFin3 = false;
+      try { sdReady = sdFxReady(cardId); willFin3 = sdReady && fin2WillRun(cardId, panelEl); } catch (e) {}
+      var total = (willFin3 ? FIN2_TOTAL_MS : 0) + (sdReady ? (SD_FIN_MS[id] || 2500) : 2600);
+      var st = {
+        cardId: id, fin3: willFin3,
+        destroyAt: FIN2_DESTROY_MS[id] || 1500,
+        t0: performance.now(), last: 0, frames: 0, max: 0, over33: 0, over50: 0, long: [], done: false
+      };
+      finDiag.cur = st;
+      function step(now){
+        if (finDiag.cur !== st) return;
+        if (st.last){
+          var dt = now - st.last, t = now - st.t0;
+          st.frames++;
+          if (dt > st.max) st.max = dt;
+          if (dt > 33) st.over33++;
+          if (dt > 50) st.over50++;
+          if (dt > 26) st.long.push({ t: Math.round(t), dt: Math.round(dt) });
+        }
+        st.last = now;
+        if (now - st.t0 < total + 500){ finDiag.raf = requestAnimationFrame(step); }
+        else { st.done = true; window.__finDiagLast = finDiagData(st); }
+      }
+      finDiag.raf = requestAnimationFrame(step);
+    }
+    function finDiagStop(){
+      if (finDiag.raf) cancelAnimationFrame(finDiag.raf);
+      finDiag.raf = 0;
+      if (finDiag.cur){ finDiag.cur.done = true; window.__finDiagLast = finDiagData(finDiag.cur); }
+      finDiag.cur = null;
+    }
+    function finDiagData(st){
+      if (!st) return null;
+      var worst = st.long.slice().sort(function(a, b){ return b.dt - a.dt; }).slice(0, 5).map(function(w){
+        return { phase: finDiagPhase(w.t, st.fin3, st.destroyAt), t: w.t, dt: w.dt };
+      });
+      return { cardId: st.cardId, fin3: st.fin3, frames: st.frames, maxMs: Math.round(st.max), over33: st.over33, over50: st.over50, worst: worst };
+    }
+    function finDiagSummaryText(){
+      var d = window.__finDiagLast;
+      if (!d) return '';
+      var head = '最大フレーム ' + d.maxMs + 'ms／33ms超 ' + d.over33 + '回／50ms超 ' + d.over50 + '回（計測 ' + d.frames + ' フレーム）';
+      if (!d.worst.length) return head + '。26msを超えるフレームはありませんでした。';
+      return head + '。長いフレーム：' + d.worst.map(function(w){ return w.phase + '（+' + w.t + 'ms）で ' + w.dt + 'ms'; }).join('／');
+    }
+    /* ===== フィニッシュSD位置の実測（位置ズレ診断） =====
+       第3世代の再生ごとに「想定位置（仕様値）」と「実測位置」の差を px で
+       記録し、window.__finPosLast に残す。演出チェックではフレーム計測と
+       あわせて診断パネルへ表示する（実戦の画面には出ない）。測る対象：
+       ・受け側SD：場面構築直後に、中の img（実際に見える召喚士SD）の
+         矩形中心を実測し、想定中心（コンテナ .fx-fin3-target の指定中心
+         ＝画面中央×指定位置。通常は上部／ロンギヌスミラー時は下部）と
+         比べる。中央寄せのズレも含めた「見えている位置」の差がそのまま
+         出る。コンテナ自体の矩形との差は victimBox に参考として残す
+       ・攻撃側SD（オーラの箱）：包み直し直後に、基準姿勢
+         translate(-50%,-100%) の足元にあたる箱の left／top を想定
+         (ax, feetY) と比べ（レイアウト差）、登場が落ち着いた +520ms 時点で
+         箱の中の SD 画像の矩形が箱の矩形と一致するかも測る（画像側に残った
+         transform の fill で本体だけズレる不具合の再発検出）
+       ・ロンギヌス受け側の静止位置：登場アニメーションが落ち着いた
+         +2320ms 時点で、受け側 img の矩形中心と target 矩形中心の差を測る
+         （親要素の震えは両矩形に等しく乗るため差には影響しない） */
+    var finPosLast = null;
+    var finPosByCard = {}; /* カード別（＋ロンギヌス反転構図別）の最新実測。window.__finPosByCard にも出す */
+    function finPosRound(n){ return Math.round(n * 10) / 10; }
+    function finPosSgn(n){ return (n > 0 ? '+' : '') + n; }
+    function finPosSet(rec){
+      finPosLast = rec; window.__finPosLast = rec;
+      if (rec && rec.cardId){
+        finPosByCard[rec.cardId + (rec.flip ? '-flip' : '')] = rec;
+        window.__finPosByCard = finPosByCard;
+      }
+    }
+    function finPosSummaryText(){
+      var p = finPosLast;
+      if (!p || !p.victim) return '';
+      var parts = ['位置実測（想定との差）：受け側SD 中心 dx' + finPosSgn(p.victim.dx) + '／dy' + finPosSgn(p.victim.dy) + 'px'];
+      if (p.attacker){
+        parts.push('攻撃側SD 足元レイアウト dx' + finPosSgn(p.attacker.layoutDx) + '／dy' + finPosSgn(p.attacker.layoutDy) + 'px');
+        if (p.attacker.imgDx != null) parts.push('箱内SD画像 dx' + finPosSgn(p.attacker.imgDx) + '／dy' + finPosSgn(p.attacker.imgDy) + 'px');
+      }
+      if (p.longinusStop) parts.push('ロンギヌス受け側の静止 dx' + finPosSgn(p.longinusStop.dx) + '／dy' + finPosSgn(p.longinusStop.dy) + 'px');
+      if (p.flip) parts.push('（ロンギヌス上下反転構図）');
+      return parts.join('、') + '。';
+    }
+    /* カード別の最新実測（全7神話・反転構図を実機で順に再生した時に、
+       パネル上でも一覧で差を確認できるようにする） */
+    function finPosAllText(){
+      var keys = Object.keys(finPosByCard);
+      if (keys.length < 2) return '';
+      return 'カード別最新：' + keys.map(function(k){
+        var p = finPosByCard[k];
+        var s = k + ' 受け側 dx' + finPosSgn(p.victim.dx) + '／dy' + finPosSgn(p.victim.dy);
+        if (p.attacker && p.attacker.imgDx != null) s += '、箱内 dx' + finPosSgn(p.attacker.imgDx) + '／dy' + finPosSgn(p.attacker.imgDy);
+        if (p.longinusStop) s += '、静止 dx' + finPosSgn(p.longinusStop.dx) + '／dy' + finPosSgn(p.longinusStop.dy);
+        return s;
+      }).join('／') + '。';
+    }
     /* パネルの矩形に固定配置ラッパーを作る */
     function fxFinMakeWrap(panelEl){
       var r = panelEl.getBoundingClientRect();
@@ -5825,6 +5982,8 @@
        実戦（fxTriggerFinish）と演出チェック画面の共通入口 */
     function mythicFinishDispatch(cardId, panelEl){
       if (HEADLESS || !panelEl) return;
+      finDiagStart(cardId, panelEl); /* カクつき診断：再生中のフレーム時間を実測する */
+      finPosSet(null); /* 位置実測は再生ごとに作り直す（前回の値を残さない） */
       if (!(stageReducedMotion || pixiReducedMotion) && sdFxReady(cardId)){
         /* フィニッシュ第3世代：素材が揃っていれば「間→場面転換（専用空間で
            浮遊対峙）→白背景フィニッシュ」の新フロー。召喚士SDが読めていない
@@ -6122,11 +6281,39 @@
       if (vicImg){
         /* 光の回り込み：陣のテーマ色の光が受け側SDの輪郭に薄く当たる */
         vicImg.style.filter = 'drop-shadow(0 8px 18px rgba(0,0,0,.5)) drop-shadow(0 0 13px ' + conf.color + 'b3)';
-        fxFinAnimate(vicImg, [
+        /* ハンドルを保持する：ロンギヌス専用構成では登場〜静止の間だけ
+           浮遊を止めるため、後から cancel できるようにしておく */
+        vicImg._fin3Float = fxFinAnimate(vicImg, [
           { translate: '0px 0px' }, { translate: '0px -7px' }, { translate: '0px 0px' }
         ], { duration: 2750, iterations: 4, easing: 'ease-in-out' });
       }
       var scene = { bg: bg, whiteEl: bg.querySelector('.fx-fin3-white'), voidEl: bg.querySelector('.fx-fin3-void'), circleEl: bg.querySelector('.fx-fin3-circle'), target: target, cx: tx + Math.round(sumW / 2), cy: ty + Math.round(sumH / 2) };
+      /* 位置実測（受け側）：実際に画面に見えるのは中の img（召喚士SD
+         そのもの）なので、実測の本体は img の矩形中心と想定中心
+         （target の指定中心）の差にする。中央寄せ（margin:auto）のズレや
+         img 側の配置誤差はすべてここに出る。コンテナ（target）自体の
+         矩形との差は victimBox に参考として残す。浮遊の translate は
+         開始直後は 0 のため、この時点の img 矩形が基準位置を示す */
+      var posRec = { cardId: String(cardId), fin3: true, flip: !!flip, vicId: vicId, isCheck: !!isCheck };
+      try {
+        var tr = target.getBoundingClientRect();
+        posRec.victimBox = {
+          dx: finPosRound((tr.left + tr.width / 2) - (tx + sumW / 2)),
+          dy: finPosRound((tr.top + tr.height / 2) - (ty + sumH / 2))
+        };
+        if (vicImg){
+          var ir = vicImg.getBoundingClientRect();
+          posRec.victim = {
+            specCx: tx + sumW / 2, specCy: ty + sumH / 2,
+            dx: finPosRound((ir.left + ir.width / 2) - (tx + sumW / 2)),
+            dy: finPosRound((ir.top + ir.height / 2) - (ty + sumH / 2))
+          };
+        } else {
+          posRec.victim = { specCx: tx + sumW / 2, specCy: ty + sumH / 2, dx: posRec.victimBox.dx, dy: posRec.victimBox.dy };
+        }
+      } catch (e) {}
+      scene._pos = posRec;
+      finPosSet(posRec);
       /* 吹き飛び瞬間の要素（破片・リング・余波）はここで先に作っておく */
       fin3PrebuildFx(scene, conf);
       if (!FIN3_RASTER[conf.color]){
@@ -6233,6 +6420,12 @@
     function fin3BlowAway(scene, conf){
       if (!scene) return;
       var themeCol = conf ? conf.color : '#ffe9a8';
+      /* 吹き飛びの瞬間は、専用空間側の常駐アニメーション（陣の回転／
+         光の溜まりの明滅／粒の漂い・上昇）を止める（CSS の .fx-blown）。
+         虚空はこの直後に拡大して消え、陣は破片へ置き換わるため、
+         止まっても見た目は変わらない。拡大中のサブツリー再描画と、
+         見えなくなった要素の合成を消すのが目的 */
+      if (scene.bg && scene.bg.classList) scene.bg.classList.add('fx-blown');
       /* (a) フラッシュ＋着弾バースト */
       fxFinFlash(0.9, 430);
       pixiBurst(scene.cx, scene.cy, { count: 28, colors: [0xffffff, (SD_FIN && conf && conf.auraN) ? conf.auraN[0] : 0xffe9a8], power: 2.1, size: 1.2 });
@@ -6268,6 +6461,7 @@
         try { cRect = scene.circleEl.getBoundingClientRect(); } catch (e) {}
         if (cRect && cRect.width > 40){
           scene.circleEl.style.opacity = '0';
+          scene.circleEl.style.visibility = 'hidden'; /* 破片が置き換えるため、opacity 0 のまま回転し続ける大レイヤーの合成も止める */
           if (FIN3_RASTER[themeCol]){
             /* ラスター破片：同じ扇形に clip-path で切り取った画像片を飛ばす
                （ベクターの再描画なし。transform／opacity のみ）。
@@ -6682,20 +6876,28 @@
            仕組み自体は共通のまま、時刻表だけ差し替える */
         if (isFin3 && id === '54') cues = { slow: [1880, 2050], stop: [2050, 160], destroy: 2050, se: [[1000, 'finRush'], [2050, 'finImpactHeavy']] };
         /* --- レターボックス＋暗転 --- */
-        var dimEl = document.createElement('div');
-        dimEl.className = 'fx-fin-dimlayer'; dimEl.setAttribute('aria-hidden', 'true');
-        /* 暗転のくり抜き：対象パネルの矩形（関数冒頭で実測した r）に合わせ、
-           パネルだけを暗転から外す（破壊クローンは元々 z-index 92 で上） */
-        dimEl.style.left = r.left + 'px'; dimEl.style.top = r.top + 'px';
-        dimEl.style.width = r.width + 'px'; dimEl.style.height = r.height + 'px';
-        document.body.appendChild(dimEl); fxMythicFxNodes.push(dimEl);
+        /* 第3世代では暗転レイヤーを作らない：専用空間の虚空（z-index 91・
+           不透明）が画面全体を覆うため、その下（z-index 90）の暗転は
+           最初から最後まで見えず、200vmax の box-shadow を持つ全面
+           レイヤーの生成と opacity 合成だけが無駄に残る。レターボックス
+           （z-index 97）は専用空間より上なので従来どおり出す */
+        var dimEl = null;
+        if (!isFin3){
+          dimEl = document.createElement('div');
+          dimEl.className = 'fx-fin-dimlayer'; dimEl.setAttribute('aria-hidden', 'true');
+          /* 暗転のくり抜き：対象パネルの矩形（関数冒頭で実測した r）に合わせ、
+             パネルだけを暗転から外す（破壊クローンは元々 z-index 92 で上） */
+          dimEl.style.left = r.left + 'px'; dimEl.style.top = r.top + 'px';
+          dimEl.style.width = r.width + 'px'; dimEl.style.height = r.height + 'px';
+          document.body.appendChild(dimEl); fxMythicFxNodes.push(dimEl);
+        }
         var barT = document.createElement('div');
         barT.className = 'fx-fin-letterbox top'; barT.setAttribute('aria-hidden', 'true');
         var barB = document.createElement('div');
         barB.className = 'fx-fin-letterbox bottom'; barB.setAttribute('aria-hidden', 'true');
         document.body.appendChild(barT); document.body.appendChild(barB);
         fxMythicFxNodes.push(barT); fxMythicFxNodes.push(barB);
-        fxFinAnimate(dimEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out', fill: 'forwards' });
+        if (dimEl) fxFinAnimate(dimEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out', fill: 'forwards' });
         fxFinAnimate(barT, [{ transform: 'translateY(-104%)' }, { transform: 'translateY(0)' }], { duration: 400, easing: 'cubic-bezier(.22,.8,.3,1)', fill: 'forwards' });
         fxFinAnimate(barB, [{ transform: 'translateY(104%)' }, { transform: 'translateY(0)' }], { duration: 400, easing: 'cubic-bezier(.22,.8,.3,1)', fill: 'forwards' });
         seFin('finStart');
@@ -6747,7 +6949,7 @@
         later(function(){
           fxFinAnimate(barT, [{ transform: 'translateY(0)' }, { transform: 'translateY(-104%)' }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
           fxFinAnimate(barB, [{ transform: 'translateY(0)' }, { transform: 'translateY(104%)' }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
-          fxFinAnimate(dimEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
+          if (dimEl) fxFinAnimate(dimEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
           fxFinSetRate(1);
         }, Math.max(0, FIN_MS - 360));
       })();
@@ -6853,11 +7055,19 @@
       if (isFin3) sd.style.filter = 'drop-shadow(0 10px 22px rgba(0,0,0,.55)) drop-shadow(0 0 12px ' + conf.color + 'a6)';
       /* SDの基本姿勢（足元を原点に中央寄せ）＋任意のオフセットで transform を組む */
       function sdT(dx, dy, s, rot){ return 'translate(-50%,-100%) translate(' + (dx || 0) + 'px,' + (dy || 0) + 'px) rotate(' + (rot || 0) + 'deg) scale(' + (s == null ? 1 : s) + ')'; }
-      fxFinAnimate(sd, [
-        { transform: sdT(0, 30, 0.3), opacity: 0 },
-        { transform: sdT(0, -9, 1.07), opacity: 1, offset: 0.55 },
-        { transform: sdT(0, 0, 1), opacity: 1 }
-      ], { duration: 480, easing: 'ease-out', fill: 'forwards' });
+      /* 登場アニメーションは関数に切り出す：この時点では素の img へ付けるが、
+         直後の sdAuraStart が SD をオーラの箱へ包み直す際に、img 側の
+         アニメーションを打ち消して箱側へ付け直す（playSdEntrance の再実行）。
+         fill で残る translate(-50%,-100%) が箱の中でも効き続けると、本体
+         だけが「半幅左・1体分上」へズレてオーラや台座と合わなくなるため */
+      function playSdEntrance(){
+        fxFinAnimate(sd, [
+          { transform: sdT(0, 30, 0.3), opacity: 0 },
+          { transform: sdT(0, -9, 1.07), opacity: 1, offset: 0.55 },
+          { transform: sdT(0, 0, 1), opacity: 1 }
+        ], { duration: 480, easing: 'ease-out', fill: 'forwards' });
+      }
+      playSdEntrance();
       pixiBurst(ax, feetY - sdH * 0.35, { count: 16, colors: [0xffffff, 0xeccd7e], power: 0.9 });
       if (id !== '53ag' && !isFin3) sdDust(ax, feetY, false); /* 登場の足元に砂煙（アギトは飛翔時のみ追加。第3世代は浮遊のため地面の砂煙は出さない） */
       var sdCx = ax, sdCy = feetY - sdH * 0.52; /* SDの重心あたり（ビームの起点） */
@@ -6976,6 +7186,16 @@
         sdImg.style.width = '100%'; sdImg.style.height = '100%'; sdImg.style.zIndex = '2';
         box.appendChild(sdImg);
         sd = box; /* 以後の振り付けは箱（＝SD＋オーラ一体）を対象にする */
+        /* 位置ズレ対策：素の img に付けた登場アニメーションは fill のまま
+           箱の中でも生き続け、最終キーフレームの translate(-50%,-100%)
+           （＝幅の半分・高さ1体分）だけ本体が箱からズレて表示されていた。
+           img 側のアニメーションをすべて打ち消して素の配置（箱いっぱい）
+           に戻し、登場アニメーションは箱へ付け直す。包み直しも付け直しも
+           同一タスク内の処理で、画面に描かれる前に終わるため、登場の
+           見た目・タイミングは変わらない */
+        if (sdImg.getAnimations) sdImg.getAnimations().forEach(function(a){ try { a.cancel(); } catch (e) {} });
+        sdImg.style.transform = '';
+        playSdEntrance();
         /* 背後のグロー層（1枚だけ。SD本体より後ろに置き、姿は写さない） */
         var glow2 = document.createElement('div');
         glow2.className = 'aura-glow2';
@@ -7048,6 +7268,31 @@
         setTimeout(function(){ clearInterval(burstIv); }, FIN_MS + 120);
       }
       sdAuraStart();
+
+      /* 位置実測（攻撃側）：オーラの箱へ包み直した直後の配置を測る。
+         layoutDx／Dy は transform の影響を受けないよう箱の left／top
+         （＝基準姿勢での足元）そのものを想定 (ax, feetY) と比べる。
+         imgDx／Dy は登場が落ち着いた +520ms 時点で、箱の中の SD 画像の
+         矩形が箱の矩形と一致するか（画像側に残った transform の fill で
+         本体だけズレる不具合の再発検出。第3世代のみ記録する） */
+      if (isFin3 && panelEl._fin3Scene && panelEl._fin3Scene._pos){
+        var posRecA = panelEl._fin3Scene._pos;
+        posRecA.attacker = {
+          specAx: ax, specFeetY: feetY, sdH: sdH,
+          layoutDx: finPosRound((parseFloat(sd.style.left) || 0) - ax),
+          layoutDy: finPosRound((parseFloat(sd.style.top) || 0) - feetY)
+        };
+        later(function(){
+          try {
+            var imgElA = sd.querySelector('img');
+            if (!imgElA) return;
+            var brA = sd.getBoundingClientRect(), irA = imgElA.getBoundingClientRect();
+            if (!brA.width || !irA.width) return;
+            posRecA.attacker.imgDx = finPosRound((irA.left + irA.width / 2) - (brA.left + brA.width / 2));
+            posRecA.attacker.imgDy = finPosRound(irA.bottom - brA.bottom);
+          } catch (e) {}
+        }, 520);
+      }
 
       if (id === '52ex'){
         /* EX-キャリバー：オーラと光の輪を剣へ収束させて溜める → SDの中心を
@@ -7294,6 +7539,13 @@
         var vicAbove54 = pcy < window.innerHeight / 2;
         var awaySign54 = vicAbove54 ? 1 : -1; /* 飛び去る方向＝受け側と反対（下／上） */
         if (vicImg54) vicImg54.style.opacity = '0'; /* 場面転換直後はまだ映さない（暗転中に隠す） */
+        /* 浮遊（独立プロパティ translate の揺らし・最大 -7px）が付いたまま
+           だと、登場アニメーション（transform の translateY）と合成され、
+           静止位置が想定（target の矩形）から浮遊ぶんズレてしまう。
+           この構成の受け側は「減速してピタッと静止」が仕様のため、
+           登場〜静止の間は浮遊を止め、静止が落ち着いてから再開する
+           （他のキャラの受け側は浮遊したまま対峙する従来どおり） */
+        if (vicImg54 && vicImg54._fin3Float){ try { vicImg54._fin3Float.cancel(); } catch (e) {} vicImg54._fin3Float = null; }
         /* 背景の光の粒／スピード線：流れの方向へ縦に伸びる線を層で流す */
         function rushLayer54(count, durMin, durVar, iter, thick){
           if (!scene54 || !scene54.bg) return null;
@@ -7378,6 +7630,29 @@
           ], { duration: 330, easing: 'cubic-bezier(.16,.84,.3,1)', fill: 'forwards' });
           rushLayers54.forEach(function(l){ fxFinAnimate(l, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' }); });
         }, 1720);
+        /* 静止の落ち着き（スロー／ヒットストップで登場アニメーションの
+           実時間は延びるため、破壊クローン化の直前で測る）：受け側 img の
+           矩形中心と target 矩形中心の差を位置実測へ記録し、止めていた
+           浮遊をここから再開する（余韻の間も浮遊して見えるように） */
+        later(function(){
+          try {
+            var posRec54 = panelEl._fin3Scene && panelEl._fin3Scene._pos;
+            if (posRec54 && vicImg54){
+              var vr54 = vicImg54.getBoundingClientRect(), tr54 = panelEl.getBoundingClientRect();
+              if (vr54.width && tr54.width){
+                posRec54.longinusStop = {
+                  dx: finPosRound((vr54.left + vr54.width / 2) - (tr54.left + tr54.width / 2)),
+                  dy: finPosRound((vr54.top + vr54.height / 2) - (tr54.top + tr54.height / 2))
+                };
+              }
+            }
+          } catch (e) {}
+          if (vicImg54 && vicImg54.isConnected && !vicImg54._fin3Float){
+            vicImg54._fin3Float = fxFinAnimate(vicImg54, [
+              { translate: '0px 0px' }, { translate: '0px -7px' }, { translate: '0px 0px' }
+            ], { duration: 2750, iterations: 4, easing: 'ease-in-out' });
+          }
+        }, 2320);
         /* 着弾：静止した瞬間に画面外（下／ミラー時は上）から突き抜ける。
            本人は受け側のいた位置より少し先（上／ミラー時は下）で止まる */
         var passDx54 = Math.round(pcx - ax);
@@ -11493,6 +11768,13 @@
        フィニッシュ専用の fxTriggerFinish とは別系統で、短く弱く揺らすだけ */
     function fxQuake(cls, ms){
       if (HEADLESS || stageReducedMotion) return;
+      /* 第3世代の専用空間が表示されている間はシェイクを発生させない：
+         シェイク対象の #app／チェック画面は不透明な専用空間（body直下・
+         z-index 91）に覆われて見えず、揺れは視覚に届かないのに、全面の
+         再合成だけが吹き飛びの瞬間などに重なって負荷になる。専用空間側の
+         衝撃表現（フラッシュ／リング／破片／白化）は別系統で出るため、
+         見た目は変わらない。従来方式（第2世代）では従来どおり揺らす */
+      if (document.querySelector('.fx-fin3-bg')) return;
       document.body.classList.remove(cls);
       void document.body.offsetWidth; /* アニメーションを最初から再生させる */
       document.body.classList.add(cls);
@@ -14957,12 +15239,18 @@
       if (el) onBoardTap('cpu', Number(el.getAttribute('data-uid')));
     });
     document.getElementById('cpuLeader').addEventListener('click', function(ev){
-      if (ev && ev.target && ev.target.closest && ev.target.closest('[data-summoner-avatar]')){ openSummonerDetail('cpu'); return; }
-      if (S.over || S.busy || S.active !== 'me' || S.mode !== 'idle') return;
-      if (S.selectedAttacker){
+      /* 攻撃対象の選択中は、プレートのどこをタップしても「召喚士への
+         攻撃」としてだけ処理し、詳細シートは開かない。アバター部分は
+         プレートの大半を占めるため、詳細オープンの判定より前に攻撃の
+         確定を判定する（対象選択中でない通常時だけ、従来どおりアバター
+         タップで詳細が開く） */
+      var attackReady = !S.over && !S.busy && S.active === 'me' && S.mode === 'idle' && !!S.selectedAttacker;
+      if (attackReady){
         if (doAttack('me', S.selectedAttacker, 'cpu', 'LEADER')) S.selectedAttacker = null;
         render();
+        return;
       }
+      if (ev && ev.target && ev.target.closest && ev.target.closest('[data-summoner-avatar]')){ openSummonerDetail('cpu'); return; }
     });
     /* ================= スタート画面 ================= */
     var startOverlay = document.getElementById('startOverlay');
@@ -16059,10 +16347,28 @@
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは最初は映らず、溜めで背景の光が流れ始め、加速区間（スピード線＋本人が画面下へ飛び去る＋名前帯の予告）を経て相手SDが上方から登場して静止した瞬間、下から突き上げて着弾し、背景ごと吹っ飛んで白背景で締める' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
+    /* フレーム計測と位置実測の結果を診断パネルへ出す（計測自体は振り分け側の
+       finDiagStart／fin3BuildScene 等が実戦と共通で行う。ここは表示だけ） */
+    function fxDiagRender(){
+      var panel = document.getElementById('fxDiagPanel');
+      var body = document.getElementById('fxDiagBody');
+      if (!panel || !body) return;
+      var txt = (typeof finDiagSummaryText === 'function') ? finDiagSummaryText() : '';
+      var posTxt = (typeof finPosSummaryText === 'function') ? finPosSummaryText() : '';
+      var allTxt = (typeof finPosAllText === 'function') ? finPosAllText() : '';
+      if (allTxt) posTxt = posTxt ? (posTxt + ' ' + allTxt) : allTxt;
+      var posBody = document.getElementById('fxPosBody');
+      if (posBody) posBody.textContent = posTxt;
+      if (!txt && !posTxt){ panel.hidden = true; return; }
+      body.textContent = txt;
+      panel.hidden = false;
+    }
     function fxCheckPlayFinish(item){
       fxCheckClearStageCard();
       var panel = document.getElementById('fxDummyLeader');
       if (!panel) return;
+      var diagPanel = document.getElementById('fxDiagPanel');
+      if (diagPanel) diagPanel.hidden = true; /* 前回の計測表示は消してから再生する */
       var myToken = ++fxFinCheckToken;
       /* 再生が終わったら「再生中」表示とボタンの再生中ハイライトを必ず戻す
          （第2世代の確認で、終了後も表示が残る問題があったための後片付け） */
@@ -16071,6 +16377,7 @@
           if (myToken !== fxFinCheckToken) return;
           if (!fxOverlay.classList.contains('show')) return;
           fxCheckCaption(item.label + ' 再生終了');
+          fxDiagRender(); /* フレーム計測の結果を診断パネルへ表示する */
           if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
         }, ms);
       }
@@ -16154,6 +16461,7 @@
     function closeFxCheck(){
       fxCheckClearStageCard();
       fxCheckClearHatchFx();
+      finDiagStop(); /* フレーム計測が残っていたら止める（結果は保持される） */
       fxFinCheckToken++; /* 終了表示の予約タイマーを無効化する */
       fxMythicGen++;
       mythicFxCleanup();
@@ -17572,7 +17880,21 @@
       var v = ov.view;
       if (!v) return;
       var ovSumBtn = ev.target.closest('[data-ov-summoner]');
-      if (ovSumBtn){ openOvSummonerDetail(ovSumBtn.getAttribute('data-ov-summoner')); return; }
+      if (ovSumBtn){
+        /* 攻撃対象の選択中に相手召喚士のアバターをタップした場合は、
+           詳細シートではなく「召喚士への攻撃」として確定する（CPU戦側と
+           同じ分離。対象選択中でない通常時だけ詳細が開く）。
+           鉄壁などで召喚士への攻撃アクションが存在しない場合も、選択中の
+           タップでは詳細を開かずに終わる（CPU戦側は doAttack が不成立でも
+           詳細を開かないため、オンライン側も分岐の末尾で必ず return して
+           挙動を揃える） */
+        if (ovSumBtn.getAttribute('data-ov-summoner') === 'opp' && ov.selAttacker != null && v.winner == null && !v.pending && v.turn === v.you){
+          var la0 = ovFindAction(function(a){ return a.type === 'attack' && String(a.attackerUid) === String(ov.selAttacker) && a.targetUid === 'leader'; });
+          if (la0){ ovSendAction(la0); renderOvGame(); }
+          return;
+        }
+        openOvSummonerDetail(ovSumBtn.getAttribute('data-ov-summoner')); return;
+      }
       if (ev.target.closest('[data-ov-reconnect]')){ ovConnect(); return; }
       if (ev.target.closest('[data-ov-fuse]')){ ov.selHand = -1; ov.selAttacker = null; ovSend({ type: 'fuse' }); return; }
       var ovHatchBtn = ev.target.closest('[data-ov-hatch]');
@@ -17668,13 +17990,19 @@
       function inCard(t){
         return !!(t && t.closest && t.closest(CARD_SEL));
       }
+      /* 対戦画面全体（場・プレート・デッキ・ボタン・盤面アート）も抑止
+         対象に含める。カード系セレクタだけでは召喚士プレートや盤面の
+         何もない部分の長押しメニューが残っていたための拡張 */
+      function inBattle(t){
+        return !!(t && t.closest && t.closest('#fieldWrap, #ovGame'));
+      }
       document.addEventListener('contextmenu', function(e){
         if (inEditable(e.target)) return;
-        if (inCard(e.target)) e.preventDefault();
+        if (inCard(e.target) || inBattle(e.target)) e.preventDefault();
       });
       document.addEventListener('dragstart', function(e){
         if (inEditable(e.target)) return;
-        if (inCard(e.target)) e.preventDefault();
+        if (inCard(e.target) || inBattle(e.target)) e.preventDefault();
       });
     })();
     </script>
