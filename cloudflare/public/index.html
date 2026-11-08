@@ -6988,6 +6988,19 @@
          約6割の「半長」を持つ三日月斬撃（旧方式の len は半長指定のため
          全長換算で2倍。到達拍0.465・拡大 pow(gt,1.5)・突き抜け+10%も
          旧方式の飛行カーブどおり）
+       ・描画の質の復元（実機フィードバック第2報：幾何学を戻しても
+         見た目が変わらなかった）：原因は寸法ではなく描画方法だった。
+         旧方式のエフェクトは全コンテナが加算ブレンド＋流れテクスチャの
+         リボン面＋シェーダ発光（glowQuad）で描かれていたのに対し、
+         新方式のビームは通常合成の平たいポリゴンで、着弾点の発光も
+         小さな平円のみ、しかもビームが受け側SDの背面に隠れて短く
+         見えていた。対策：①ビーム／光柱へ加算ブレンドを付与
+         ②ビームと光柱を受け側SDの前面へ並べ替え（旧方式はパネルの
+         上から着弾していた）③着弾点と手元へ旧方式と同寸の放射
+         グロー（セレスティア着弾 sdH*0.95／手元 sdH*0.62、ティアマト
+         着弾 sdH*1.2）を復活 ④EXの飛翔斬撃へ残像ブレード2枚と
+         飛行中の光屑粒子を復活し、ブレードを毎フレーム描き直して
+         熱ゆらぎを動かす
        ・振付・拍・総尺・SE・スロー／ヒットストップ・決めセリフ・SDの
          大きさ（頭基準。ミラージュ0.388基準／アギト0.45例外）と位置・
          攻撃エフェクトの範囲（第2世代スケール）は現行（fin3Cinematic＋
@@ -7245,12 +7258,17 @@
       N.beams = [];
       for (var bmi = 0; bmi < 2; bmi++){
         var bmc = PC();
-        var bmg = new PIXI.Graphics();
-        var bmk = new PIXI.Graphics();
-        bmc.addChild(bmg); bmc.addChild(bmk);
+        /* 旧方式のリボンは加算ブレンドのコンテナで描かれていた。通常合成の
+           平たいポリゴンでは同じ幅でも光量が半分以下に見えるため、帯と芯の
+           両方へ加算を付け、手元／着弾点には放射グローのスプライトを持たせる */
+        var bmg = new PIXI.Graphics(); bmg.blendMode = PIXI.BLEND_MODES.ADD;
+        var bmk = new PIXI.Graphics(); bmk.blendMode = PIXI.BLEND_MODES.ADD;
+        var bmh = PS(bake.glow); bmh.blendMode = PIXI.BLEND_MODES.ADD; bmh.alpha = 0;
+        var bms = PS(bake.glow); bms.blendMode = PIXI.BLEND_MODES.ADD; bms.alpha = 0;
+        bmc.addChild(bmg); bmc.addChild(bmk); bmc.addChild(bmh); bmc.addChild(bms);
         bmc.visible = false;
         space.addChild(bmc);
-        N.beams.push({ cont: bmc, glow: bmg, core: bmk, gsx: 1, gsy: 1, csx: 1, csy: 1, len: 0, thick: 0, seed: bmi * 7.31 + 1 });
+        N.beams.push({ cont: bmc, glow: bmg, core: bmk, hit: bmh, src: bms, hitBase: 0, srcBase: 0, gsx: 1, gsy: 1, csx: 1, csy: 1, len: 0, thick: 0, seed: bmi * 7.31 + 1 });
       }
       /* 決め技素材の大型オーバーレイ（鎖／光柱／槍を1枚で兼用する） */
       N.fxBig = PS(bake.white); N.fxBig.visible = false;
@@ -7261,7 +7279,7 @@
       N.orbGfx = new PIXI.Graphics(); N.orbGfx.visible = false;
       space.addChild(N.orbGfx);
       /* 描画エフェクト専用ノード（光柱／鎖／渦／亀裂） */
-      N.pillarG = new PIXI.Graphics(); N.pillarG.visible = false;
+      N.pillarG = new PIXI.Graphics(); N.pillarG.blendMode = PIXI.BLEND_MODES.ADD; N.pillarG.visible = false;
       space.addChild(N.pillarG);
       N.chainsC = PC(); N.chainsC.visible = false;
       N.chainsG = new PIXI.Graphics(); N.chainsC.addChild(N.chainsG);
@@ -7280,6 +7298,11 @@
       space.addChild(vicC);
       N.vicC = vicC;
       space.addChild(N.chainsC); /* 鎖は受け側SDの上に被せる */
+      /* ビームと光柱も受け側SDの前面へ並べ替える：背面にあると着弾側の
+         半分がSDに隠れて帯が短く・細く見える（旧方式はパネルの上から
+         着弾していた）。addChild し直すと兄弟の末尾＝前面へ移動する */
+      space.addChild(N.pillarG);
+      N.beams.forEach(function(b){ space.addChild(b.cont); });
       N.pieces = [];
       for (var pi2 = 0; pi2 < 6; pi2++){
         var pcc = PC();
@@ -7334,6 +7357,10 @@
       fuc.visible = false;
       space.addChild(fuc);
       N.flyUnit = { cont: fuc, glow: fug, gfx: fuf };
+      /* EX飛翔斬撃の残像ブレード（旧方式は過去の波面を3重に重ねていた。
+         新方式では2枚の描画ブレードを遅延した飛行状態で追随させる） */
+      N.flyGhosts = [];
+      for (var fgi = 0; fgi < 2; fgi++){ var fgg = new PIXI.Graphics(); fgg.blendMode = PIXI.BLEND_MODES.ADD; fgg.visible = false; space.addChild(fgg); N.flyGhosts.push(fgg); }
       N.fissure = new PIXI.Graphics(); N.fissure.visible = false;
       space.addChild(N.fissure);
       /* アギト：巨大な顎（口の位置を container 原点にして回転・昇降させる） */
@@ -7650,7 +7677,7 @@
       N.cshards.forEach(function(cs){ cs.cont.visible = false; cs.cont.alpha = 1; cs.cont.rotation = 0; });
       N.bshards.forEach(function(sp){ sp.visible = false; sp.alpha = 1; sp.rotation = 0; });
       N.embers.forEach(function(sp){ sp.visible = false; sp.alpha = 1; });
-      N.beams.forEach(function(b){ b.cont.visible = false; b.glow.alpha = 1; b.core.alpha = 1; b.glow.scale.set(1); b.core.scale.set(1); });
+      N.beams.forEach(function(b){ b.cont.visible = false; b.glow.alpha = 1; b.core.alpha = 1; b.glow.scale.set(1); b.core.scale.set(1); if (b.hit) b.hit.alpha = 0; if (b.src) b.src.alpha = 0; b.hitBase = 0; b.srcBase = 0; });
       hide(N.fxBig); N.fxBig.alpha = 1; N.fxBig.rotation = 0; N.fxBig.scale.set(1);
       hide(N.orb); N.orb.alpha = 1; N.orb.rotation = 0; N.orb.scale.set(1);
       hide(N.orbGfx); N.orbGfx.alpha = 1;
@@ -7673,6 +7700,7 @@
       hide(N.sword); N.sword.alpha = 1; N.sword.scale.set(1);
       N.swordGhosts.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.flyUnit.cont.visible = false; N.flyUnit.cont.alpha = 1;
+      N.flyGhosts.forEach(function(g){ g.visible = false; g.alpha = 1; if (g.clear) g.clear(); });
       hide(N.fissure); N.fissure.alpha = 0; N.fissure.scale.set(1);
       N.jawC.visible = false; N.jawC.alpha = 1; N.jawC.rotation = Math.PI / 2;
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
@@ -7902,16 +7930,26 @@
         u.cont.rotation = Math.atan2(dy, dx);
         u.len = len; u.thick = thick;
         u.gsx = 1; u.gsy = 1; u.csx = 1; u.csy = 1;
+        if (u.hit) u.hit.position.set(len, 0); /* 着弾点グローは帯の先端へ */
+        if (u.src) u.src.position.set(0, 0);   /* 手元グローは帯の起点へ */
         u.cont.visible = false;
       }
       if (G.id === '39'){
         placeBeam(N.beams[0], G.handX, G.handY, G.cx, G.cy, Math.max(18, G.sdH * 0.98));
         finPDrawBeam(N.beams[0], 0xffd76a);
+        /* 旧方式のシェーダ発光と同寸のグロー：手元 sdH*0.62／着弾 sdH*0.9 */
+        N.beams[0].srcBase = G.sdH * 0.62; N.beams[0].src.tint = 0xffeeb0;
+        N.beams[0].hitBase = G.sdH * 0.95; N.beams[0].hit.tint = 0xfff3c4;
       } else if (G.id === '51'){
         var srcL = { x: Math.max(14, Math.round(G.cx - vw * 0.44)), y: vh + 26 };
         var srcR = { x: Math.min(vw - 14, Math.round(G.cx + vw * 0.44)), y: vh + 26 };
         placeBeam(N.beams[0], srcL.x, srcL.y, G.cx + G.sumW * 0.20, G.cy - G.sumH * 0.12, Math.max(22, G.sdH * 1.0));
         placeBeam(N.beams[1], srcR.x, srcR.y, G.cx - G.sumW * 0.20, G.cy - G.sumH * 0.12, Math.max(22, G.sdH * 1.0));
+        /* 旧方式は交差点に sdH*1.5 のシェーダ発光を1つ置いていた。
+           新方式では各ビームの着弾点に sdH*1.2 を置き、2つ重なった
+           交差部が同等の大きさに読めるようにする */
+        N.beams[0].hitBase = G.sdH * 1.2; N.beams[0].hit.tint = 0xffffff;
+        N.beams[1].hitBase = G.sdH * 1.2; N.beams[1].hit.tint = 0xffffff;
         N.beams[0].glow.clear(); N.beams[0].core.clear();
         N.beams[1].glow.clear(); N.beams[1].core.clear();
         R.beamCols = [[0xff4030, 0xffa04a], [0x4a90ff, 0x9cc4ff]];
@@ -7941,6 +7979,7 @@
           len0: Math.max(28, G.sdH * 0.30), len1: flyLen1,
           th0: Math.max(4, G.sdH * 0.06), th1: Math.round(Math.max(30, Math.min(104, G.sdH * 0.60))) };
         finPDrawBlade(N.flyUnit.gfx, 200, 46, 1, [0xffd76a, 0xfff3c4], 0, 1.7);
+        N.flyGhosts.forEach(function(g){ finPDrawBlade(g, 200, 46, 1, [0xffd76a, 0xfff3c4], 0, 1.7); });
         N.flyUnit.gfx.scale.set(R.fly.len0 / 200, R.fly.th0 / 46);
         N.fissure.position.set(G.cx, G.cy);
         finPDrawCrackH(N.fissure, G.fxW * 1.9, 7.7);
@@ -8490,6 +8529,16 @@
       var env = Math.min(1, p / 0.10 + 0.2) * (p > 0.74 ? Math.max(0, 1 - (p - 0.74) / 0.26) : 1);
       finPDrawWaveBeam(u, R.G.sdH, head, R.tF);
       u.glow.alpha = env; u.core.alpha = env;
+      /* 手元と着弾点の放射グロー（旧方式の glowQuad と同じ脈動で拡縮する） */
+      if (u.src && u.srcBase){
+        var ss = u.srcBase * (0.9 + 0.25 * Math.sin(R.tF * 0.013));
+        u.src.width = ss; u.src.height = ss; u.src.alpha = 0.85 * env;
+      }
+      if (u.hit && u.hitBase){
+        var hs = u.hitBase * (0.9 + 0.25 * Math.sin(R.tF * 0.013));
+        u.hit.width = hs; u.hit.height = hs;
+        u.hit.alpha = (head >= 1 ? 0.9 : 0.45 * head) * env;
+      }
       return true;
     }
     /* --- 双ビーム（ティアマト。旧方式 pixiFinTiamatBeamFx の幾何学と
@@ -8537,6 +8586,12 @@
         });
       }
       u.core.alpha = 1;
+      /* 着弾点の放射グロー（旧方式は交差点に sdH*1.5 級を置いていた） */
+      if (u.hit && u.hitBase){
+        var hs2 = u.hitBase * (0.9 + 0.1 * Math.sin(R.tF * 0.02));
+        u.hit.width = hs2; u.hit.height = hs2;
+        u.hit.alpha = grow >= 1 ? 0.85 * env : 0;
+      }
       return true;
     }
     /* --- 光柱（セレスティア。縦の多層柱＋昇る光波＋足元の地リング） --- */
@@ -9002,7 +9057,7 @@
         });
         if (R.flyFx0 != null && R.fly){
           var fp = finPProg(tFs, R.flyFx0, 1020);
-          if (fp >= 1) N.flyUnit.cont.visible = false;
+          if (fp >= 1){ N.flyUnit.cont.visible = false; N.flyGhosts.forEach(function(g){ g.visible = false; }); }
           else {
             /* 旧方式（pixiExFlyingSlashFx の stateAt／envAt）の飛行カーブを
                そのまま移植：位置は到達拍 0.465 まで pow(u,1.18) で加速して
@@ -9016,10 +9071,32 @@
             N.flyUnit.cont.position.set(R.fly.sx + (R.fly.tx - R.fly.sx) * fU, R.fly.sy + (R.fly.ty - R.fly.sy) * fU);
             var fl2 = (R.fly.len0 + (R.fly.len1 - R.fly.len0) * fGe) * (1 + 0.10 * fOver);
             var ft2 = R.fly.th0 + (R.fly.th1 - R.fly.th0) * fGe;
+            /* ブレードは毎フレーム描き直す（熱ゆらぎの輪郭を時間で動かす。
+               描き込み済みの形を拡大するだけでは静止画が飛ぶだけになる） */
+            finPDrawBlade(N.flyUnit.gfx, 200, 46, 1, [0xffd76a, 0xfff3c4], tFs, 1.7);
             N.flyUnit.gfx.scale.set(fl2 / 200, ft2 / 46);
             N.flyUnit.glow.width = fl2 * 1.25; N.flyUnit.glow.height = ft2 * 2.6;
             N.flyUnit.glow.alpha = 0.4;
             N.flyUnit.cont.alpha = Math.min(1, fp / 0.04) * (fp > 0.60 ? Math.max(0, 1 - (fp - 0.60) / 0.37) : 1);
+            /* 残像ブレード：少し遅れた飛行状態（位置・大きさ）を薄く追随させる */
+            N.flyGhosts.forEach(function(g, gi){
+              var fpG = fp - 0.05 * (gi + 1);
+              if (fpG <= 0){ g.visible = false; return; }
+              var fOverG = fpG <= fArr ? 0 : Math.min(1, (fpG - fArr) / 0.30);
+              var fUG = fpG <= fArr ? Math.pow(fpG / fArr, 1.18) : 1 + 0.13 * (fOverG * fOverG * (3 - 2 * fOverG));
+              var fGeG = Math.pow(Math.min(1, fpG / (fArr * 1.05)), 1.5);
+              var flG = (R.fly.len0 + (R.fly.len1 - R.fly.len0) * fGeG) * (1 + 0.10 * fOverG);
+              var ftG = R.fly.th0 + (R.fly.th1 - R.fly.th0) * fGeG;
+              g.visible = true;
+              g.position.set(R.fly.sx + (R.fly.tx - R.fly.sx) * fUG, R.fly.sy + (R.fly.ty - R.fly.sy) * fUG);
+              g.scale.set(flG / 200, ftG / 46);
+              g.alpha = (gi === 0 ? 0.30 : 0.17) * N.flyUnit.cont.alpha;
+            });
+            /* 飛行中の光屑（旧方式の粒子系統のうち軌跡に残る分をプールで出す） */
+            if (R.flyPfx == null || tFs - R.flyPfx > 85){
+              R.flyPfx = tFs;
+              finPSpawnBurst(R, R.fly.sx + (R.fly.tx - R.fly.sx) * fU, R.fly.sy + (R.fly.ty - R.fly.sy) * fU, { count: 3, colors: R.burstCols, power: 0.5 });
+            }
           }
         }
       } else if (id === '53ag'){
