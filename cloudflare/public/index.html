@@ -2683,6 +2683,149 @@
         .title-particle{display:none;}
         .result-fx{display:none;}
       }
+      /* ===== フィニッシュ第2世代：戦場プレート（通常対戦画面＋フィニッシュ共用） =====
+         モック確定デザイン：カードバトルフィールドの盤面が地続きに広がった
+         岩×鉄プレート。表面は岩肌（鉱物の色ムラ＋石目ノイズ＋盤面の溝線）、
+         フチは暗い鉄（鈍い光沢＋鋲＋下辺の鉄板ストリップ）。魔法陣・ルーン・
+         スロットの刻みは「彫り込んだ溝」として弱い発光に留める。模様は
+         上下対称（180°回転で成立）で、相手側も同じデザインを使う。
+         質感は CSS グラデーション＋インラインSVGノイズのみで再現し、
+         重い画像素材と常時アニメーションは使わない（戦闘中の重さ対策）。
+         .fin2-plate-surface が質感の正本。通常画面の場エリアと、
+         フィニッシュのシネマプレート（.fx-plate-bg）の両方に当てる */
+      .fin2-plate-surface{
+        background-color:#35322f;
+        background-image:
+          radial-gradient(ellipse 62% 46% at 50% 50%, rgba(150,180,220,.09), transparent 70%),
+          radial-gradient(ellipse 42% 30% at 21% 28%, rgba(128,106,78,.38), transparent 70%),
+          radial-gradient(ellipse 48% 34% at 79% 70%, rgba(102,94,80,.34), transparent 70%),
+          radial-gradient(ellipse 30% 24% at 65% 16%, rgba(52,50,52,.40), transparent 70%),
+          radial-gradient(ellipse 34% 26% at 30% 80%, rgba(74,66,54,.32), transparent 70%),
+          radial-gradient(ellipse 22% 18% at 86% 24%, rgba(140,128,104,.22), transparent 70%),
+          repeating-linear-gradient(0deg, transparent 0 34px, rgba(0,0,0,.16) 34px 35px, rgba(255,255,255,.045) 35px 36px),
+          repeating-linear-gradient(90deg, transparent 0 34px, rgba(0,0,0,.16) 34px 35px, rgba(255,255,255,.045) 35px 36px),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+          linear-gradient(180deg, #4b4741 0%, #3b3835 30%, #2e2c2a 55%, #3b3835 78%, #4b4741 100%);
+        background-size:auto,auto,auto,auto,auto,auto,auto,auto,140px 140px,180px 180px,auto;
+        background-repeat:no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,repeat,repeat,repeat,repeat,no-repeat;
+      }
+      /* 通常対戦画面：両陣営の場エリアを戦場プレート化する（相手側も同じ
+         デザイン＝上下対称のため反転しても成立する）。寸法・カード配置・
+         召喚台座・手札・操作系には触らない。召喚士銘板（.leader）は
+         プレートの外（盤面の前後）にあり、従来どおり読める */
+      .board-zone,.board-zone.enemy-zone,.board-zone.mine-zone,.ov-field,.ov-field.enemy-zone,.ov-field.mine-zone{
+        background-color:#35322f;
+        background-image:
+          radial-gradient(ellipse 62% 46% at 50% 50%, rgba(150,180,220,.09), transparent 70%),
+          radial-gradient(ellipse 42% 30% at 21% 28%, rgba(128,106,78,.38), transparent 70%),
+          radial-gradient(ellipse 48% 34% at 79% 70%, rgba(102,94,80,.34), transparent 70%),
+          radial-gradient(ellipse 30% 24% at 65% 16%, rgba(52,50,52,.40), transparent 70%),
+          radial-gradient(ellipse 34% 26% at 30% 80%, rgba(74,66,54,.32), transparent 70%),
+          radial-gradient(ellipse 22% 18% at 86% 24%, rgba(140,128,104,.22), transparent 70%),
+          repeating-linear-gradient(0deg, transparent 0 34px, rgba(0,0,0,.16) 34px 35px, rgba(255,255,255,.045) 35px 36px),
+          repeating-linear-gradient(90deg, transparent 0 34px, rgba(0,0,0,.16) 34px 35px, rgba(255,255,255,.045) 35px 36px),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0.13 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+          linear-gradient(180deg, #4b4741 0%, #3b3835 30%, #2e2c2a 55%, #3b3835 78%, #4b4741 100%);
+        background-size:auto,auto,auto,auto,auto,auto,auto,auto,140px 140px,180px 180px,auto;
+        background-repeat:no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,repeat,repeat,repeat,repeat,no-repeat;
+        border:3px solid #232529;
+        box-shadow:inset 0 1px 0 rgba(205,212,220,.32), inset 0 0 0 1px rgba(0,0,0,.65), inset 0 0 34px rgba(0,0,0,.52), 0 4px 14px rgba(0,0,0,.4);
+      }
+      /* ===== フィニッシュ第2世代：シネマ用プレート＋召喚士SD（見た目のみ） =====
+         場面転換後の受け側ターゲット。プレート本体＋その上に立つ召喚士SD＋
+         召喚士銘板（実パネルの複製）を1つの組にし、既存の神話フィニッシュ
+         振付の攻撃対象（panelEl）として渡す。破壊は従来どおり組全体の複製を
+         割る／吸い込む等で表現され、組ごと崩れる読みになる。
+         z-index は複製パネル（.fx-fin-wrap）と同じ 92 */
+      .fx-plate-group{position:fixed; z-index:92; pointer-events:none;}
+      .fx-fin-clone.fx-plate-group,.fx-fin-piece.fx-plate-group{position:absolute; inset:0;}
+      .fx-plate-bg{
+        position:absolute; inset:0; z-index:1; border-radius:10px; overflow:hidden;
+        border:3px solid #232529;
+        box-shadow:inset 0 1px 0 rgba(205,212,220,.32), inset 0 0 0 1px rgba(0,0,0,.65), inset 0 0 34px rgba(0,0,0,.52), 0 4px 14px rgba(0,0,0,.4);
+      }
+      /* 内枠＋四隅の鋲（鉄板の留め具） */
+      .fx-plate-bg::before{content:""; position:absolute; inset:7px; border-radius:6px;
+        border:1px solid rgba(10,9,8,.55);
+        box-shadow:0 1px 0 rgba(255,255,255,.07), inset 0 1px 0 rgba(255,255,255,.05);
+        background-image:
+          radial-gradient(circle 5px at 13px 13px, #a9afb8 0 1.2px, #55585e 2.2px, #131418 3.4px, transparent 4.6px),
+          radial-gradient(circle 5px at calc(100% - 13px) 13px, #a9afb8 0 1.2px, #55585e 2.2px, #131418 3.4px, transparent 4.6px),
+          radial-gradient(circle 5px at 13px calc(100% - 13px), #a9afb8 0 1.2px, #55585e 2.2px, #131418 3.4px, transparent 4.6px),
+          radial-gradient(circle 5px at calc(100% - 13px) calc(100% - 13px), #a9afb8 0 1.2px, #55585e 2.2px, #131418 3.4px, transparent 4.6px);
+        background-repeat:no-repeat; pointer-events:none;}
+      /* 下辺の鉄板ストリップ（鋲列＋継ぎ目） */
+      .fx-plate-bg::after{content:""; position:absolute; left:0; right:0; bottom:0; height:9px;
+        background-image:
+          radial-gradient(circle 3.5px at 50% 50%, #aeb4bc 0 1px, #4b4f56 2px, #0f1013 3px, transparent 3.6px),
+          linear-gradient(180deg, #5a5f66, #33363c 45%, #1c1e23);
+        background-size:46px 100%, 100% 100%;
+        background-repeat:repeat-x, no-repeat;
+        background-position:12px 0, 0 0;
+        border-top:1.5px solid rgba(190,196,205,.38);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.16);}
+      /* 彫り込みの魔法陣（溝に僅かな光が残るだけ。回転などの常時アニメ無し） */
+      .fx-plate-rune{position:absolute; left:50%; top:54%; transform:translate(-50%,-50%);
+        width:62%; height:46%; border-radius:50%;
+        border:2px solid rgba(14,13,12,.52);
+        box-shadow:inset 0 0 24px rgba(0,0,0,.38), inset 0 0 16px rgba(120,170,230,.10), 0 1px 0 rgba(255,255,255,.08), 0 0 10px rgba(120,180,245,.06);}
+      .fx-plate-rune::before{content:""; position:absolute; inset:8px 14px; border-radius:50%;
+        border:1.5px dashed rgba(14,13,12,.48); box-shadow:0 1px 0 rgba(255,255,255,.06);}
+      .fx-plate-rune::after{content:"✦ ✧ ✦"; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        color:rgba(185,200,220,.34); font-size:11px; letter-spacing:.5em; text-shadow:0 1px 0 rgba(255,255,255,.07);}
+      /* カードスロット状の刻み（四隅・上下対称） */
+      .fx-plate-slot{position:absolute; width:15%; height:13%; border-radius:5px; z-index:1;
+        border:1.5px solid rgba(11,10,9,.62);
+        background:linear-gradient(180deg, rgba(0,0,0,.36), rgba(255,255,255,.03));
+        box-shadow:inset 0 2px 8px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.07);}
+      .fx-plate-slot::after{content:""; position:absolute; inset:4px; border-radius:3px; border:1px dashed rgba(195,205,220,.20);}
+      .fx-plate-slot.tl{left:5%; top:24%;} .fx-plate-slot.tr{right:5%; top:24%;}
+      .fx-plate-slot.bl{left:5%; bottom:6%;} .fx-plate-slot.br{right:5%; bottom:6%;}
+      .fx-plate-groove{position:absolute; left:12%; right:12%; height:0; border-top:1.5px solid rgba(10,9,8,.52); box-shadow:0 1px 0 rgba(255,255,255,.07);}
+      .fx-plate-groove.g1{top:22%;} .fx-plate-groove.g2{bottom:22%;}
+      .fx-plate-gem{position:absolute; width:11px; height:11px; z-index:1;
+        background:linear-gradient(135deg, #cfeeff, #5ea8dd);
+        transform:rotate(45deg);
+        box-shadow:0 0 7px rgba(140,210,255,.8), inset 0 0 3px rgba(255,255,255,.9);}
+      .fx-plate-gem.tl{left:16px; top:16px;} .fx-plate-gem.tr{right:16px; top:16px;}
+      .fx-plate-gem.bl{left:16px; bottom:16px;} .fx-plate-gem.br{right:16px; bottom:16px;}
+      /* プレート上にスンッと立つ召喚士SD（接地影つき） */
+      .fx-plate-summoner{position:absolute; left:50%; bottom:11px; transform:translateX(-50%); z-index:3;
+        filter:drop-shadow(0 6px 8px rgba(0,0,0,.45));}
+      .fx-plate-summoner-shadow{position:absolute; left:50%; bottom:7px; transform:translateX(-50%); z-index:2;
+        width:34%; height:13px; border-radius:50%; background:rgba(6,8,18,.45); filter:blur(3px);}
+      /* 召喚士銘板（実パネルの複製）：プレートより前面で従来どおり読める */
+      .fx-plate-plaque{position:absolute; left:50%; top:8px; transform:translateX(-50%); z-index:4; margin:0;}
+      /* 破壊直前に走るヒビ（複製にも写り込み、破片ごと割れる） */
+      .fx-plate-cracks{position:absolute; inset:0; z-index:5; width:100%; height:100%; opacity:0; pointer-events:none;}
+      .fx-plate-cracks.on{opacity:1;}
+      /* ===== フィニッシュ第2世代：「間」のカットイン／暗転／攻撃側オーラ =====
+         カットインは z-index 96（レターボックス97・決めセリフ98より下、
+         盤面と暗転レイヤーより上）。帯はカード絵の顔部分（上部）を切り取る */
+      .fx-fin2-cutin{position:fixed; left:0; right:0; top:33%; height:clamp(92px, 16vh, 132px); z-index:96;
+        overflow:hidden; pointer-events:none; background:#160608;
+        border-top:3.5px solid #fff; border-bottom:3.5px solid #fff;
+        box-shadow:0 10px 30px rgba(0,0,0,.6); transform:translateX(-106%); will-change:transform;}
+      .fx-fin2-cutin-img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 21%;}
+      .fx-fin2-cutin-shade{position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,2,3,.16) 40%, rgba(10,2,3,.66) 78%, rgba(10,2,3,.88));}
+      .fx-fin2-cutin-speed{position:absolute; inset:0; opacity:.35;
+        background:repeating-linear-gradient(100deg, transparent 0 26px, rgba(255,255,255,.09) 26px 28px);}
+      .fx-fin2-cutin-text{position:absolute; right:12px; bottom:10px; text-align:right; color:#fff;}
+      .fx-fin2-cutin-sub{font-size:10px; letter-spacing:.34em; font-weight:700; opacity:.85; margin-bottom:3px;}
+      .fx-fin2-cutin-name{font-family:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+        font-size:21px; font-weight:900; letter-spacing:.05em; line-height:1.2;
+        text-shadow:0 2px 0 rgba(30,0,4,.85), 0 4px 10px rgba(0,0,0,.7);}
+      .fx-fin2-blackout{position:fixed; inset:0; background:#000; opacity:0; z-index:96; pointer-events:none; will-change:opacity;}
+      /* 静止の間：攻撃側ユニットの上に重ねるテーマ色オーラ（脈動） */
+      .fx-fin2-aura{position:fixed; z-index:95; pointer-events:none; border-radius:14px; will-change:transform,opacity;
+        animation:fin2AuraPulse .28s ease-in-out infinite alternate;}
+      @keyframes fin2AuraPulse{from{opacity:.5; transform:scale(.96);}to{opacity:1; transform:scale(1.07);}}
+      @media (prefers-reduced-motion: reduce){
+        .fx-plate-group,.fx-fin2-cutin,.fx-fin2-blackout,.fx-fin2-aura{display:none;}
+        .fx-fin2-aura{animation:none;}
+      }
     </style>
   </head>
   <body>
@@ -3351,7 +3494,7 @@
         </div>
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
-        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるSDキャラ方式の専用フィニッシュです。上のダミーパネルに対してそのまま再生されます（パネルは演出後に元へ戻ります）。SD素材が読み込めない場合は従来の演出で再生されます。</p>
+        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第2世代です。「間」（静止＋顔カットイン＋暗転）→場面転換→ダミーの戦場プレート＋召喚士SD（クロエ）ごと破壊、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
@@ -4346,6 +4489,11 @@
       if (mythic && typeof SD_FIN_MS !== 'undefined' && typeof sdFxReady === 'function' && sdFxReady(mythic.cardId)){
         var sdMs = SD_FIN_MS[String(mythic.cardId)] || 0;
         if (sdMs >= 4000) mythDelay = sdMs + 400;
+        /* フィニッシュ第2世代（間＋場面転換つき）になる場合は、その分だけ
+           勝敗表示を遅らせる（アギト含む全神話が対象） */
+        if (typeof fin2WillRun === 'function' && fin2WillRun(mythic.cardId, mythic.panelEl)){
+          mythDelay = Math.max(mythDelay, sdMs + FIN2_TOTAL_MS + 400);
+        }
       }
       fxFinishOverDelay = mythic ? mythDelay : 1750;
       fxFinishTimers.forEach(clearTimeout); fxFinishTimers = [];
@@ -4881,10 +5029,268 @@
        実戦（fxTriggerFinish）と演出チェック画面の共通入口 */
     function mythicFinishDispatch(cardId, panelEl){
       if (HEADLESS || !panelEl) return;
-      if (!(stageReducedMotion || pixiReducedMotion) && sdFxReady(cardId)) mythicSdFinishFx(cardId, panelEl);
+      if (!(stageReducedMotion || pixiReducedMotion) && sdFxReady(cardId)){
+        /* フィニッシュ第2世代：素材が揃っていれば「間→場面転換→プレート＋
+           召喚士SD破壊」の新フロー。召喚士SDが読めていない場合は従来の
+           SD方式（パネル複製破壊）へフォールバックする */
+        if (fin2WillRun(cardId, panelEl)){ fin2Cinematic(cardId, panelEl); return; }
+        mythicSdFinishFx(cardId, panelEl);
+      }
       else mythicFinishFx(cardId, panelEl);
     }
     sdFxPreload(); /* ページ読み込み直後から裏で読み始める（進行はブロックしない） */
+
+    /* ===== フィニッシュ第2世代（見た目のみ） =====
+       モック確定フロー：トドメ着弾の直後に「間」（静止＋攻撃側ユニットの
+       テーマ色オーラ脈動 → カード絵の顔帯カットイン → 短い暗転。滞留の
+       合計が約0.9秒になる配分）を入れ、暗転の中で場面転換する。
+       転換後は、受け側の「戦場プレート＋召喚士SD＋召喚士銘板」の組を
+       画面上部に置き（シネマ構図は攻撃側が下で固定。自分が受け側でも同じ）、
+       既存の神話SDフィニッシュ（mythicSdFinishFx）の攻撃対象を実パネルから
+       この組へ差し替えて再生する。破壊は組全体の複製が割れる／吸い込まれる
+       形になり、「プレートごと破壊」の読みになる。アギトは巨大な顎が
+       組ごと飲み込む。決めセリフ・キャラ別SE・スロー／ヒットストップの
+       規則は従来どおり（SD_FIN_CUES は無変更）。
+       召喚士SD素材は fx/ の外部WebP（相対パス）を非同期プリロードし、
+       読めていない／失敗した場合は新フローを出さず従来演出へ落とす。
+       モーション低減時も従来演出（振り分け側で遮断）。HEADLESS では無効。 */
+    /* 召喚士SDの頭部比率（頭頂から顎までが素材全体の高さに占める割合の実測）。
+       表示高さは神話SDと同じ頭基準で正規化する：画面上の「頭の大きさ」が
+       神話SD（ミラージュ基準）と揃うよう、この比率で割り戻す */
+    var SUMMONER_SD_HEAD = { chloe: 0.430, garen: 0.40, bran: 0.398, mia: 0.490, olga: 0.44 };
+    var SUMMONER_SD_SRC = {};
+    SUMMONERS.forEach(function(x){ SUMMONER_SD_SRC[x.id] = 'fx/sd-' + x.id + '-summoner.webp'; });
+    function summonerSdPreload(){
+      if (HEADLESS) return;
+      Object.keys(SUMMONER_SD_SRC).forEach(function(k){
+        var src = SUMMONER_SD_SRC[k];
+        if (sdImgState[src] != null) return;
+        sdImgState[src] = 0;
+        var im = new Image();
+        sdImgEls[src] = im;
+        im.onload = function(){ sdImgState[src] = 1; };
+        im.onerror = function(){ sdImgState[src] = -1; };
+        im.src = src;
+      });
+    }
+    summonerSdPreload();
+    function summonerSdReady(id){
+      return !!(id && SUMMONER_SD_SRC[id] && sdImgState[SUMMONER_SD_SRC[id]] === 1);
+    }
+    /* 「間」の配分（モック準拠）：静止 260ms ＋ カットイン滞留 410ms ＋
+       暗転滞留 220ms ＝ 滞留合計 約0.9秒。遷移（カットイン 160+170ms、
+       暗転フェード 180ms、明け 250ms）は別枠で、FIN2_TOTAL_MS が
+       振り分けから本編開始までの全長 */
+    var FIN2_FREEZE_MS = 260;
+    var FIN2_CUTIN_HOLD_MS = 410;
+    var FIN2_TOTAL_MS = 1400;
+    /* キャラ別の破壊拍（SD_FIN_CUES.destroy と同じ値）：プレートのヒビと
+       揺れを破壊の直前に重ねるために使う */
+    var FIN2_DESTROY_MS = { '39': 2150, '46': 2480, '48': 1000, '51': 3950, '52ex': 3050, '53ag': 1700, '54': 2050 };
+    /* 敗れた側の召喚士IDを、対象パネルから特定する（特定できなければ null） */
+    function fin2VictimSummonerId(panelEl){
+      try {
+        if (!panelEl) return null;
+        if (panelEl.classList && panelEl.classList.contains('fx-dummy-leader')) return 'chloe'; /* 演出チェックはモックと同じクロエで固定 */
+        var pid = panelEl.id || '';
+        if (pid === 'myLeader') return (typeof S !== 'undefined' && S && S.me) ? S.me.summonerId : null;
+        if (pid === 'cpuLeader') return (typeof S !== 'undefined' && S && S.cpu) ? S.cpu.summonerId : null;
+        if (pid === 'ovMyPanel') return (typeof ov !== 'undefined' && ov && ov.view && ov.view.me) ? (ov.view.me.summoner || null) : null;
+        if (pid === 'ovOppPanel') return (typeof ov !== 'undefined' && ov && ov.view && ov.view.opponent) ? (ov.view.opponent.summoner || null) : null;
+      } catch (e) {}
+      return null;
+    }
+    /* 第2世代フローに入れる条件：神話SD素材＋受け側の召喚士SDが読めている */
+    function fin2WillRun(cardId, panelEl){
+      if (HEADLESS || !panelEl) return false;
+      if (!sdFxReady(cardId)) return false;
+      return summonerSdReady(fin2VictimSummonerId(panelEl));
+    }
+    /* 場のカード幅（mythicSdFinishFx と同じ測り方）。頭基準の絶対サイズを
+       神話SDと一致させるために使う */
+    function fin2CardW(isCheck){
+      var cardW = 0;
+      if (isCheck){
+        var slotEl = document.querySelector('#fxStage .fx-egg-slot');
+        if (slotEl) cardW = slotEl.getBoundingClientRect().width;
+      } else {
+        var unitEl = document.querySelector('#myBoard .follower, #cpuBoard .follower, #ovMyField .ov-unit, #ovOppField .ov-unit');
+        if (unitEl) cardW = unitEl.getBoundingClientRect().width;
+        if (!cardW){
+          var bdEl = document.getElementById('myBoard') || document.getElementById('cpuBoard') || document.getElementById('ovMyField');
+          if (bdEl && bdEl.getBoundingClientRect().width) cardW = (bdEl.getBoundingClientRect().width - 24) / 5;
+        }
+      }
+      return cardW || 88;
+    }
+    /* 受け側の組（戦場プレート＋召喚士SD＋召喚士銘板）を画面上部に作る。
+       寸法：横は敗れた側の場エリア幅、縦は実パネル＋召喚士SD＋余白。
+       召喚士SDの表示高さは、神話SDの頭基準（ミラージュの頭の表示px）と
+       頭の大きさが揃うよう SUMMONER_SD_HEAD で正規化する */
+    function fin2BuildGroup(panelEl, vicId, cardId, isCheck){
+      var pr = panelEl.getBoundingClientRect();
+      if (!pr.width) return null;
+      var zoneEl = null;
+      if (isCheck) zoneEl = document.querySelector('#fxStage .fx-dummy-zone');
+      else if (panelEl.id === 'cpuLeader') zoneEl = document.querySelector('#app .board-zone.enemy-zone');
+      else if (panelEl.id === 'myLeader') zoneEl = document.querySelector('#app .board-zone.mine-zone');
+      else if (panelEl.id === 'ovOppPanel') zoneEl = document.getElementById('ovOppField');
+      else if (panelEl.id === 'ovMyPanel') zoneEl = document.getElementById('ovMyField');
+      var zr = zoneEl ? zoneEl.getBoundingClientRect() : null;
+      var gw = Math.round(zr && zr.width ? zr.width : pr.width);
+      var gx = Math.round(zr && zr.width ? zr.left : pr.left);
+      /* 頭基準の正規化（神話SD側の現行式と同一の基準値を使う） */
+      var cardW = fin2CardW(isCheck);
+      var mirProbe = sdImgEls[SD_FIN['46'].sd];
+      var mirAsp = (mirProbe && mirProbe.naturalWidth > 0) ? (mirProbe.naturalHeight / mirProbe.naturalWidth) : 0.845;
+      var headPx = cardW * 1.15 * mirAsp * 0.388; /* ミラージュの頭の表示高さ(px) */
+      var sumH = Math.round(headPx / (SUMMONER_SD_HEAD[vicId] || 0.43));
+      sumH = Math.max(54, Math.min(190, sumH));
+      var gh = Math.round(pr.height + sumH + 30);
+      var gy = isCheck ? Math.round(pr.top - 4) : Math.round(window.innerHeight * 0.07) + 8;
+      gy = Math.max(4, Math.min(gy, Math.max(4, window.innerHeight - gh - 4)));
+      var group = document.createElement('div');
+      group.className = 'fx-plate-group';
+      group.id = (panelEl.id || 'fxpanel') + '__plate';
+      group.setAttribute('aria-hidden', 'true');
+      group._fxPlate = true;
+      group._fxCheck = !!isCheck;
+      group.style.left = gx + 'px';
+      group.style.top = gy + 'px';
+      group.style.width = gw + 'px';
+      group.style.height = gh + 'px';
+      var plaqueCls = panelEl.className.split(/\s+/).filter(function(x){ return x && x !== 'fx-dummy-leader'; }).join(' ');
+      group.innerHTML =
+        '<div class="fx-plate-bg fin2-plate-surface">' +
+          '<div class="fx-plate-rune"></div>' +
+          '<div class="fx-plate-slot tl"></div><div class="fx-plate-slot tr"></div>' +
+          '<div class="fx-plate-slot bl"></div><div class="fx-plate-slot br"></div>' +
+          '<div class="fx-plate-groove g1"></div><div class="fx-plate-groove g2"></div>' +
+          '<div class="fx-plate-gem tl"></div><div class="fx-plate-gem tr"></div>' +
+          '<div class="fx-plate-gem bl"></div><div class="fx-plate-gem br"></div>' +
+        '</div>' +
+        '<div class="fx-plate-summoner-shadow"></div>' +
+        '<img class="fx-plate-summoner" src="' + SUMMONER_SD_SRC[vicId] + '" alt="" style="height:' + sumH + 'px">' +
+        '<div class="fx-plate-plaque ' + plaqueCls + '" style="width:' + Math.round(Math.min(pr.width, gw - 12)) + 'px">' + panelEl.innerHTML + '</div>' +
+        '<svg class="fx-plate-cracks" viewBox="0 0 360 302" preserveAspectRatio="none" aria-hidden="true">' +
+          '<g stroke="#0b0d16" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9">' +
+            '<path d="M180 40 L168 92 L188 128 L160 176 L176 226 L158 268"/>' +
+            '<path d="M172 96 L118 118 L96 158"/><path d="M182 132 L238 148 L262 190"/>' +
+            '<path d="M166 182 L112 206 L92 246"/><path d="M178 228 L228 250 L246 282"/>' +
+            '<path d="M60 250 L104 236 L140 252"/><path d="M300 244 L258 232 L226 248"/>' +
+          '</g>' +
+          '<g stroke="rgba(230,240,255,.75)" stroke-width="1" fill="none">' +
+            '<path d="M180 40 L168 92 L188 128 L160 176 L176 226 L158 268"/>' +
+            '<path d="M182 132 L238 148 L262 190"/>' +
+          '</g>' +
+        '</svg>';
+      document.body.appendChild(group);
+      return group;
+    }
+    /* 第2世代フロー本体：間（静止＋オーラ→顔カットイン→暗転）→場面転換
+       （組を置いて実パネルを隠す）→既存の神話SDフィニッシュを組に対して再生 */
+    function fin2Cinematic(cardId, panelEl){
+      if (HEADLESS || !panelEl) return;
+      mythicFxCleanup();
+      var gen = ++fxMythicGen;
+      var conf = SD_FIN[String(cardId)];
+      var card = CARD_BY_ID[cardId];
+      var vicId = fin2VictimSummonerId(panelEl);
+      var isCheck = !!(panelEl.classList && panelEl.classList.contains('fx-dummy-leader'));
+      if (!conf || !vicId){ mythicSdFinishFx(cardId, panelEl); return; }
+      function later(fn, ms){ setTimeout(function(){ if (gen === fxMythicGen) fn(); }, ms); }
+      /* --- 静止の間：攻撃側ユニットの上にテーマ色オーラを脈動させる --- */
+      var auraEl = null;
+      var atkEl = document.querySelector('.fx-finish-up, .fx-finish-down');
+      if (atkEl){
+        var ar = atkEl.getBoundingClientRect();
+        if (ar.width){
+          auraEl = document.createElement('div');
+          auraEl.className = 'fx-fin2-aura';
+          auraEl.setAttribute('aria-hidden', 'true');
+          auraEl.style.left = (ar.left - 14) + 'px';
+          auraEl.style.top = (ar.top - 14) + 'px';
+          auraEl.style.width = (ar.width + 28) + 'px';
+          auraEl.style.height = (ar.height + 28) + 'px';
+          auraEl.style.background = 'radial-gradient(ellipse at 50% 55%, ' + conf.color + ' 0%, transparent 68%)';
+          auraEl.style.opacity = '0.55';
+          document.body.appendChild(auraEl);
+          fxMythicFxNodes.push(auraEl);
+        }
+      }
+      function stopAura(){ if (auraEl && auraEl.parentNode) auraEl.parentNode.removeChild(auraEl); auraEl = null; }
+      /* --- 顔カットイン（カード絵の顔帯＋テーマ色の縁＋神話名・太い明朝） --- */
+      var cutin = null;
+      later(function(){
+        cutin = document.createElement('div');
+        cutin.className = 'fx-fin2-cutin';
+        cutin.setAttribute('aria-hidden', 'true');
+        cutin.style.borderTopColor = conf.color;
+        cutin.style.borderBottomColor = conf.color;
+        cutin.style.boxShadow = '0 10px 30px rgba(0,0,0,.6), 0 0 24px ' + conf.color;
+        cutin.innerHTML = '<img class="fx-fin2-cutin-img" alt=""><div class="fx-fin2-cutin-speed"></div><div class="fx-fin2-cutin-shade"></div>' +
+          '<div class="fx-fin2-cutin-text"><div class="fx-fin2-cutin-sub">MYTHIC FINISHER</div><div class="fx-fin2-cutin-name"></div></div>';
+        cutin.querySelector('.fx-fin2-cutin-img').src = card ? card.img : '';
+        var subEl = cutin.querySelector('.fx-fin2-cutin-sub');
+        if (subEl) subEl.style.color = conf.color;
+        cutin.querySelector('.fx-fin2-cutin-name').textContent = card ? card.name : '';
+        document.body.appendChild(cutin);
+        fxMythicFxNodes.push(cutin);
+        fxFinAnimate(cutin, [{ transform: 'translateX(-106%)' }, { transform: 'translateX(0)' }], { duration: 160, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
+      }, FIN2_FREEZE_MS);
+      later(function(){
+        if (cutin) fxFinAnimate(cutin, [{ transform: 'translateX(0)' }, { transform: 'translateX(106%)' }], { duration: 170, easing: 'ease-in', fill: 'forwards' });
+      }, FIN2_FREEZE_MS + 160 + FIN2_CUTIN_HOLD_MS);
+      /* --- 暗転 → 場面転換（暗転の中で組を置き、実パネルを隠す） --- */
+      var black = document.createElement('div');
+      black.className = 'fx-fin2-blackout';
+      black.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(black);
+      later(function(){
+        stopAura();
+        fxFinAnimate(black, [{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease', fill: 'forwards' });
+      }, FIN2_FREEZE_MS + 160 + FIN2_CUTIN_HOLD_MS + 170);
+      later(function(){
+        var group = fin2BuildGroup(panelEl, vicId, cardId, isCheck);
+        if (!group){
+          /* 組が作れなければ従来のSD方式でそのまま再生する */
+          mythicSdFinishFx(cardId, panelEl);
+          fxFinAnimate(black, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-out', fill: 'forwards' });
+          setTimeout(function(){ if (black.parentNode) black.parentNode.removeChild(black); }, 260);
+          return;
+        }
+        var prevVis = panelEl.style.visibility;
+        panelEl.style.visibility = 'hidden';
+        mythicSdFinishFx(cardId, group);
+        /* 後片付けへの登録は本編開始後（本編冒頭の mythicFxCleanup で
+           消されないように）。実パネルの復帰もここへ連結する */
+        fxMythicFxNodes.push(group);
+        fxMythicFxNodes.push(black);
+        var prevCleanup = fxMythicExtraCleanup;
+        fxMythicExtraCleanup = function(){
+          if (prevCleanup) prevCleanup();
+          panelEl.style.visibility = prevVis;
+          stopAura();
+        };
+        /* 破壊の直前にプレートへヒビ＋揺れを重ねる（複製にも写り込む） */
+        var gen2 = fxMythicGen;
+        var destroyMs = FIN2_DESTROY_MS[String(cardId)];
+        if (destroyMs != null){
+          setTimeout(function(){
+            if (gen2 !== fxMythicGen) return;
+            var ck = group.querySelector('.fx-plate-cracks');
+            if (ck) ck.classList.add('on');
+            if (String(cardId) === '51') return; /* ティアマトはビーム中ずっと組が震えているため、揺れは重ねない */
+            fxFinAnimate(group, [
+              { transform: 'translate(0px,0px)' }, { transform: 'translate(-4px,2px) rotate(-.4deg)' },
+              { transform: 'translate(4px,-1px) rotate(.4deg)' }, { transform: 'translate(-3px,1px)' },
+              { transform: 'translate(0px,0px)' }
+            ], { duration: 280, easing: 'linear', fill: 'forwards' });
+          }, Math.max(0, destroyMs - 60));
+        }
+        fxFinAnimate(black, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, easing: 'ease-out', fill: 'forwards' });
+      }, FIN2_TOTAL_MS);
+    }
 
     /* SD演出用の一時要素（後片付けは従来演出と共通の fxMythicFxNodes で行う） */
     function sdFinNode(tag, cls){
@@ -5038,7 +5444,7 @@
          実戦は盤面ユニットの実測（無ければ盤面幅から算出）、演出チェックは
          ステージの場スロット（実戦カード寸法に寄せた寸法）の実測を使う。
          高さはSD素材の実アスペクト比から求め、表示幅がカード幅×1.15に揃う */
-      var isFxCheck = panelEl.classList.contains('fx-dummy-leader');
+      var isFxCheck = panelEl.classList.contains('fx-dummy-leader') || !!panelEl._fxCheck;
       var cardW = 0;
       if (isFxCheck){
         var slotEl = document.querySelector('#fxStage .fx-egg-slot');
@@ -5065,7 +5471,7 @@
       var sdH = Math.max(56, Math.round(mirageH * 0.388 / (conf.head || 0.388)));
       sdH = Math.min(sdH, Math.round(window.innerHeight * 0.62));
       var anchor = sdFinAnchor();
-      if (id === '52ex' || id === '39' || id === '48' || id === '51' || id === '54' || id === '53ag'){
+      if (id === '52ex' || id === '39' || id === '48' || id === '51' || id === '54' || id === '53ag' || panelEl._fxPlate){
         /* 遠距離系（EX-キャリバー／セレスティア／ダーククイーン／ティアマト）とロンギヌス／黒のアギトは中央の召喚台ではなく、攻撃側の陣地寄りに立つ（下側からパネルへ向かう動きが見えるように）
            （敗れたパネルが画面上半分なら攻撃者は下＝自分側、下半分なら上側）。
            演出チェックでも同じ基準で、自分の場の下端寄り（自分のダミー
@@ -14085,12 +14491,12 @@
       }
       /* SD素材の読み込み完了を少しだけ待ってから振り分ける（対戦中は待たず、
          未読込なら従来演出へフォールバックする）。読み込み自体は開いた時点で開始済み */
-      if (sdFxPending(item.cardId)){
+      if (sdFxPending(item.cardId) || sdImgState['fx/sd-chloe-summoner.webp'] === 0){
         fxCheckCaption(item.label + '：SD素材を読み込んでいます…');
         var tries = 0;
         var iv = setInterval(function(){
           tries++;
-          if (!sdFxPending(item.cardId) || tries >= 20){
+          if (!(sdFxPending(item.cardId) || sdImgState['fx/sd-chloe-summoner.webp'] === 0) || tries >= 20){
             clearInterval(iv);
             if (!fxOverlay.classList.contains('show')) return;
             fxCheckCaption(item.label + ' 再生中');
