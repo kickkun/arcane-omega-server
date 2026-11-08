@@ -7214,7 +7214,7 @@
        slow／stop は fxFinSetRate の時刻表、destroy は FIN2_DESTROY_MS と一致 */
     var FINP_CUES = {
       '39':   { slow: [1850, 2150], stop: [2150, 130], destroy: 2150, se: [[1420, 'finBeam'], [2150, 'finPurify']] },
-      '46':   { slow: [2000, 2230], stop: [2230, 120], destroy: 2480, se: [[1480, 'finSlash'], [1760, 'finSlash'], [2230, 'finSlash']] },
+      '46':   { slow: [2000, 2230], stop: [2230, 120], destroy: 2480, se: [[620, 'finSlash'], [910, 'finSlash'], [1200, 'finSlash'], [1490, 'finSlash'], [2230, 'finSlash']] },
       '48':   { slow: [820, 1000],  stop: [1000, 120], destroy: 1000, se: [[550, 'finChains']] },
       '51':   { slow: [3700, 3950], stop: [3950, 150], destroy: 3950, se: [[2150, 'finBeamLong']] },
       '52ex': { slow: [2780, 3050], stop: [3050, 150], destroy: 3050, se: [[2230, 'finSlash'], [2400, 'finSlash']] },
@@ -7436,7 +7436,7 @@
       for (var ai2 = 0; ai2 < 5; ai2++){ var asp2 = PS(bake.white); asp2.visible = false; space.addChild(asp2); N.aimgs.push(asp2); }
       /* 斬撃ユニット（Graphics の描画ブレード。加算はこの細い帯だけ） */
       N.slashUnits = [];
-      for (var ui2 = 0; ui2 < 4; ui2++){
+      for (var ui2 = 0; ui2 < 6; ui2++){
         var uc = PC();
         var ug = new PIXI.Graphics(); ug.blendMode = PIXI.BLEND_MODES.ADD;
         uc.addChild(ug);
@@ -8010,17 +8010,23 @@
       });
       /* 斬撃ユニット（ミラージュ。寸法はユニット定義側で持つ。
          描画は更新側で毎フレーム Graphics へ行う）
-         試作の段取り変更：斬撃の区間は破壊拍（2480ms・白化の開始）より
-         前に閉じる。dur は演出時間（スロー／ヒットストップで拡縮する
-         時計）で測られるため、実時間の破壊拍までに完了する長さへ
-         換算してある（第2斬はスロー区間を跨ぐぶん 390、第3・第4斬は
-         ヒットストップを跨ぐぶん 130／115）。あわせて fired／dead の
-         2フラグで状態を持つ：従来は on だけで管理していたため、破壊拍で
-         消した斬撃を次のフレームでディレクターが「未発火」と誤認して
-         再表示し、白化後や復帰画面へ斬撃が残って見えた */
+         段取り：斬撃はワープ（ステップ）の着地に同期して出す。ワープ区間は
+         開始 450／740／1030／1320（各170ms）＋最終 1980 なので、着地は
+         620／910／1200／1490。最初の4斬はその着地拍で受け側を斬り、
+         締めの2斬は従来どおり最終着弾（2230／2320）に置く。ステップ斬の
+         dur は約0.2秒（速く・短く。斬撃の寿命の目安）に揃えた。
+         あわせて全斬撃は破壊拍（2480ms・白化の開始）より前に閉じる：
+         dur は演出時間（スロー／ヒットストップで拡縮する時計）で測られる
+         ため、実時間の破壊拍までに完了する長さへ換算してある（締めの2斬は
+         ヒットストップを跨ぐぶん 130／115）。fired／dead の2フラグで状態を
+         持つ：従来は on だけで管理していたため、破壊拍で消した斬撃を次の
+         フレームでディレクターが「未発火」と誤認して再表示し、白化後や
+         復帰画面へ斬撃が残って見えた */
       R.units = [
-        { st: 1480, dur: 430, rot: -11, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fired: false, dead: false, fx0: 0 },
-        { st: 1760, dur: 390, rot: 9, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fired: false, dead: false, fx0: 0 },
+        { st: 620, dur: 200, rot: -24, w: G.fxW * 1.25, len: G.fxW * 1.2, on: false, fired: false, dead: false, fx0: 0 },
+        { st: 910, dur: 200, rot: 19, w: G.fxW * 1.25, len: G.fxW * 1.2, on: false, fired: false, dead: false, fx0: 0 },
+        { st: 1200, dur: 200, rot: -31, w: G.fxW * 1.35, len: G.fxW * 1.3, on: false, fired: false, dead: false, fx0: 0 },
+        { st: 1490, dur: 300, rot: 11, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fired: false, dead: false, fx0: 0 },
         { st: 2230, dur: 130, rot: -14, w: G.fxW * 1.9, len: G.fxW * 1.8, on: false, fired: false, dead: false, fx0: 0, impact: true },
         { st: 2320, dur: 115, rot: 16, w: G.fxW * 1.7, len: G.fxW * 1.6, on: false, fired: false, dead: false, fx0: 0 }
       ];
@@ -8533,7 +8539,7 @@
        伸び、頭（先端）が +X。sweep は尾→頭への描き込み率、lag は尾の反り、
        wob は熱ゆらぎの振幅。cols = [外光色, 内光色]（芯は常に白熱） --- */
     function finPBladeOutline(L, W, sweep, lag, wob, tF){
-      var n = 18, top = [], bot = [];
+      var n = 36, top = [], bot = [];
       var headX = -L / 2 + L * Math.max(0.02, sweep);
       for (var i = 0; i <= n; i++){
         var s = i / n;
@@ -8627,12 +8633,16 @@
     /* --- ミラージュ試作：リボン斬撃（案Aの試作。ミラージュ1体だけに適用し、
        実機判定を経てから他キャラへ展開するかどうかを決める） ---
        従来の finPDrawBlade は「輪郭ポリゴンを5層重ねる」方式で、帯の内側は
-       層ごとの平色だった。こちらは帯を長さ方向に18分割したリボンの面として
-       描き、各セグメントの色を尾（深紅）→刃先（白熱）のランプで補間する。
-       あわせて時間差の残像ブレード2枚と、帯の中を流れる光の筋3本を重ね、
+       層ごとの平色だった。こちらは帯を長さ方向に36分割したリボンの面として
+       描き、各セグメントの色を尾（深紅）→刃先（白熱）の10段ランプで補間
+       する。幅方向も6層の刻みで重ね、二方向のグラデーションにする。
+       あわせて時間差の残像ブレード2枚と、帯の中を流れる光の筋5本を重ね、
        「面・流れ・副要素」で厚みを作る。輪郭そのもの（長さ・幅・反り）は
        finPBladeOutline を共用し、従来と同一に保つ */
-    var FINP_MIRAGE_RAMP = [[0, 0x8f130b], [0.3, 0xff3b26], [0.55, 0xff6a3d], [0.78, 0xffa37a], [0.92, 0xffe3d2], [1, 0xffffff]];
+    /* ランプは10段：深紅→真紅→朱→橙赤→サーモン→桃→淡桃→白熱と
+       色相を少しずつずらしながら明度を上げ、帯の内側で段差が読めない
+       滑らかさにする（6段では中間色の飛びが「平たい」印象の主因だった） */
+    var FINP_MIRAGE_RAMP = [[0, 0x6d0d06], [0.14, 0xa81608], [0.28, 0xe02312], [0.42, 0xff3b26], [0.55, 0xff5a33], [0.67, 0xff7a47], [0.78, 0xffa37a], [0.87, 0xffc9a3], [0.94, 0xffe9dc], [1, 0xffffff]];
     function finPDrawMirageRibbonBlade(g, L, W, sweep, tF){
       g.clear();
       var lag = 1;
@@ -8642,27 +8652,32 @@
         if (gs <= 0.02) return;
         finPDrawPoly(g, finPBladeOutline(L, W * gh[1], gs, lag * 1.12, 2.4, tF - 120), 0xff5a3d, gh[2]);
       });
-      /* リボン本体：外光→芯まで幅の違うリボンを重ね、各セグメントを
-         長さ方向のランプ色で塗る（平色の縞ではなく面のグラデーション） */
+      /* リボン本体：外光→芯まで幅の違うリボンを6層重ね、各セグメントを
+         長さ方向のランプ色で塗る（平色の縞ではなく面のグラデーション）。
+         層の幅と不透明度の刻みを細かくし、長さ方向36分割×幅方向6層で
+         二方向のグラデーションとして読ませる */
       function ribbonLayer(wMul, alphaMul, wob){
         var out = finPBladeOutline(L, W * wMul, sweep, lag, wob, tF);
-        var n = 18;
+        var n = 36;
         for (var i = 0; i < n; i++){
           var s = (i + 0.5) / n;
           var pts = [out[i], out[i + 1], out[2 * n - i], out[2 * n + 1 - i]];
           finPDrawPoly(g, pts, finPRampColor(FINP_MIRAGE_RAMP, s), alphaMul * (0.5 + 0.5 * s));
         }
       }
-      ribbonLayer(2.6, 0.15, 2.2);
-      ribbonLayer(1.9, 0.26, 1.6);
-      ribbonLayer(1.35, 0.42, 1.1);
-      ribbonLayer(0.85, 0.66, 0.6);
+      ribbonLayer(2.9, 0.10, 2.4);
+      ribbonLayer(2.35, 0.17, 1.9);
+      ribbonLayer(1.9, 0.26, 1.5);
+      ribbonLayer(1.5, 0.38, 1.1);
+      ribbonLayer(1.12, 0.52, 0.75);
+      ribbonLayer(0.8, 0.68, 0.45);
       /* 白熱コア */
       finPDrawPoly(g, finPBladeOutline(L * 0.985, W * 0.46, sweep, lag, 0, tF), 0xffffff, 0.92);
-      /* 流れの筋：帯の中を尾→刃先へ光が走る読みを作る破線3本 */
-      [-0.42, 0, 0.42].forEach(function(fj, fi){
-        for (var k = 0; k < 10; k++){
-          var s0 = k / 10, s1 = s0 + 0.055;
+      /* 流れの筋：帯の中を尾→刃先へ光が走る読みを作る破線5本。
+         本数と刻みを増やして、面の流れが細かく読めるようにする */
+      [-0.55, -0.28, 0, 0.28, 0.55].forEach(function(fj, fi){
+        for (var k = 0; k < 16; k++){
+          var s0 = k / 16, s1 = s0 + 0.034;
           if (s1 > Math.max(0.02, sweep)) break;
           function cpt(s){
             var prof = Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, 0.10 + 0.90 * s))), 0.8);
@@ -9214,12 +9229,14 @@
           if (!u.on) return;
           var up = finPProg(tFs, u.fx0, u.dur);
           if (up >= 1){ u.on = false; u.node.cont.visible = false; if (u.node.gfx.clear) u.node.gfx.clear(); return; }
-          var sweep = Math.min(1, up / 0.22);
+          /* 出方は速く：描き込み（sweep）は寿命の13%で完了し、姿が
+             一閃で決まる。残りの寿命は減衰と残像が担う */
+          var sweep = Math.min(1, up / 0.13);
           var env = up < 0.55 ? 1 : Math.max(0, 1 - (up - 0.55) / 0.45);
-          var wid = u.len * 0.17 * (0.8 + 0.2 * Math.min(1, up / 0.25));
+          var wid = u.len * 0.17 * (0.8 + 0.2 * Math.min(1, up / 0.15));
           /* 試作：斬撃はリボン描画（面＋流れ＋残像）で描く */
           finPDrawMirageRibbonBlade(u.node.gfx, u.len, wid, sweep, tFs + u.st);
-          u.node.gfx.alpha = Math.min(1, up / 0.25) * env;
+          u.node.gfx.alpha = Math.min(1, up / 0.15) * env;
           u.node.cont.scale.set(1.25 - 0.27 * FINP_EZ.easeOut(up));
         });
       } else if (id === '39'){
@@ -19463,7 +19480,7 @@
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
       { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、両手に集めた光をビームで浮遊する相手SDへ放ち、光の粒に浄化する（金のオーラ付き）' },
-      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【試作】斬撃をリボン描画（面のグラデーション＋流れの筋＋残像ブレード）へ作り替え、斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
+      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【試作】斬撃をリボン描画（36分割×6層の二方向グラデーション＋流れの筋＋残像ブレード）へ作り替え、斬撃はワープの着地に同期して速く出る。斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に被さり、闇の渦へ引きずり込む' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスして相手SDを爆発させる' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手SDへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）して相手SDに光の裂け目を走らせ、真っ二つに崩す' },
