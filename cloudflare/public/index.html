@@ -7072,6 +7072,17 @@
          残すのは造形物だけ：EXの剣／ロンギヌスの槍／アギトの顎（と
          SD・カード絵そのもの）。rim光や接地影は従来どおり焼き込み
          テクスチャで担う
+       ・テクスチャ方式（ミラージュの斬撃のみ。頂点色グラデのリボン試作が
+         実機で合格したあと、厚みの頭打ちを破るために採用）：斬撃の帯を
+         Graphics のポリゴンではなく、流れノイズのテクスチャを流す帯
+         メッシュ（専用シェーダ）で描く。色ランプ（尾＝深紅→刃先＝白熱）
+         はシェーダ側に固定し、テクスチャの筋ノイズだけを長さ方向へ
+         スクロールさせることで、グラデーションは帯に anchored のまま
+         質感だけが流れる。幅方向の減衰（中心＝白熱→縁＝透明）と白熱
+         コアの合成もシェーダで行い、帯は太い淡いグロー／中／細い白芯の
+         3層を全て加算で重ねる（フィルター不使用・テクスチャは共有1枚、
+         1斬撃あたり3ドローコール）。輪郭・寸法・拍・封印の仕組みは
+         リボン試作と同一に保つ。残像ブレードだけは従来どおり Graphics
        ・スケール復元（実機フィードバック：描画化で3体が大幅に縮んだ）：
          もともと描画だったセレスティア／ティアマト／EX-キャリバーは、
          現行方式の描画実装の幾何学とスケールをそのまま移植した。
@@ -7434,15 +7445,24 @@
       /* 残像プール */
       N.aimgs = [];
       for (var ai2 = 0; ai2 < 5; ai2++){ var asp2 = PS(bake.white); asp2.visible = false; space.addChild(asp2); N.aimgs.push(asp2); }
-      /* 斬撃ユニット（Graphics の描画ブレード。加算はこの細い帯だけ） */
+      /* 斬撃ユニット（ミラージュ。帯本体はテクスチャ方式の帯メッシュ
+         3層＋残像ブレード用の Graphics。加算はこの細い帯だけ。
+         メッシュ／シェーダ／ジオメトリはプール構築時に一度だけ作り、
+         再生ごとに作り直さない（テクスチャも共有1枚） */
       N.slashUnits = [];
       for (var ui2 = 0; ui2 < 6; ui2++){
         var uc = PC();
         var ug = new PIXI.Graphics(); ug.blendMode = PIXI.BLEND_MODES.ADD;
         uc.addChild(ug);
+        var texLayers = [
+          finPMirageTexLayer(2.9, 0.50, 0.0, 2.4, 0.7),
+          finPMirageTexLayer(1.55, 0.85, 0.35, 1.1, 1.0),
+          finPMirageTexLayer(0.82, 1.0, 1.0, 0.45, 1.35)
+        ];
+        texLayers.forEach(function(tm){ uc.addChild(tm.mesh); });
         uc.visible = false;
         space.addChild(uc);
-        N.slashUnits.push({ cont: uc, gfx: ug });
+        N.slashUnits.push({ cont: uc, gfx: ug, tex: texLayers });
       }
       /* EX：剣（支点回転）と残像、飛翔する斬撃、光の裂け目 */
       N.sword = PS(bake.white); N.sword.visible = false;
@@ -7795,7 +7815,7 @@
       N.atk.alpha = 1; N.atk.rotation = 0;
       N.atkWhite.alpha = 0;
       N.aimgs.forEach(function(sp){ sp.visible = false; sp.alpha = 1; });
-      N.slashUnits.forEach(function(u){ u.cont.visible = false; u.cont.alpha = 1; u.cont.scale.set(1); u.gfx.alpha = 1; if (u.gfx.clear) u.gfx.clear(); });
+      N.slashUnits.forEach(function(u){ u.cont.visible = false; u.cont.alpha = 1; u.cont.scale.set(1); u.gfx.alpha = 1; if (u.gfx.clear) u.gfx.clear(); if (u.tex) u.tex.forEach(function(tm){ tm.mesh.visible = false; }); });
       hide(N.sword); N.sword.alpha = 1; N.sword.scale.set(1);
       N.swordGhosts.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.flyUnit.cont.visible = false; N.flyUnit.cont.alpha = 1;
@@ -8630,20 +8650,143 @@
         finPDrawPoly(c, [[0, -w * 0.3], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.3]], finPRampColor(FINP_GOLD_RAMP, Ly[1]), Ly[2]);
       });
     }
-    /* --- ミラージュ試作：リボン斬撃（案Aの試作。ミラージュ1体だけに適用し、
-       実機判定を経てから他キャラへ展開するかどうかを決める） ---
-       従来の finPDrawBlade は「輪郭ポリゴンを5層重ねる」方式で、帯の内側は
-       層ごとの平色だった。こちらは帯を長さ方向に36分割したリボンの面として
-       描き、各セグメントの色を尾（深紅）→刃先（白熱）の10段ランプで補間
-       する。幅方向も6層の刻みで重ね、二方向のグラデーションにする。
-       あわせて時間差の残像ブレード2枚と、帯の中を流れる光の筋5本を重ね、
-       「面・流れ・副要素」で厚みを作る。輪郭そのもの（長さ・幅・反り）は
-       finPBladeOutline を共用し、従来と同一に保つ */
-    /* ランプは10段：深紅→真紅→朱→橙赤→サーモン→桃→淡桃→白熱と
-       色相を少しずつずらしながら明度を上げ、帯の内側で段差が読めない
-       滑らかさにする（6段では中間色の飛びが「平たい」印象の主因だった） */
-    var FINP_MIRAGE_RAMP = [[0, 0x6d0d06], [0.14, 0xa81608], [0.28, 0xe02312], [0.42, 0xff3b26], [0.55, 0xff5a33], [0.67, 0xff7a47], [0.78, 0xffa37a], [0.87, 0xffc9a3], [0.94, 0xffe9dc], [1, 0xffffff]];
-    function finPDrawMirageRibbonBlade(g, L, W, sweep, tF){
+    /* --- ミラージュ斬撃：テクスチャ方式（リボン試作の後継。試作は頂点色
+       グラデーションの面で厚みを作ったが、細かさは頂点分割数で頭打ちに
+       なる構造だった。こちらは帯をメッシュ化し、質感はテクスチャと
+       シェーダで作る） ---
+       ・土台は帯メッシュ（長さ方向36分割の三角形ストリップ）。輪郭の
+         数式（反り lag／幅プロファイル／熱ゆらぎ wob）はリボン試作と
+         同一で、寸法と軌跡は変えない。sweep 中は描画済み区間へ輪郭を
+         圧縮して書き込むため、刃先は常に尖って閉じる
+       ・色ランプ（尾＝深紅→刃先＝白熱の10段）はシェーダ内に固定し、
+         UV の u（帯方向の位置）で引く。スクロールさせるのはテクスチャ
+         の筋ノイズだけなので、グラデーションは帯に留まったまま質感
+         だけが尾→刃先へ流れ続ける
+       ・厚みは3層の加算重ね（太い淡いグロー／中／細い白芯）＋幅方向の
+         減衰（中心ほど不透明・白熱コアを加算）をシェーダで合成する。
+         フィルター不使用、テクスチャは共有1枚、1斬撃3ドローコール
+       ・残像ブレード2枚は従来どおり Graphics の平色ポリゴンで残す */
+    var FINP_MIRAGE_SLASH_VS = [
+      'attribute vec2 aVertexPosition;',
+      'attribute vec2 aUvs;',
+      'uniform mat3 translationMatrix;',
+      'uniform mat3 projectionMatrix;',
+      'varying vec2 vUvs;',
+      'void main(){ vUvs = aUvs; gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0); }'
+    ].join('\n');
+    var FINP_MIRAGE_SLASH_FS = [
+      'varying vec2 vUvs;',
+      'uniform sampler2D uTex;',
+      'uniform float uFlow;',
+      'uniform float uAlpha;',
+      'uniform float uCore;',
+      'vec3 mirageRamp(float t){',
+      '  vec3 c = vec3(0.427, 0.051, 0.024);',
+      '  c = mix(c, vec3(0.659, 0.086, 0.031), smoothstep(0.00, 0.14, t));',
+      '  c = mix(c, vec3(0.878, 0.137, 0.071), smoothstep(0.14, 0.28, t));',
+      '  c = mix(c, vec3(1.000, 0.231, 0.149), smoothstep(0.28, 0.42, t));',
+      '  c = mix(c, vec3(1.000, 0.353, 0.200), smoothstep(0.42, 0.55, t));',
+      '  c = mix(c, vec3(1.000, 0.478, 0.278), smoothstep(0.55, 0.67, t));',
+      '  c = mix(c, vec3(1.000, 0.639, 0.478), smoothstep(0.67, 0.78, t));',
+      '  c = mix(c, vec3(1.000, 0.788, 0.639), smoothstep(0.78, 0.87, t));',
+      '  c = mix(c, vec3(1.000, 0.914, 0.863), smoothstep(0.87, 0.94, t));',
+      '  c = mix(c, vec3(1.000), smoothstep(0.94, 1.00, t));',
+      '  return c;',
+      '}',
+      'void main(){',
+      '  float n1 = texture2D(uTex, vec2(vUvs.x * 2.0 - uFlow, vUvs.y)).a;',
+      '  float n2 = texture2D(uTex, vec2(vUvs.x * 5.0 - uFlow * 2.35 + 0.41, vUvs.y * 1.7 + 0.13)).a;',
+      '  float noise = clamp(n1 * 0.75 + n2 * 0.55, 0.0, 1.0);',
+      '  float across = sin(3.14159 * clamp(vUvs.y, 0.0, 1.0));',
+      '  float prof = pow(across, 1.45);',
+      '  vec3 col = mirageRamp(vUvs.x) * (0.50 + 1.05 * noise);',
+      '  col += vec3(1.0, 0.99, 0.96) * pow(across, 6.0) * uCore * (0.45 + 0.75 * noise);',
+      '  float ends = smoothstep(0.0, 0.05, vUvs.x) * smoothstep(1.0, 0.93, vUvs.x);',
+      '  float a = uAlpha * prof * ends * (0.30 + 0.70 * noise);',
+      '  gl_FragColor = vec4(col * a, a);',
+      '}'
+    ].join('\n');
+    /* 流れノイズのテクスチャ（Canvas生成・共有キャッシュなので破棄しない）。
+       白い筋のアルファだけを使う。横方向は継ぎ目なくタイリングできる
+       よう、筋は x±256 にも複写して描く */
+    var finPMirageFlowTex = null;
+    function finPMirageFlowTexture(){
+      if (finPMirageFlowTex) return finPMirageFlowTex;
+      var cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+      var g = cv.getContext('2d');
+      function streak(x, y, ln, th, aa){
+        var gr = g.createLinearGradient(x, 0, x + ln, 0);
+        gr.addColorStop(0, 'rgba(255,255,255,0)');
+        gr.addColorStop(0.5, 'rgba(255,255,255,' + aa + ')');
+        gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr;
+        g.fillRect(x, y, ln, th);
+      }
+      for (var i = 0; i < 34; i++){
+        var sy = 3 + fxFinRand(i * 3.7 + 1) * 58;
+        var sx = fxFinRand(i * 9.3 + 2) * 256;
+        var ln = 30 + fxFinRand(i * 5.1 + 3) * 110;
+        var th = 1 + fxFinRand(i * 4.3 + 5) * 3;
+        var aa = 0.10 + fxFinRand(i * 7.7 + 4) * 0.32;
+        streak(sx, sy, ln, th, aa); streak(sx - 256, sy, ln, th, aa); streak(sx + 256, sy, ln, th, aa);
+      }
+      finPMirageFlowTex = PIXI.Texture.from(cv);
+      finPMirageFlowTex.wrapMode = PIXI.WRAP_MODES.REPEAT;
+      return finPMirageFlowTex;
+    }
+    /* 帯メッシュのストリップ（動的バッファ。FxKit.strip と同じ型） */
+    function finPMirageStrip(seg){
+      var nv = (seg + 1) * 2;
+      var pos = new Float32Array(nv * 2);
+      var uv = new Float32Array(nv * 2);
+      var idx = [];
+      for (var i = 0; i < seg; i++){
+        var a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+        idx.push(a, b, c, b, d, c);
+      }
+      var geo = new PIXI.Geometry();
+      var posBuf = new PIXI.Buffer(pos, false);
+      var uvBuf = new PIXI.Buffer(uv, false);
+      geo.addAttribute('aVertexPosition', posBuf, 2);
+      geo.addAttribute('aUvs', uvBuf, 2);
+      geo.addIndex(idx);
+      return { geo: geo, pos: pos, uv: uv, posBuf: posBuf, uvBuf: uvBuf, seg: seg };
+    }
+    /* ストリップへブレード輪郭を書き込む。数式は finPBladeOutline と同一
+       （反り・幅プロファイル・熱ゆらぎ）で、x は sweep で圧縮した描画済み
+       区間へ割り当て、u はその区間内の相対位置にする */
+    function finPMirageStripWrite(st, L, W, sweep, lag, wob, tF){
+      var n = st.seg;
+      var sw = Math.max(0.02, sweep);
+      for (var i = 0; i <= n; i++){
+        var s = i / n;
+        var x = -L / 2 + L * s * sw;
+        var prof = Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, 0.10 + 0.90 * s))), 0.8);
+        var hw = W * 0.5 * (0.05 + 0.95 * prof);
+        var bend = -lag * L * 0.16 * (1 - s) * (1 - s);
+        var wv = wob ? Math.sin(s * 9 - tF * 0.02) * wob * prof : 0;
+        var cy = bend + wv;
+        var j = i * 4;
+        st.pos[j] = x; st.pos[j + 1] = cy - hw;
+        st.pos[j + 2] = x; st.pos[j + 3] = cy + hw;
+        st.uv[j] = s; st.uv[j + 1] = 0;
+        st.uv[j + 2] = s; st.uv[j + 3] = 1;
+      }
+      st.posBuf.update(); st.uvBuf.update();
+    }
+    /* テクスチャ層1枚ぶんの生成（プール構築時にのみ呼ぶ） */
+    function finPMirageTexLayer(wMul, alpha, core, wob, flowMul){
+      var st = finPMirageStrip(36);
+      var mat = PIXI.Shader.from(FINP_MIRAGE_SLASH_VS, FINP_MIRAGE_SLASH_FS, {
+        uTex: finPMirageFlowTexture(), uFlow: 0, uAlpha: 0, uCore: core
+      });
+      var mesh = new PIXI.Mesh(st.geo, mat);
+      mesh.blendMode = PIXI.BLEND_MODES.ADD;
+      mesh.visible = false;
+      return { mesh: mesh, mat: mat, st: st, wMul: wMul, alpha: alpha, wob: wob, flowMul: flowMul };
+    }
+    function finPDrawMirageTexBlade(node, L, W, sweep, tF, fade){
+      var g = node.gfx;
       g.clear();
       var lag = 1;
       /* 残像ブレード：少し遅れた sweep の輪郭を薄く重ね、斬撃の軌跡を面で残す */
@@ -8652,40 +8795,14 @@
         if (gs <= 0.02) return;
         finPDrawPoly(g, finPBladeOutline(L, W * gh[1], gs, lag * 1.12, 2.4, tF - 120), 0xff5a3d, gh[2]);
       });
-      /* リボン本体：外光→芯まで幅の違うリボンを6層重ね、各セグメントを
-         長さ方向のランプ色で塗る（平色の縞ではなく面のグラデーション）。
-         層の幅と不透明度の刻みを細かくし、長さ方向36分割×幅方向6層で
-         二方向のグラデーションとして読ませる */
-      function ribbonLayer(wMul, alphaMul, wob){
-        var out = finPBladeOutline(L, W * wMul, sweep, lag, wob, tF);
-        var n = 36;
-        for (var i = 0; i < n; i++){
-          var s = (i + 0.5) / n;
-          var pts = [out[i], out[i + 1], out[2 * n - i], out[2 * n + 1 - i]];
-          finPDrawPoly(g, pts, finPRampColor(FINP_MIRAGE_RAMP, s), alphaMul * (0.5 + 0.5 * s));
-        }
-      }
-      ribbonLayer(2.9, 0.10, 2.4);
-      ribbonLayer(2.35, 0.17, 1.9);
-      ribbonLayer(1.9, 0.26, 1.5);
-      ribbonLayer(1.5, 0.38, 1.1);
-      ribbonLayer(1.12, 0.52, 0.75);
-      ribbonLayer(0.8, 0.68, 0.45);
-      /* 白熱コア */
-      finPDrawPoly(g, finPBladeOutline(L * 0.985, W * 0.46, sweep, lag, 0, tF), 0xffffff, 0.92);
-      /* 流れの筋：帯の中を尾→刃先へ光が走る読みを作る破線5本。
-         本数と刻みを増やして、面の流れが細かく読めるようにする */
-      [-0.55, -0.28, 0, 0.28, 0.55].forEach(function(fj, fi){
-        for (var k = 0; k < 16; k++){
-          var s0 = k / 16, s1 = s0 + 0.034;
-          if (s1 > Math.max(0.02, sweep)) break;
-          function cpt(s){
-            var prof = Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, 0.10 + 0.90 * s))), 0.8);
-            return [-L / 2 + L * s, -lag * L * 0.16 * (1 - s) * (1 - s) + fj * W * 0.5 * prof];
-          }
-          var fa = 0.34 + 0.30 * Math.sin(s0 * 16 - tF * 0.030 + fi * 2.1);
-          finPStrokePts(g, [cpt(s0), cpt(s1)], Math.max(1.1, W * 0.05), 0xffffff, Math.max(0.06, fa));
-        }
+      /* 帯本体：テクスチャ方式の帯メッシュ3層。各層のジオメトリへ
+         輪郭を書き込み、流れの位相（uFlow）と濃さ（uAlpha）を進める。
+         uFlow は層ごとに速度を変え、芯ほど速く流して奥行きを出す */
+      if (node.tex) node.tex.forEach(function(tm){
+        finPMirageStripWrite(tm.st, L, W * tm.wMul, sweep, lag, tm.wob, tF);
+        tm.mat.uniforms.uFlow = (tF * 0.0026 * tm.flowMul) % 64;
+        tm.mat.uniforms.uAlpha = tm.alpha * fade;
+        tm.mesh.visible = fade > 0.003;
       });
     }
     /* --- 光波（セレスティア。旧方式 pixiFinCelestiaWaveFx の幾何学と
@@ -9228,15 +9345,17 @@
           }
           if (!u.on) return;
           var up = finPProg(tFs, u.fx0, u.dur);
-          if (up >= 1){ u.on = false; u.node.cont.visible = false; if (u.node.gfx.clear) u.node.gfx.clear(); return; }
+          if (up >= 1){ u.on = false; u.node.cont.visible = false; if (u.node.gfx.clear) u.node.gfx.clear(); if (u.node.tex) u.node.tex.forEach(function(tm){ tm.mesh.visible = false; }); return; }
           /* 出方は速く：描き込み（sweep）は寿命の13%で完了し、姿が
              一閃で決まる。残りの寿命は減衰と残像が担う */
           var sweep = Math.min(1, up / 0.13);
           var env = up < 0.55 ? 1 : Math.max(0, 1 - (up - 0.55) / 0.45);
           var wid = u.len * 0.17 * (0.8 + 0.2 * Math.min(1, up / 0.15));
-          /* 試作：斬撃はリボン描画（面＋流れ＋残像）で描く */
-          finPDrawMirageRibbonBlade(u.node.gfx, u.len, wid, sweep, tFs + u.st);
-          u.node.gfx.alpha = Math.min(1, up / 0.15) * env;
+          /* テクスチャ方式：斬撃は流れテクスチャを流す帯メッシュで描く
+             （残像ブレードは Graphics 側。fade は帯と残像で共用する） */
+          var fade = Math.min(1, up / 0.15) * env;
+          finPDrawMirageTexBlade(u.node, u.len, wid, sweep, tFs + u.st, fade);
+          u.node.gfx.alpha = fade;
           u.node.cont.scale.set(1.25 - 0.27 * FINP_EZ.easeOut(up));
         });
       } else if (id === '39'){
@@ -19480,7 +19599,7 @@
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
       { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、両手に集めた光をビームで浮遊する相手SDへ放ち、光の粒に浄化する（金のオーラ付き）' },
-      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【試作】斬撃をリボン描画（36分割×6層の二方向グラデーション＋流れの筋＋残像ブレード）へ作り替え、斬撃はワープの着地に同期して速く出る。斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
+      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【テクスチャ方式】斬撃を、流れノイズのテクスチャを流す帯メッシュ（シェーダで色ランプ＋幅方向の減衰＋白熱コアを合成し、3層を加算で重ねる）で描く。斬撃はワープの着地に同期して速く出る。斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に被さり、闇の渦へ引きずり込む' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスして相手SDを爆発させる' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手SDへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）して相手SDに光の裂け目を走らせ、真っ二つに崩す' },
