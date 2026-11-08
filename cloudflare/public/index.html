@@ -465,6 +465,8 @@
       .sum-mia{background:radial-gradient(circle at 35% 30%,#a5def7,#2b84b8);}
       .sum-olga{background:radial-gradient(circle at 35% 30%,#cfe08a,#4d7d3a);}
       .leader-ability{font-size:11px; color:var(--ink-dim); line-height:1.45; margin-top:2px;}
+      /* 対戦画面：相手パネルに出す相手デッキのテーマ名 */
+      .leader-deck{font-size:11px; font-weight:700; color:var(--gold-bright); line-height:1.4; margin-top:1px; letter-spacing:.03em;}
       .leader-ability b{color:var(--gold-bright); font-weight:700;}
       .summoner-choice{margin:14px 0 4px; text-align:left;}
       /* 召喚士の選択：大きなカード並びから、丸型顔アイコン5個の横並びストリップへ。
@@ -1870,9 +1872,13 @@
          安定させる。対戦中の背景は従来どおり #battleBg が対戦ごとに
          ランダムで選ぶ（そちらには一切触らない）。
          z-index は全面オーバーレイ（60〜）より下、対戦画面より上。 */
-      #titleBg{position:fixed; inset:0; z-index:55; opacity:0; pointer-events:none; transition:opacity .6s ease;}
-      #titleBg.on{opacity:1;}
-      #titleBg img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 32%; display:block; animation:titleBgDrift 30s ease-in-out infinite alternate;}
+      #titleBg{position:fixed; inset:0; z-index:55; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .6s ease, visibility 0s linear .6s;}
+      #titleBg.on{opacity:1; visibility:visible; transition:opacity .6s ease;}
+      /* 漂いのアニメーションは .on（タイトル表示中）の時だけ回す。
+         以前は opacity:0 のまま裏で回り続け、対戦中の描画負荷になっていたため、
+         非表示時は visibility:hidden でレイヤーごと合成対象から外す。 */
+      #titleBg img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 32%; display:block;}
+      #titleBg.on img{animation:titleBgDrift 30s ease-in-out infinite alternate;}
       /* タイトル背景の漂い：ごくゆっくりズーム＆パンし続ける（待機中も控えめに） */
       @keyframes titleBgDrift{
         from{transform:scale(1.03) translate(0,0);}
@@ -1921,6 +1927,12 @@
       .title-logo-sub::before{background:linear-gradient(90deg,transparent,rgba(217,195,132,.85));}
       .title-logo-sub::after{background:linear-gradient(90deg,rgba(217,195,132,.85),transparent);}
       .title-logo-sub .sub-text{margin-right:-.38em;}
+      /* --- 実績サマリ1行（ロゴ下）：勝ち抜きベストとアーケード制覇回数 --- */
+      .title-record{
+        text-align:center; font-size:12.5px; font-weight:700; letter-spacing:.06em;
+        color:var(--gold-bright); margin:2px 0 0; min-height:1.4em;
+      }
+      .title-record:empty{display:none;}
       @media (prefers-reduced-motion: reduce){
         #titleBg{transition:none;}
         #titleBg img{animation:none;}
@@ -2632,6 +2644,10 @@
         width:var(--s,3px); height:var(--s,3px); border-radius:50%;
         background:radial-gradient(circle, rgba(255,246,205,.95) 0%, rgba(236,205,126,.5) 52%, rgba(236,205,126,0) 76%);
         opacity:0; will-change:transform,opacity;
+      }
+      /* 粒子も背景の漂いと同じく .on（タイトル表示中）の時だけ回す。
+         以前は #titleBg が透明になっても裏で回り続けていた。 */
+      #titleBg.on .title-particle{
         animation:titleParticleDrift var(--d,15s) linear infinite; animation-delay:var(--dl,0s);
       }
       @keyframes titleParticleDrift{
@@ -2831,6 +2847,7 @@
         </div>
         <p class="title-logo-sub"><span class="sub-text">ARCANE SUMMON Ω</span></p>
         </div>
+        <p class="title-record title-rise" id="titleRecordLine" style="--rd:.5s;"></p>
         <div class="first-choice title-rise" style="margin-top:4px; --rd:.55s;">
           <p class="first-choice-label">対戦モード</p>
           <div class="seg" id="modeSeg" role="group" aria-label="対戦モードの選択">
@@ -3743,6 +3760,8 @@
     function refreshSummonerIcons(){
       try {
         if (document.getElementById('startOverlay').classList.contains('show') && typeof renderSummonerGrid === 'function') renderSummonerGrid();
+        var streakOv = document.getElementById('streakOverlay');
+        if (streakOv && streakOv.classList.contains('show') && typeof streakRenderBoard === 'function') streakRenderBoard();
         if (typeof S !== 'undefined' && S && !HEADLESS && typeof render === 'function') render();
       } catch (e) {}
     }
@@ -12055,6 +12074,7 @@
         '<button type="button" class="leader-avatar summoner-avatar" data-summoner-avatar="' + sideKey + '" aria-label="召喚士の能力を見る"><span class="summoner-face">' + summonerBadge(side.summonerId, true) + '</span></button>' +
         '<div class="leader-main">' +
           '<div class="leader-name">' + escapeHtml(sumDef.name) + ' <span class="side-tag">' + (isMe ? 'PLAYER' : 'CPU') + '</span></div>' +
+          (!isMe && S.cpuDeckName ? '<div class="leader-deck">相手デッキ：' + escapeHtml(S.cpuDeckName.replace(/デッキ$/, '')) + '</div>' : '') +
           '<div class="hpbar"><i style="width:' + hpPct + '%"></i></div>' +
           '<div class="leader-nums">' +
             '<span class="hp-label">召喚士ライフ</span>' +
@@ -13118,6 +13138,7 @@
       if (titleBgEl2) titleBgEl2.classList.add('on');
       renderSummonerGrid();
       refreshStartInfo();
+      if (typeof renderTitleRecord === 'function') renderTitleRecord();
       closeTitleMenu();
       startOverlay.classList.add('show');
       /* 表示し直した直後は必ず先頭から（前回の残り位置で固まって見えるのを防ぐ） */
@@ -14330,10 +14351,27 @@
         return '<div class="streak-lb-row">' +
           '<span class="streak-lb-rank">' + (i + 1) + '位</span>' +
           '<span class="streak-lb-name">' + escapeHtml(e.name || '名無し') + '</span>' +
-          '<span class="streak-lb-sum">' + (sum ? summonerBadge(sum.id) + ' ' + escapeHtml(sum.short) : '') + '</span>' +
+          '<span class="streak-lb-sum">' + (sum ? summonerBadge(sum.id, true) + ' ' + escapeHtml(sum.short) : '') + '</span>' +
           '<span class="streak-lb-num">' + e.streak + ' 連勝</span>' +
         '</div>';
       }).join('');
+    }
+    /* タイトルの実績サマリ1行（ロゴ下 #titleRecordLine）。
+       勝ち抜きベストはサーバー由来（streak.best）で、未取得なら一度だけ
+       裏でランキングを取得して届き次第描き直す。アーケード制覇回数は
+       端末保存の arcadeRecord から即時に出せる。どちらも無い場合は行ごと隠す。 */
+    var titleRecordFetchTried = false;
+    function renderTitleRecord(){
+      var el = document.getElementById('titleRecordLine');
+      if (!el) return;
+      var parts = [];
+      if (typeof streak !== 'undefined' && typeof streak.best === 'number') parts.push('勝ち抜きベスト ' + streak.best + ' 連勝');
+      if (typeof arcadeRecord !== 'undefined' && typeof arcadeRecord.clears === 'number' && arcadeRecord.clears > 0) parts.push('アーケード制覇 ' + arcadeRecord.clears + ' 回');
+      el.textContent = parts.join('　・　');
+      if (typeof streak !== 'undefined' && streak.best === null && !titleRecordFetchTried && !HEADLESS && typeof streakFetchLeaderboard === 'function'){
+        titleRecordFetchTried = true;
+        streakFetchLeaderboard(function(){ renderTitleRecord(); });
+      }
     }
     /* 勝ち抜き画面の名前欄：保存先はオンライン画面（#ovNameInput）と共用の
        localStorage キー。開いた時に保存済みを表示し、変更時と開始時に保存する */
