@@ -2826,6 +2826,56 @@
         .fx-plate-group,.fx-fin2-cutin,.fx-fin2-blackout,.fx-fin2-aura{display:none;}
         .fx-fin2-aura{animation:none;}
       }
+      /* ===== フィニッシュ第3世代：専用空間＋浮遊対峙＋白背景フィニッシュ =====
+         場面転換先は盤面似せのプレートではなく、全キャラ共通の専用空間
+         （暗い虚空＋ゆっくり回転する大きな魔法陣＋漂う光の粒。色味だけ
+         フィニッシャーのテーマ色で薄く染める）。受け側の召喚士SDは
+         足場なしで上部に浮遊し、決め技の着弾で背景ごと吹っ飛んで純白に
+         なる。z-index は 91（暗転レイヤー90より上、SD／破壊クローン92・
+         Pixi 93・レターボックス97・決めセリフ98より下）。
+         .fx-fin3-target の position は JS が inline で fixed を与える
+         （複製クローン側の position:absolute と競合させないため、
+         ここでは position を指定しない） */
+      .fx-fin3-bg{position:fixed; inset:0; z-index:91; pointer-events:none; overflow:hidden;}
+      .fx-fin3-white{position:absolute; inset:0; background:#fff; opacity:0;}
+      .fx-fin3-void{position:absolute; inset:0; will-change:transform,opacity;
+        background:
+          radial-gradient(ellipse 90% 62% at 50% 42%, rgba(38,32,64,.88), rgba(10,8,22,.97) 72%),
+          linear-gradient(180deg, #0a0817 0%, #141126 46%, #07060f 100%);}
+      .fx-fin3-tint{position:absolute; inset:0; opacity:.16;}
+      .fx-fin3-circle{position:absolute; left:50%; top:44%; width:min(135vw,600px); aspect-ratio:1/1;
+        transform:translate(-50%,-50%); opacity:.5; animation:fin3Spin 48s linear infinite; will-change:transform;}
+      .fx-fin3-circle svg{width:100%; height:100%; display:block;}
+      @keyframes fin3Spin{from{transform:translate(-50%,-50%) rotate(0deg);}to{transform:translate(-50%,-50%) rotate(360deg);}}
+      .fx-fin3-dot{position:absolute; border-radius:50%; background:#fff; pointer-events:none;
+        box-shadow:0 0 6px 1px rgba(255,255,255,.55);
+        animation:fin3Drift ease-in-out infinite alternate; will-change:transform,opacity;}
+      @keyframes fin3Drift{from{transform:translateY(7px); opacity:.22;}to{transform:translateY(-17px); opacity:.92;}}
+      .fx-fin3-shard{position:absolute; pointer-events:none; will-change:transform,opacity;
+        background:linear-gradient(135deg, #241d3d, #0b0817); border:1px solid rgba(190,180,255,.28);}
+      .fx-fin3-target{z-index:92; pointer-events:none;}
+      .fx-fin3-victim{display:block; margin:0 auto; filter:drop-shadow(0 8px 18px rgba(0,0,0,.5)); will-change:transform,opacity,translate;}
+      /* 白背景用の決めセリフ：濃い文字色＋テーマ色グロー（--fx-line-glow は
+         従来どおり wrap に設定される）。縁取りは濃色のまま活かす */
+      .fx-fin-line.on-white .fx-line-face{background:none !important; color:#251806; -webkit-text-fill-color:#251806;}
+      /* ロンギヌス専用構成：加速区間のスピード線レイヤーと、標的の到着を
+         予告する名前帯（カットイン風）。帯はテーマ色の縁＋太い明朝の名前 */
+      .fx-fin3-rush{position:absolute; inset:0; overflow:hidden; pointer-events:none;}
+      .fx-fin3-streak{position:absolute; top:0; width:2px; border-radius:2px; pointer-events:none;
+        background:linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.92) 45%, rgba(255,255,255,0));
+        box-shadow:0 0 5px rgba(255,255,255,.5); will-change:transform,opacity;}
+      .fx-fin3-band{position:fixed; left:0; right:0; top:15%; z-index:96; pointer-events:none; opacity:0;
+        background:linear-gradient(90deg, rgba(8,4,6,0), rgba(10,5,8,.88) 18%, rgba(10,5,8,.88) 82%, rgba(8,4,6,0));
+        border-top:2.5px solid #fff; border-bottom:2.5px solid #fff;
+        padding:9px 14px; text-align:center; will-change:transform,opacity;}
+      .fx-fin3-band-sub{font-size:10px; letter-spacing:.34em; font-weight:700; color:#ffe9a8; margin-bottom:2px;}
+      .fx-fin3-band-name{font-family:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+        font-size:19px; font-weight:900; letter-spacing:.06em; color:#fff; line-height:1.25;
+        text-shadow:0 2px 0 rgba(30,0,4,.85), 0 4px 10px rgba(0,0,0,.7);}
+      @media (prefers-reduced-motion: reduce){
+        .fx-fin3-bg,.fx-fin3-target,.fx-fin3-band{display:none;}
+        .fx-fin3-circle,.fx-fin3-dot{animation:none;}
+      }
     </style>
   </head>
   <body>
@@ -3494,7 +3544,7 @@
         </div>
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
-        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第2世代です。「間」（静止＋顔カットイン＋暗転）→場面転換→ダミーの戦場プレート＋召喚士SD（クロエ）ごと破壊、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。SD素材が読み込めない場合は従来の演出で再生されます。</p>
+        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾で背景ごと吹っ飛び、白背景で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスだけは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
@@ -4489,7 +4539,7 @@
       if (mythic && typeof SD_FIN_MS !== 'undefined' && typeof sdFxReady === 'function' && sdFxReady(mythic.cardId)){
         var sdMs = SD_FIN_MS[String(mythic.cardId)] || 0;
         if (sdMs >= 4000) mythDelay = sdMs + 400;
-        /* フィニッシュ第2世代（間＋場面転換つき）になる場合は、その分だけ
+        /* フィニッシュ第3世代（間＋場面転換つき）になる場合は、その分だけ
            勝敗表示を遅らせる（アギト含む全神話が対象） */
         if (typeof fin2WillRun === 'function' && fin2WillRun(mythic.cardId, mythic.panelEl)){
           mythDelay = Math.max(mythDelay, sdMs + FIN2_TOTAL_MS + 400);
@@ -4996,6 +5046,13 @@
        SD_FIN_MS：キャラ別の演出総尺（ms）。リッチ化で 4〜5.5 秒まで伸ばした。
        アギトは現行の 2500 のまま（対象外）。 */
     var SD_FIN_MS = { '39': 4700, '46': 4600, '48': 4000, '51': 5400, '52ex': 4600, '53ag': 2500, '54': 4100 };
+    /* 決めセリフ（第3世代セット：「決まった後」の余韻・感想・相手への言葉で
+       統一。白背景フェーズで表示するため、未来形・予告形は使わない）。
+       SD方式の開始時表示（フォールバック時）と第3世代の白背景表示で共用する */
+    var SD_FINISH_LINES = {
+      '39': '光の中へ還りなさい', '46': 'あははっ！これで終わり♡', '48': 'ふふ、ごちそうさま',
+      '51': '意外と脆かったね…', '52ex': 'これが、聖剣の力です', '53ag': '…まだ力が足りぬ', '54': '良い試合だった。'
+    };
     /* 任意素材：無くても演出は成立する（登場の魔法陣画像／EXの剣） */
     var SD_FIN_EXTRA = ['fx/fx-circle.webp', 'fx/fx-sword.webp'];
     var sdImgState = {}; /* src -> 1:読込OK / -1:失敗 / 0:読込中 */
@@ -5030,30 +5087,38 @@
     function mythicFinishDispatch(cardId, panelEl){
       if (HEADLESS || !panelEl) return;
       if (!(stageReducedMotion || pixiReducedMotion) && sdFxReady(cardId)){
-        /* フィニッシュ第2世代：素材が揃っていれば「間→場面転換→プレート＋
-           召喚士SD破壊」の新フロー。召喚士SDが読めていない場合は従来の
-           SD方式（パネル複製破壊）へフォールバックする */
-        if (fin2WillRun(cardId, panelEl)){ fin2Cinematic(cardId, panelEl); return; }
+        /* フィニッシュ第3世代：素材が揃っていれば「間→場面転換（専用空間で
+           浮遊対峙）→白背景フィニッシュ」の新フロー。召喚士SDが読めていない
+           場合は従来のSD方式（パネル複製破壊）へフォールバックする */
+        if (fin2WillRun(cardId, panelEl)){ fin3Cinematic(cardId, panelEl); return; }
         mythicSdFinishFx(cardId, panelEl);
       }
       else mythicFinishFx(cardId, panelEl);
     }
     sdFxPreload(); /* ページ読み込み直後から裏で読み始める（進行はブロックしない） */
 
-    /* ===== フィニッシュ第2世代（見た目のみ） =====
+    /* ===== フィニッシュ第3世代（見た目のみ） =====
        モック確定フロー：トドメ着弾の直後に「間」（静止＋攻撃側ユニットの
        テーマ色オーラ脈動 → カード絵の顔帯カットイン → 短い暗転。滞留の
-       合計が約0.9秒になる配分）を入れ、暗転の中で場面転換する。
-       転換後は、受け側の「戦場プレート＋召喚士SD＋召喚士銘板」の組を
-       画面上部に置き（シネマ構図は攻撃側が下で固定。自分が受け側でも同じ）、
-       既存の神話SDフィニッシュ（mythicSdFinishFx）の攻撃対象を実パネルから
-       この組へ差し替えて再生する。破壊は組全体の複製が割れる／吸い込まれる
-       形になり、「プレートごと破壊」の読みになる。アギトは巨大な顎が
-       組ごと飲み込む。決めセリフ・キャラ別SE・スロー／ヒットストップの
-       規則は従来どおり（SD_FIN_CUES は無変更）。
+       合計が約0.9秒になる配分。第2世代から無変更）を入れ、暗転の中で
+       場面転換する。
+       転換先は盤面似せのプレートではなく「フィニッシュ専用空間」：
+       暗い虚空＋ゆっくり回転する大きな魔法陣＋漂う光の粒（全キャラ共通の
+       1デザイン、色味だけフィニッシャーのテーマ色で薄く染める）。
+       受け側の召喚士SDは足場なしで空間の上部に浮遊し、攻撃側の神話SDも
+       下部の固定位置で浮遊し続ける（両者とも上下にフワフワ漂い、周期を
+       少しずらす。台・プレート・接地影は置かない）。
+       既存の神話SDフィニッシュ（mythicSdFinishFx）の振付・キャラ別SE・
+       スロー／ヒットストップ規則は骨格を維持し、攻撃対象を実パネルから
+       「浮遊する召喚士SD」へ差し替えて再生する。
+       クライマックス（キャラ別の破壊拍）：専用空間の背景ごと全部
+       吹っ飛ばして画面を純白にし、白の虚空の中で決めセリフ
+       （SD_FINISH_LINES、白用に濃い文字＋テーマ色グロー）を表示する。
+       受け側SDは既存振付の複製破壊（光の粒化／崩壊／吸い込み等）で締める。
        召喚士SD素材は fx/ の外部WebP（相対パス）を非同期プリロードし、
        読めていない／失敗した場合は新フローを出さず従来演出へ落とす。
-       モーション低減時も従来演出（振り分け側で遮断）。HEADLESS では無効。 */
+       モーション低減時も従来演出（振り分け側で遮断）。HEADLESS では無効。
+       通常対戦画面の戦場プレート化（岩×鉄）は盤面デザインとして不変。 */
     /* 召喚士SDの頭部比率（頭頂から顎までが素材全体の高さに占める割合の実測）。
        表示高さは神話SDと同じ頭基準で正規化する：画面上の「頭の大きさ」が
        神話SD（ミラージュ基準）と揃うよう、この比率で割り戻す */
@@ -5084,8 +5149,8 @@
     var FIN2_FREEZE_MS = 260;
     var FIN2_CUTIN_HOLD_MS = 410;
     var FIN2_TOTAL_MS = 1400;
-    /* キャラ別の破壊拍（SD_FIN_CUES.destroy と同じ値）：プレートのヒビと
-       揺れを破壊の直前に重ねるために使う */
+    /* キャラ別の破壊拍（SD_FIN_CUES.destroy と同じ値）：第3世代では
+       この拍に合わせて専用空間を吹っ飛ばし、白背景＋決めセリフへ移る */
     var FIN2_DESTROY_MS = { '39': 2150, '46': 2480, '48': 1000, '51': 3950, '52ex': 3050, '53ag': 1700, '54': 2050 };
     /* 敗れた側の召喚士IDを、対象パネルから特定する（特定できなければ null） */
     function fin2VictimSummonerId(panelEl){
@@ -5100,7 +5165,7 @@
       } catch (e) {}
       return null;
     }
-    /* 第2世代フローに入れる条件：神話SD素材＋受け側の召喚士SDが読めている */
+    /* 第3世代フローに入れる条件：神話SD素材＋受け側の召喚士SDが読めている */
     function fin2WillRun(cardId, panelEl){
       if (HEADLESS || !panelEl) return false;
       if (!sdFxReady(cardId)) return false;
@@ -5123,22 +5188,38 @@
       }
       return cardW || 88;
     }
-    /* 受け側の組（戦場プレート＋召喚士SD＋召喚士銘板）を画面上部に作る。
-       寸法：横は敗れた側の場エリア幅、縦は実パネル＋召喚士SD＋余白。
+    /* 専用空間の魔法陣（全キャラ共通デザイン）：二重円＋内接多角形＋
+       ルーン代わりの小円と刻み。線色はフィニッシャーのテーマ色で差し込む */
+    function fin3CircleSvg(color){
+      var ticks = '';
+      for (var i = 0; i < 24; i++){
+        var a = i * 15 * Math.PI / 180;
+        var x1 = 100 + Math.cos(a) * 88, y1 = 100 + Math.sin(a) * 88;
+        var x2 = 100 + Math.cos(a) * (i % 2 ? 93 : 96), y2 = 100 + Math.sin(a) * (i % 2 ? 93 : 96);
+        ticks += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '"/>';
+      }
+      var dots = '';
+      for (var j = 0; j < 8; j++){
+        var b = j * 45 * Math.PI / 180;
+        dots += '<circle cx="' + (100 + Math.cos(b) * 66).toFixed(1) + '" cy="' + (100 + Math.sin(b) * 66).toFixed(1) + '" r="2.4" fill="' + color + '" stroke="none" opacity="0.85"/>';
+      }
+      return '<svg viewBox="0 0 200 200" aria-hidden="true">' +
+        '<g fill="none" stroke="' + color + '" stroke-width="1.6" opacity="0.9">' +
+          '<circle cx="100" cy="100" r="96"/><circle cx="100" cy="100" r="84" stroke-dasharray="5 7"/>' +
+          '<circle cx="100" cy="100" r="66"/><circle cx="100" cy="100" r="40" stroke-dasharray="3 6"/>' +
+          '<polygon points="100,34 157,133 43,133" opacity="0.75"/>' +
+          '<polygon points="100,166 43,67 157,67" opacity="0.75"/>' +
+          ticks + dots +
+        '</g></svg>';
+    }
+    /* 場面転換先の専用空間＋浮遊する受け側召喚士SDを作る。
        召喚士SDの表示高さは、神話SDの頭基準（ミラージュの頭の表示px）と
-       頭の大きさが揃うよう SUMMONER_SD_HEAD で正規化する */
-    function fin2BuildGroup(panelEl, vicId, cardId, isCheck){
-      var pr = panelEl.getBoundingClientRect();
-      if (!pr.width) return null;
-      var zoneEl = null;
-      if (isCheck) zoneEl = document.querySelector('#fxStage .fx-dummy-zone');
-      else if (panelEl.id === 'cpuLeader') zoneEl = document.querySelector('#app .board-zone.enemy-zone');
-      else if (panelEl.id === 'myLeader') zoneEl = document.querySelector('#app .board-zone.mine-zone');
-      else if (panelEl.id === 'ovOppPanel') zoneEl = document.getElementById('ovOppField');
-      else if (panelEl.id === 'ovMyPanel') zoneEl = document.getElementById('ovMyField');
-      var zr = zoneEl ? zoneEl.getBoundingClientRect() : null;
-      var gw = Math.round(zr && zr.width ? zr.width : pr.width);
-      var gx = Math.round(zr && zr.width ? zr.left : pr.left);
+       頭の大きさが揃うよう SUMMONER_SD_HEAD で正規化する（第2世代と同一）。
+       戻り値の target が mythicSdFinishFx の攻撃対象になる（その矩形＝
+       浮遊SDの矩形。複製破壊はこの target の複製＝SD画像に対して行われる） */
+    function fin3BuildScene(panelEl, vicId, cardId, isCheck, flip){
+      var conf = SD_FIN[String(cardId)];
+      if (!conf) return null;
       /* 頭基準の正規化（神話SD側の現行式と同一の基準値を使う） */
       var cardW = fin2CardW(isCheck);
       var mirProbe = sdImgEls[SD_FIN['46'].sd];
@@ -5146,50 +5227,140 @@
       var headPx = cardW * 1.15 * mirAsp * 0.388; /* ミラージュの頭の表示高さ(px) */
       var sumH = Math.round(headPx / (SUMMONER_SD_HEAD[vicId] || 0.43));
       sumH = Math.max(54, Math.min(190, sumH));
-      var gh = Math.round(pr.height + sumH + 30);
-      var gy = isCheck ? Math.round(pr.top - 4) : Math.round(window.innerHeight * 0.07) + 8;
-      gy = Math.max(4, Math.min(gy, Math.max(4, window.innerHeight - gh - 4)));
-      var group = document.createElement('div');
-      group.className = 'fx-plate-group';
-      group.id = (panelEl.id || 'fxpanel') + '__plate';
-      group.setAttribute('aria-hidden', 'true');
-      group._fxPlate = true;
-      group._fxCheck = !!isCheck;
-      group.style.left = gx + 'px';
-      group.style.top = gy + 'px';
-      group.style.width = gw + 'px';
-      group.style.height = gh + 'px';
-      var plaqueCls = panelEl.className.split(/\s+/).filter(function(x){ return x && x !== 'fx-dummy-leader'; }).join(' ');
-      group.innerHTML =
-        '<div class="fx-plate-bg fin2-plate-surface">' +
-          '<div class="fx-plate-rune"></div>' +
-          '<div class="fx-plate-slot tl"></div><div class="fx-plate-slot tr"></div>' +
-          '<div class="fx-plate-slot bl"></div><div class="fx-plate-slot br"></div>' +
-          '<div class="fx-plate-groove g1"></div><div class="fx-plate-groove g2"></div>' +
-          '<div class="fx-plate-gem tl"></div><div class="fx-plate-gem tr"></div>' +
-          '<div class="fx-plate-gem bl"></div><div class="fx-plate-gem br"></div>' +
-        '</div>' +
-        '<div class="fx-plate-summoner-shadow"></div>' +
-        '<img class="fx-plate-summoner" src="' + SUMMONER_SD_SRC[vicId] + '" alt="" style="height:' + sumH + 'px">' +
-        '<div class="fx-plate-plaque ' + plaqueCls + '" style="width:' + Math.round(Math.min(pr.width, gw - 12)) + 'px">' + panelEl.innerHTML + '</div>' +
-        '<svg class="fx-plate-cracks" viewBox="0 0 360 302" preserveAspectRatio="none" aria-hidden="true">' +
-          '<g stroke="#0b0d16" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9">' +
-            '<path d="M180 40 L168 92 L188 128 L160 176 L176 226 L158 268"/>' +
-            '<path d="M172 96 L118 118 L96 158"/><path d="M182 132 L238 148 L262 190"/>' +
-            '<path d="M166 182 L112 206 L92 246"/><path d="M178 228 L228 250 L246 282"/>' +
-            '<path d="M60 250 L104 236 L140 252"/><path d="M300 244 L258 232 L226 248"/>' +
-          '</g>' +
-          '<g stroke="rgba(230,240,255,.75)" stroke-width="1" fill="none">' +
-            '<path d="M180 40 L168 92 L188 128 L160 176 L176 226 L158 268"/>' +
-            '<path d="M182 132 L238 148 L262 190"/>' +
-          '</g>' +
-        '</svg>';
-      document.body.appendChild(group);
-      return group;
+      var vicProbe = sdImgEls[SUMMONER_SD_SRC[vicId]];
+      var vicAsp = (vicProbe && vicProbe.naturalWidth > 0) ? (vicProbe.naturalHeight / vicProbe.naturalWidth) : 1;
+      var sumW = Math.max(30, Math.round(sumH / vicAsp));
+      /* --- 専用空間（虚空＋テーマ色の染め＋回転する魔法陣＋光の粒） --- */
+      var bg = document.createElement('div');
+      bg.className = 'fx-fin3-bg';
+      bg.setAttribute('aria-hidden', 'true');
+      var dotsHtml = '';
+      for (var i = 0; i < 16; i++){
+        var dl = (fxFinRand(i * 3.17 + 1) * 100).toFixed(1);
+        var dt = (fxFinRand(i * 5.71 + 2) * 100).toFixed(1);
+        var ds = (1.6 + fxFinRand(i * 7.13 + 3) * 2.8).toFixed(1);
+        var dd = (2.6 + fxFinRand(i * 9.31 + 4) * 3.2).toFixed(2);
+        var dl2 = (-fxFinRand(i * 11.7 + 5) * 3).toFixed(2);
+        var dop = (0.35 + fxFinRand(i * 13.3 + 6) * 0.5).toFixed(2);
+        dotsHtml += '<span class="fx-fin3-dot" style="left:' + dl + '%;top:' + dt + '%;width:' + ds + 'px;height:' + ds + 'px;opacity:' + dop + ';animation-duration:' + dd + 's;animation-delay:' + dl2 + 's"></span>';
+      }
+      bg.innerHTML =
+        '<div class="fx-fin3-white"></div>' +
+        '<div class="fx-fin3-void">' +
+          '<div class="fx-fin3-tint" style="background:radial-gradient(ellipse 75% 55% at 50% 42%, ' + conf.color + ' 0%, transparent 70%)"></div>' +
+          '<div class="fx-fin3-circle">' + fin3CircleSvg(conf.color) + '</div>' +
+          dotsHtml +
+        '</div>';
+      document.body.appendChild(bg);
+      /* --- 受け側の召喚士SD：空間の上部に足場なしで浮遊させる --- */
+      var target = document.createElement('div');
+      target.className = 'fx-fin3-target';
+      target.setAttribute('aria-hidden', 'true');
+      target._fxFin3 = true;
+      target._fxCheck = !!isCheck;
+      target._fin3Flip = !!flip;
+      target.id = (panelEl.id || 'fxpanel') + '__fin3';
+      var tx = Math.round(window.innerWidth / 2 - sumW / 2);
+      var ty = Math.round(window.innerHeight * 0.13);
+      ty = Math.max(52, Math.min(ty, Math.max(52, Math.round(window.innerHeight * 0.36))));
+      if (flip){
+        /* ロンギヌス専用構成のミラー（受け側がプレイヤー）：上下を反転し、
+           受け側SDは画面下部に置く（ロンギヌスは上から突き下ろす） */
+        ty = Math.round(window.innerHeight * 0.60);
+        ty = Math.max(52, Math.min(ty, Math.max(52, window.innerHeight - sumH - 56)));
+      }
+      target.style.position = 'fixed';
+      target.style.left = tx + 'px';
+      target.style.top = ty + 'px';
+      target.style.width = sumW + 'px';
+      target.style.height = sumH + 'px';
+      target.innerHTML = '<img class="fx-fin3-victim" src="' + SUMMONER_SD_SRC[vicId] + '" alt="" style="height:' + sumH + 'px">';
+      document.body.appendChild(target);
+      /* 浮遊：transform と競合しない独立プロパティ translate の揺らし。
+         攻撃側SDの浮遊（sdAuraStart：2300ms周期）とは周期をずらす（2750ms） */
+      var vicImg = target.querySelector('.fx-fin3-victim');
+      if (vicImg){
+        fxFinAnimate(vicImg, [
+          { translate: '0px 0px' }, { translate: '0px -7px' }, { translate: '0px 0px' }
+        ], { duration: 2750, iterations: 4, easing: 'ease-in-out' });
+      }
+      var scene = { bg: bg, whiteEl: bg.querySelector('.fx-fin3-white'), voidEl: bg.querySelector('.fx-fin3-void'), target: target, cx: tx + Math.round(sumW / 2), cy: ty + Math.round(sumH / 2) };
+      target._fin3Scene = scene; /* ロンギヌス専用構成が背景スクロール等で参照する */
+      var sumDef = (typeof SUMMONER_BY_ID !== 'undefined') ? SUMMONER_BY_ID[vicId] : null;
+      scene.vicName = sumDef ? sumDef.name : '';
+      return scene;
     }
-    /* 第2世代フロー本体：間（静止＋オーラ→顔カットイン→暗転）→場面転換
-       （組を置いて実パネルを隠す）→既存の神話SDフィニッシュを組に対して再生 */
-    function fin2Cinematic(cardId, panelEl){
+    /* クライマックス：専用空間の背景ごと全部吹っ飛ばして純白にする。
+       虚空レイヤーが膨らんで消え、破片が飛散し、白レイヤーが現れる */
+    function fin3BlowAway(scene, conf){
+      if (!scene) return;
+      if (scene.voidEl){
+        fxFinAnimate(scene.voidEl, [
+          { transform: 'scale(1)', opacity: 1 },
+          { transform: 'scale(1.16)', opacity: 1, offset: 0.25 },
+          { transform: 'scale(1.45)', opacity: 0 }
+        ], { duration: 430, easing: 'ease-in', fill: 'forwards' });
+        /* 背景の破片：虚空色の欠片が中心から放射状に飛ぶ */
+        for (var i = 0; i < 12; i++){
+          var sh = document.createElement('div');
+          sh.className = 'fx-fin3-shard';
+          var sw = 14 + Math.round(fxFinRand(i * 3.7 + 1) * 30);
+          var shh = 8 + Math.round(fxFinRand(i * 5.3 + 2) * 20);
+          sh.style.width = sw + 'px'; sh.style.height = shh + 'px';
+          sh.style.left = scene.cx + 'px'; sh.style.top = scene.cy + 'px';
+          scene.bg.appendChild(sh);
+          var ang = fxFinRand(i * 7.9 + 3) * Math.PI * 2;
+          var dist = 130 + fxFinRand(i * 11.3 + 4) * 190;
+          var dx = Math.round(Math.cos(ang) * dist), dy = Math.round(Math.sin(ang) * dist);
+          var rot = Math.round((fxFinRand(i * 13.7 + 5) - 0.5) * 260);
+          fxFinAnimate(sh, [
+            { transform: 'translate(-50%,-50%) translate(0px,0px) rotate(0deg)', opacity: 1 },
+            { transform: 'translate(-50%,-50%) translate(' + dx + 'px,' + dy + 'px) rotate(' + rot + 'deg)', opacity: 0 }
+          ], { duration: 640, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'forwards' });
+        }
+      }
+      if (scene.whiteEl){
+        fxFinAnimate(scene.whiteEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out', fill: 'forwards' });
+      }
+      fxFinFlash(0.75, 520);
+      pixiBurst(scene.cx, scene.cy, { count: 38, colors: [0xffffff, (SD_FIN && conf && conf.auraN) ? conf.auraN[0] : 0xffe9a8], power: 2.1, size: 1.2 });
+    }
+    /* 白背景用の決めセリフ：既存の太い明朝＋縁取り＋叩きつけ表示を、
+       色だけ白用（濃い文字＋テーマ色グロー）に適応して出す */
+    function fin3ShowWhiteLine(cardId, conf){
+      var lineTxt = SD_FINISH_LINES[String(cardId)];
+      if (!lineTxt) return null;
+      var lineEl = document.createElement('div');
+      lineEl.className = 'fx-fin-line on-white';
+      lineEl.setAttribute('aria-hidden', 'true');
+      var fs = Math.max(23, Math.min(50, Math.floor(window.innerWidth * 0.94 / (lineTxt.length * 1.18))));
+      lineEl.style.fontSize = fs + 'px';
+      lineEl.innerHTML = '<span class="fx-line-wrap"><span class="fx-line-stroke"></span><span class="fx-line-face"></span></span>';
+      var wrapEl = lineEl.firstChild;
+      wrapEl.style.setProperty('--fx-line-glow', conf ? conf.color : '#ffd76a');
+      wrapEl.childNodes[0].textContent = lineTxt;
+      var faceEl = wrapEl.childNodes[1];
+      faceEl.textContent = lineTxt;
+      faceEl.style.backgroundImage = 'none';
+      faceEl.style.color = '#251806';
+      faceEl.style.webkitTextFillColor = '#251806';
+      document.body.appendChild(lineEl);
+      fxMythicFxNodes.push(lineEl);
+      fxFinAnimate(wrapEl, [
+        { transform: 'scale(2.7)', opacity: 0 },
+        { transform: 'scale(.93)', opacity: 1, offset: 0.55 },
+        { transform: 'scale(1.03)', opacity: 1, offset: 0.78 },
+        { transform: 'scale(1)', opacity: 1 }
+      ], { duration: 330, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+      fxQuake('fx-quake-sm', 300);
+      seFin('finLine');
+      return lineEl;
+    }
+    /* 第3世代フロー本体：間（静止＋オーラ→顔カットイン→暗転）→場面転換
+       （専用空間＋浮遊する受け側SDを置いて実パネルを隠す）→既存の神話SD
+       フィニッシュを浮遊SDに対して再生→破壊拍で背景ごと吹っ飛ばして
+       白背景＋決めセリフ */
+    function fin3Cinematic(cardId, panelEl){
       if (HEADLESS || !panelEl) return;
       mythicFxCleanup();
       var gen = ++fxMythicGen;
@@ -5241,7 +5412,7 @@
       later(function(){
         if (cutin) fxFinAnimate(cutin, [{ transform: 'translateX(0)' }, { transform: 'translateX(106%)' }], { duration: 170, easing: 'ease-in', fill: 'forwards' });
       }, FIN2_FREEZE_MS + 160 + FIN2_CUTIN_HOLD_MS);
-      /* --- 暗転 → 場面転換（暗転の中で組を置き、実パネルを隠す） --- */
+      /* --- 暗転 → 場面転換（暗転の中で専用空間＋浮遊SDを置き、実パネルを隠す） --- */
       var black = document.createElement('div');
       black.className = 'fx-fin2-blackout';
       black.setAttribute('aria-hidden', 'true');
@@ -5251,9 +5422,12 @@
         fxFinAnimate(black, [{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease', fill: 'forwards' });
       }, FIN2_FREEZE_MS + 160 + FIN2_CUTIN_HOLD_MS + 170);
       later(function(){
-        var group = fin2BuildGroup(panelEl, vicId, cardId, isCheck);
-        if (!group){
-          /* 組が作れなければ従来のSD方式でそのまま再生する */
+        /* ロンギヌス専用構成のミラー判定：受け側がプレイヤー本人の時だけ
+           上下反転する（CPU／ダミーが受け側の時は通常の上下） */
+        var flip54 = String(cardId) === '54' && (panelEl.id === 'myLeader' || panelEl.id === 'ovMyPanel');
+        var scene = fin3BuildScene(panelEl, vicId, cardId, isCheck, flip54);
+        if (!scene){
+          /* 場面が作れなければ従来のSD方式でそのまま再生する */
           mythicSdFinishFx(cardId, panelEl);
           fxFinAnimate(black, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-out', fill: 'forwards' });
           setTimeout(function(){ if (black.parentNode) black.parentNode.removeChild(black); }, 260);
@@ -5261,10 +5435,11 @@
         }
         var prevVis = panelEl.style.visibility;
         panelEl.style.visibility = 'hidden';
-        mythicSdFinishFx(cardId, group);
+        mythicSdFinishFx(cardId, scene.target);
         /* 後片付けへの登録は本編開始後（本編冒頭の mythicFxCleanup で
            消されないように）。実パネルの復帰もここへ連結する */
-        fxMythicFxNodes.push(group);
+        fxMythicFxNodes.push(scene.bg);
+        fxMythicFxNodes.push(scene.target);
         fxMythicFxNodes.push(black);
         var prevCleanup = fxMythicExtraCleanup;
         fxMythicExtraCleanup = function(){
@@ -5272,21 +5447,30 @@
           panelEl.style.visibility = prevVis;
           stopAura();
         };
-        /* 破壊の直前にプレートへヒビ＋揺れを重ねる（複製にも写り込む） */
+        /* クライマックス：破壊拍で背景ごと吹っ飛ばして純白にし、
+           白の虚空の中で決めセリフを出す。受け側SDの消散は既存振付の
+           複製破壊が同じ拍で担う */
         var gen2 = fxMythicGen;
         var destroyMs = FIN2_DESTROY_MS[String(cardId)];
+        var totalMs = SD_FIN_MS[String(cardId)] || 2500;
         if (destroyMs != null){
           setTimeout(function(){
             if (gen2 !== fxMythicGen) return;
-            var ck = group.querySelector('.fx-plate-cracks');
-            if (ck) ck.classList.add('on');
-            if (String(cardId) === '51') return; /* ティアマトはビーム中ずっと組が震えているため、揺れは重ねない */
-            fxFinAnimate(group, [
-              { transform: 'translate(0px,0px)' }, { transform: 'translate(-4px,2px) rotate(-.4deg)' },
-              { transform: 'translate(4px,-1px) rotate(.4deg)' }, { transform: 'translate(-3px,1px)' },
-              { transform: 'translate(0px,0px)' }
-            ], { duration: 280, easing: 'linear', fill: 'forwards' });
-          }, Math.max(0, destroyMs - 60));
+            fin3BlowAway(scene, conf);
+            var lineEl = fin3ShowWhiteLine(cardId, conf);
+            if (lineEl){
+              var fadeAt = Math.min(destroyMs + 2000, Math.max(destroyMs + 700, totalMs - 400));
+              setTimeout(function(){
+                if (gen2 !== fxMythicGen) return;
+                fxFinAnimate(lineEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 360, easing: 'ease-in', fill: 'forwards' });
+              }, Math.max(0, fadeAt - destroyMs));
+            }
+          }, destroyMs);
+          /* 締め：白もレターボックス退場（本編側）に合わせて静かに引く */
+          setTimeout(function(){
+            if (gen2 !== fxMythicGen) return;
+            if (scene.whiteEl) fxFinAnimate(scene.whiteEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 340, easing: 'ease-in', fill: 'forwards' });
+          }, Math.max(0, totalMs - 360));
         }
         fxFinAnimate(black, [{ opacity: 1 }, { opacity: 0 }], { duration: 250, easing: 'ease-out', fill: 'forwards' });
       }, FIN2_TOTAL_MS);
@@ -5346,10 +5530,10 @@
          タイマー進行・総尺・結果表示の遅延には触れない。
          パネル破壊後は黒帯がスライドアウトし、明るさが戻ってから
          （実戦では）結果表示へ移る。演出チェック画面でも同じ外枠で再生する */
-      var SD_FIN_LINE = {
-        '39': '光の中へ還りなさい', '46': '遅い。もう斬った後だよ', '48': 'ふふ、いただくわ',
-        '51': '紅と蒼に、燃え尽きなさい', '52ex': 'この一閃で、終わらせる', '53ag': '喰らいつくす', '54': 'その壁ごと、貫く'
-      };
+      var SD_FIN_LINE = SD_FINISH_LINES;
+      /* 第3世代（専用空間＋浮遊対峙）では、決めセリフは開始時ではなく
+         白背景フェーズで fin3ShowWhiteLine が表示する（ここでは出さない） */
+      var isFin3 = !!panelEl._fxFin3;
       /* slow：[開始, 終了]（着弾直前だけ速度を落とす）／stop：[着弾時刻, 静止ms]／
          destroy：パネル破壊SEの時刻／se：キャラ別の主音キュー [時刻, 音名]。
          時刻はすべてこの関数（＝フィニッシュ開始）からの相対msで、
@@ -5368,6 +5552,10 @@
       };
       (function sdFinFrame(){
         var cues = SD_FIN_CUES[id] || {};
+        /* ロンギヌス第3世代専用構成では拍が違う（溜め→加速→登場→着弾が
+           破壊拍2050に着弾するよう組み替える）。SE／スロー／ヒットストップの
+           仕組み自体は共通のまま、時刻表だけ差し替える */
+        if (isFin3 && id === '54') cues = { slow: [1880, 2050], stop: [2050, 160], destroy: 2050, se: [[1000, 'finRush'], [2050, 'finImpactHeavy']] };
         /* --- レターボックス＋暗転 --- */
         var dimEl = document.createElement('div');
         dimEl.className = 'fx-fin-dimlayer'; dimEl.setAttribute('aria-hidden', 'true');
@@ -5387,7 +5575,7 @@
         fxFinAnimate(barB, [{ transform: 'translateY(104%)' }, { transform: 'translateY(0)' }], { duration: 400, easing: 'cubic-bezier(.22,.8,.3,1)', fill: 'forwards' });
         seFin('finStart');
         /* --- 決めセリフ（太い明朝体＋濃い縁取り＋テーマカラーのグロー＋金系グラデーション） --- */
-        var lineTxt = SD_FIN_LINE[id];
+        var lineTxt = isFin3 ? null : SD_FIN_LINE[id]; /* 第3世代は白背景フェーズで表示する */
         var lineEl = null;
         if (lineTxt){
           later(function(){
@@ -5471,7 +5659,7 @@
       var sdH = Math.max(56, Math.round(mirageH * 0.388 / (conf.head || 0.388)));
       sdH = Math.min(sdH, Math.round(window.innerHeight * 0.62));
       var anchor = sdFinAnchor();
-      if (id === '52ex' || id === '39' || id === '48' || id === '51' || id === '54' || id === '53ag' || panelEl._fxPlate){
+      if (id === '52ex' || id === '39' || id === '48' || id === '51' || id === '54' || id === '53ag' || isFin3){
         /* 遠距離系（EX-キャリバー／セレスティア／ダーククイーン／ティアマト）とロンギヌス／黒のアギトは中央の召喚台ではなく、攻撃側の陣地寄りに立つ（下側からパネルへ向かう動きが見えるように）
            （敗れたパネルが画面上半分なら攻撃者は下＝自分側、下半分なら上側）。
            演出チェックでも同じ基準で、自分の場の下端寄り（自分のダミー
@@ -5511,10 +5699,12 @@
         var pedAdded = [];
         ['mythic', 'active'].forEach(function(c){ if (!ped.classList.contains(c)){ ped.classList.add(c); pedAdded.push(c); } });
         fxMythicExtraCleanup = function(){ pedAdded.forEach(function(c){ ped.classList.remove(c); }); };
-      } else {
+      } else if (!isFin3) {
         var tmpPed = summonPedestal(ax, feetY + 7, sdH, true);
         if (tmpPed) later(function(){ tmpPed._dismiss(320); }, Math.max(2050, FIN_MS - 450));
       }
+      /* 第3世代：攻撃側SDは台座なしで宙に浮く（召喚の魔法陣だけは従来どおり
+         登場の合図として一瞬重ねる） */
       /* 魔法陣は召喚時と共通の summonMagicCircle（SDの矩形を代理で渡す） */
       summonMagicCircle({ getBoundingClientRect: function(){ return { left: ax - sdH / 2, top: feetY - sdH, width: sdH, height: sdH, right: ax + sdH / 2, bottom: feetY }; } }, true, conf.color);
       /* 魔法陣画像（fx-circle）が読めていれば、足元にもう一枚 回転する陣を重ねる */
@@ -5541,7 +5731,7 @@
         { transform: sdT(0, 0, 1), opacity: 1 }
       ], { duration: 480, easing: 'ease-out', fill: 'forwards' });
       pixiBurst(ax, feetY - sdH * 0.35, { count: 16, colors: [0xffffff, 0xeccd7e], power: 0.9 });
-      if (id !== '53ag') sdDust(ax, feetY, false); /* 登場の足元に砂煙（アギトは飛翔時のみ追加） */
+      if (id !== '53ag' && !isFin3) sdDust(ax, feetY, false); /* 登場の足元に砂煙（アギトは飛翔時のみ追加。第3世代は浮遊のため地面の砂煙は出さない） */
       var sdCx = ax, sdCy = feetY - sdH * 0.52; /* SDの重心あたり（ビームの起点） */
       var dxP = pcx - sdCx, dyP = pcy - sdCy;   /* SD → パネル中心のベクトル */
       /* パネルへ向かう帯状エフェクト（光波／ブレス）：SDの重心からパネル方向へ伸ばす */
@@ -5580,7 +5770,7 @@
       /* 定位置にいるSDの退場（その場でふっと消える。足元に砂煙も添える） */
       function sdFadeOut(atMs){
         later(function(){
-          sdDust(ax, feetY, false);
+          if (!isFin3) sdDust(ax, feetY, false);
           fxFinAnimate(sd, [
             { transform: sdT(0, 0, 1), opacity: 1 },
             { transform: sdT(0, -14, 0.94), opacity: 0 }
@@ -5659,13 +5849,18 @@
           el.style.zIndex = z;
           return el;
         }
-        var shadow = mkDiv('fx-sd-aura-shadow', 91);
-        var ring1 = mkDiv('fx-sd-aura-ring', 91);
-        var ring2 = mkDiv('fx-sd-aura-ring', 91);
-        [ring1, ring2].forEach(function(rg, ri){
-          rg.style.borderColor = colAt(ri);
-          rg.style.boxShadow = '0 0 16px ' + colAt(ri) + ', inset 0 0 12px ' + colAt(ri);
-        });
+        /* 第3世代は浮遊表現のため、足元の接地影と発光リング（地面の土台に
+           見える要素）は出さない。rim光・ゆらめき・粒子は従来どおり纏う */
+        var shadow = null, ring1 = null, ring2 = null;
+        if (!isFin3){
+          shadow = mkDiv('fx-sd-aura-shadow', 91);
+          ring1 = mkDiv('fx-sd-aura-ring', 91);
+          ring2 = mkDiv('fx-sd-aura-ring', 91);
+          [ring1, ring2].forEach(function(rg, ri){
+            rg.style.borderColor = colAt(ri);
+            rg.style.boxShadow = '0 0 16px ' + colAt(ri) + ', inset 0 0 12px ' + colAt(ri);
+          });
+        }
         var wisps = [];
         for (var wi = 0; wi < 7; wi++){
           var wp = mkDiv('fx-sd-aura-wisp', 93);
@@ -5703,17 +5898,19 @@
               cEl.style.opacity = sop * (i2 ? 0.34 + pulse * 0.18 : 0.62 + pulse * 0.26);
               if (conf.rainbow) cEl.style.filter = 'drop-shadow(0 0 ' + (i2 ? 17 : 7) + 'px ' + colAt(i2) + ') drop-shadow(0 0 ' + (i2 ? 32 : 15) + 'px ' + colAt(i2 + 1) + ') hue-rotate(' + Math.round((t * 0.14) % 360) + 'deg)';
             });
-            var rw = bw * 1.3;
-            ring1.style.width = rw + 'px'; ring1.style.height = (rw * 0.30) + 'px';
-            ring1.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (1 + pulse * 0.07) + ')';
-            ring1.style.opacity = sop * (0.55 + pulse * 0.35);
-            var ph2 = (t % 1150) / 1150;
-            ring2.style.width = rw + 'px'; ring2.style.height = (rw * 0.30) + 'px';
-            ring2.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (0.55 + ph2 * 0.95) + ')';
-            ring2.style.opacity = sop * (1 - ph2) * 0.75;
-            shadow.style.width = (bw * 0.85) + 'px'; shadow.style.height = (bw * 0.22) + 'px';
-            shadow.style.transform = 'translate(' + cxp + 'px,' + (fyp + 2) + 'px) translate(-50%,-50%)';
-            shadow.style.opacity = sop * 0.5;
+            if (ring1 && ring2 && shadow){
+              var rw = bw * 1.3;
+              ring1.style.width = rw + 'px'; ring1.style.height = (rw * 0.30) + 'px';
+              ring1.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (1 + pulse * 0.07) + ')';
+              ring1.style.opacity = sop * (0.55 + pulse * 0.35);
+              var ph2 = (t % 1150) / 1150;
+              ring2.style.width = rw + 'px'; ring2.style.height = (rw * 0.30) + 'px';
+              ring2.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (0.55 + ph2 * 0.95) + ')';
+              ring2.style.opacity = sop * (1 - ph2) * 0.75;
+              shadow.style.width = (bw * 0.85) + 'px'; shadow.style.height = (bw * 0.22) + 'px';
+              shadow.style.transform = 'translate(' + cxp + 'px,' + (fyp + 2) + 'px) translate(-50%,-50%)';
+              shadow.style.opacity = sop * 0.5;
+            }
             wisps.forEach(function(wEl, i2){
               var ph = ((t * 0.00042) + i2 / wisps.length) % 1;
               var side = (i2 % 2 ? 1 : -1);
@@ -5978,6 +6175,153 @@
           }, fissDrawn ? 240 : 0);
         }, 3050);
         sdFadeOut(3750);
+      } else if (id === '54' && isFin3){
+        /* ロンギヌス第3世代専用構成（対峙フェーズなし）：
+           受け側SDは最初は映さない → 溜めで背景の光が流れ始める → 加速区間
+           （スピード線＋本人が画面外へ飛び去る＋名前帯だけが標的を予告）→
+           受け側SDが流れに乗って登場し静止 → その瞬間に下から突き上げて
+           着弾（破壊拍2050）→ 背景は fin3Cinematic 側が同じ拍で吹っ飛ばし、
+           白の中で受け側が砕け、本人は通り抜けた先で浮遊して締める。
+           ミラー（受け側がプレイヤー）では上下反転：本人は上から突き下ろす */
+        var scene54 = panelEl._fin3Scene || null;
+        var vicImg54 = panelEl.querySelector('.fx-fin3-victim');
+        var vicAbove54 = pcy < window.innerHeight / 2;
+        var awaySign54 = vicAbove54 ? 1 : -1; /* 飛び去る方向＝受け側と反対（下／上） */
+        if (vicImg54) vicImg54.style.opacity = '0'; /* 場面転換直後はまだ映さない（暗転中に隠す） */
+        /* 背景の光の粒／スピード線：流れの方向へ縦に伸びる線を層で流す */
+        function rushLayer54(count, durMin, durVar, iter, thick){
+          if (!scene54 || !scene54.bg) return null;
+          var layer = document.createElement('div');
+          layer.className = 'fx-fin3-rush';
+          layer.setAttribute('aria-hidden', 'true');
+          scene54.bg.appendChild(layer);
+          var H = window.innerHeight;
+          for (var i = 0; i < count; i++){
+            var st = document.createElement('span');
+            st.className = 'fx-fin3-streak';
+            var lh = 46 + Math.round(fxFinRand(i * 3.71 + count) * 110);
+            st.style.left = (fxFinRand(i * 7.13 + count * 1.7) * 100).toFixed(1) + '%';
+            st.style.height = lh + 'px';
+            st.style.width = (thick || 2) + 'px';
+            st.style.opacity = (0.35 + fxFinRand(i * 5.31 + 2) * 0.6).toFixed(2);
+            layer.appendChild(st);
+            var d = durMin + fxFinRand(i * 9.77 + 3) * durVar;
+            var y0 = awaySign54 > 0 ? -(lh + 30) : (H + 30);
+            var y1 = awaySign54 > 0 ? (H + lh + 30) : -(H + 30);
+            fxFinAnimate(st, [
+              { transform: 'translateY(' + y0 + 'px)' },
+              { transform: 'translateY(' + y1 + 'px)' }
+            ], { duration: d, iterations: iter, delay: -Math.round(fxFinRand(i * 13.1 + 4) * d), easing: 'linear' });
+          }
+          return layer;
+        }
+        var rushLayers54 = [];
+        /* 溜め：身を引いて槍が光り、背景の光が流れ始める */
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(0, 0, 1), filter: 'brightness(1)', opacity: 1 },
+            { transform: sdT(0, awaySign54 * 7, 0.97), filter: 'brightness(1.4) drop-shadow(0 0 15px rgba(242,231,189,.9))', opacity: 1, offset: 0.6 },
+            { transform: sdT(0, awaySign54 * 10, 0.96), filter: 'brightness(1.65) drop-shadow(0 0 24px rgba(255,244,214,1))', opacity: 1 }
+          ], { duration: 480, easing: 'ease-in', fill: 'forwards' });
+          var l1 = rushLayer54(12, 780, 260, 2, 2);
+          if (l1) rushLayers54.push(l1);
+        }, 500);
+        /* 加速区間（約0.75秒）：スピード線が超高速化し、本人は受け側と
+           反対方向へ飛び去ってフレームアウトする */
+        later(function(){
+          var l2 = rushLayer54(30, 300, 160, 3, 2.5);
+          if (l2) rushLayers54.push(l2);
+          sdWind(ax, feetY - sdH * 0.5, awaySign54 > 0 ? 90 : -90, sdH * 1.6, 0xf2e7bd);
+          pixiBurst(ax, feetY - sdH * 0.4, { count: 14, colors: [0xffffff, 0xf2e7bd], power: 1.0 });
+          fxFinAnimate(sd, [
+            { transform: sdT(0, awaySign54 * 10, 0.96), opacity: 1 },
+            { transform: sdT(0, awaySign54 * Math.round(window.innerHeight * 0.85), 0.94), opacity: 0 }
+          ], { duration: 540, easing: 'cubic-bezier(.55,0,.85,.45)', fill: 'forwards' });
+        }, 1000);
+        /* 標的の到着予告：受け側の名前帯だけが画面上部（ミラー時は下部）に
+           フェードインする。SD本体はまだ出さない */
+        later(function(){
+          if (!scene54) return;
+          var band = document.createElement('div');
+          band.className = 'fx-fin3-band';
+          band.setAttribute('aria-hidden', 'true');
+          band.style.borderTopColor = conf.color;
+          band.style.borderBottomColor = conf.color;
+          if (!vicAbove54){ band.style.top = 'auto'; band.style.bottom = '15%'; }
+          band.innerHTML = '<div class="fx-fin3-band-sub">TARGET</div><div class="fx-fin3-band-name"></div>';
+          band.querySelector('.fx-fin3-band-name').textContent = scene54.vicName || '召喚士';
+          document.body.appendChild(band);
+          fxMythicFxNodes.push(band);
+          fxFinAnimate(band, [
+            { transform: 'translateX(-30px)', opacity: 0 },
+            { transform: 'translateX(0px)', opacity: 1, offset: 0.35 },
+            { transform: 'translateX(0px)', opacity: 1, offset: 0.8 },
+            { transform: 'translateX(24px)', opacity: 0 }
+          ], { duration: 1050, easing: 'ease-out', fill: 'forwards' });
+        }, 1180);
+        /* 登場：受け側SDが流れに乗って画面外から入ってきて、上部（ミラー時は
+           下部）で減速してピタッと静止し、浮遊へ移る。静止＝着弾の拍（2050） */
+        later(function(){
+          if (!vicImg54) return;
+          vicImg54.style.opacity = '';
+          var fromY = (vicAbove54 ? -1 : 1) * Math.round(window.innerHeight * 0.34);
+          fxFinAnimate(vicImg54, [
+            { transform: 'translateY(' + fromY + 'px)', opacity: 0 },
+            { transform: 'translateY(' + Math.round(fromY * 0.22) + 'px)', opacity: 1, offset: 0.55 },
+            { transform: 'translateY(0px)', opacity: 1 }
+          ], { duration: 330, easing: 'cubic-bezier(.16,.84,.3,1)', fill: 'forwards' });
+          rushLayers54.forEach(function(l){ fxFinAnimate(l, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' }); });
+        }, 1720);
+        /* 着弾：静止した瞬間に画面外（下／ミラー時は上）から突き抜ける。
+           本人は受け側のいた位置より少し先（上／ミラー時は下）で止まる */
+        var passDx54 = Math.round(pcx - ax);
+        var passDy54 = Math.round((pcy - awaySign54 * sdH * 0.22) - (feetY - sdH * 0.5));
+        later(function(){
+          var fromDy = passDy54 + awaySign54 * Math.round(window.innerHeight * 0.6);
+          fxFinAnimate(sd, [
+            { transform: sdT(passDx54, fromDy, 1.1), opacity: 1 },
+            { transform: sdT(passDx54, passDy54, 1.13), opacity: 1 }
+          ], { duration: 185, easing: 'cubic-bezier(.5,0,.8,.4)', fill: 'forwards' });
+          sdWind(pcx, pcy + awaySign54 * sdH * 0.4, awaySign54 > 0 ? -90 : 90, sdH * 1.5, 0xffffff);
+        }, 1870);
+        later(function(){
+          var sp = sdOverlay(conf.fx, { h: Math.round(h * 3.0) });
+          var angS = Math.atan2(-awaySign54, 0) * 180 / Math.PI + 90; /* 槍素材は穂先が上向き：突き上げは0°、突き下ろしは180° */
+          fxFinAnimate(sp, [
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(1.5)', opacity: 0 },
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(1)', opacity: 1, offset: 0.22 },
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(0.98)', opacity: 1, offset: 0.8 },
+            { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(0.98)', opacity: 0 }
+          ], { duration: 950, easing: 'ease-out', fill: 'forwards' });
+          sdImpact(true, [0xffffff, 0xf2e7bd]);
+          if (!pixiFinCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1500, 8, 0xe8ecf5)) pixiCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1500, 8);
+          /* 受け側は着弾の衝撃で小刻みに震えてから、白の中で砕ける */
+          fxFinAnimate(panelEl, [
+            { transform: 'translate(0px,0px)' }, { transform: 'translate(-3px,1px)' },
+            { transform: 'translate(3px,-1px)' }, { transform: 'translate(0px,0px)' }
+          ], { duration: 300, easing: 'linear', fill: 'forwards' });
+        }, 2050);
+        later(function(){
+          var mk = fxFinMakeWrap(panelEl); if (!mk) return;
+          var quads = fxFinPieces(panelEl, mk.wrap, 2, 2);
+          fxFinHidePanel(panelEl);
+          quads.forEach(function(pc){
+            var ddx = (pc.col === 0 ? -1 : 1) * (22 + fxFinRand(pc.col + pc.row * 3 + 1) * 16);
+            var ddy = (pc.row === 0 ? -1 : 1) * 16 + 22;
+            fxFinAnimate(pc.el, [
+              { transform: 'translate(0px,0px) rotate(0deg)', opacity: 1 },
+              { transform: 'translate(' + ddx + 'px,' + ddy + 'px) rotate(' + ((pc.col === 0 ? -1 : 1) * 6) + 'deg)', opacity: 0 }
+            ], { duration: 820, easing: 'ease-in', fill: 'forwards' });
+          });
+          pixiBurst(pcx, pcy, { count: 30, rise: true, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.5 });
+        }, 2330);
+        /* 締め：通り抜けた先で槍を下ろし、そのまま浮遊して余韻に入る */
+        later(function(){
+          fxFinAnimate(sd, [
+            { transform: sdT(passDx54, passDy54, 1.13), opacity: 1 },
+            { transform: sdT(passDx54, passDy54 - awaySign54 * 9, 1.04), opacity: 1 }
+          ], { duration: 650, easing: 'ease-out', fill: 'forwards' });
+        }, 2500);
       } else if (id === '54'){
         /* ロンギヌス：溜め→一気に突進（速）→槍が刺さる瞬間にドンッと急停止
            （ヒットストップ＋フラッシュ＋大揺れ）→放射状のヒビが広がって砕ける。
@@ -14466,18 +14810,36 @@
        そのまま再生して確認できる。
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
-      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、両手に集めた光をビームでパネルへ放ち、光の粒に浄化する（金のオーラ付き）' },
-      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後はパネル上で斬って消える' },
-      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖がパネル全体に被さり、闇の渦へ引きずり込む' },
-      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスしてパネルを爆発させる' },
-      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手パネルへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）してパネルに光の裂け目を走らせ、真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が口を下に向けて真上の画面外から降ってきてパネルを上から飲み込む' },
-      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'SDロンギヌスが攻撃側から長い距離を一気に突進し、槍の一突きでドンッと止まって放射状のヒビを入れる' }
+      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、両手に集めた光をビームで浮遊する相手SDへ放ち、光の粒に浄化する（金のオーラ付き）' },
+      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
+      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に被さり、闇の渦へ引きずり込む' },
+      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスして相手SDを爆発させる' },
+      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手SDへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）して相手SDに光の裂け目を走らせ、真っ二つに崩す' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が口を下に向けて真上の画面外から降ってきて相手SDを上から飲み込む' },
+      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは最初は映らず、溜めで背景の光が流れ始め、加速区間（スピード線＋本人が画面下へ飛び去る＋名前帯の予告）を経て相手SDが上方から登場して静止した瞬間、下から突き上げて着弾し、背景ごと吹っ飛んで白背景で締める' }
     ];
+    var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
     function fxCheckPlayFinish(item){
       fxCheckClearStageCard();
       var panel = document.getElementById('fxDummyLeader');
       if (!panel) return;
+      var myToken = ++fxFinCheckToken;
+      /* 再生が終わったら「再生中」表示とボタンの再生中ハイライトを必ず戻す
+         （第2世代の確認で、終了後も表示が残る問題があったための後片付け） */
+      function fxFinCheckDone(ms){
+        setTimeout(function(){
+          if (myToken !== fxFinCheckToken) return;
+          if (!fxOverlay.classList.contains('show')) return;
+          fxCheckCaption(item.label + ' 再生終了');
+          if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+        }, ms);
+      }
+      function fxFinCheckScheduleDone(){
+        var total = sdFxReady(item.cardId)
+          ? ((SD_FIN_MS[String(item.cardId)] || 2500) + (fin2WillRun(item.cardId, panel) ? FIN2_TOTAL_MS : 0))
+          : 2550;
+        fxFinCheckDone(total + 600);
+      }
       mythicFxCleanup(); /* 前回の複製が残っていたら実パネルへ戻してから再生する */
       fxStageEl.scrollIntoView({ block: 'start' });
       if (stageReducedMotion || pixiReducedMotion){
@@ -14487,6 +14849,10 @@
         void panel.offsetWidth;
         panel.classList.add('fx-hit');
         setTimeout(function(){ panel.classList.remove('fx-hit'); }, 500);
+        setTimeout(function(){
+          if (myToken !== fxFinCheckToken) return;
+          if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+        }, 600);
         return;
       }
       /* SD素材の読み込み完了を少しだけ待ってから振り分ける（対戦中は待たず、
@@ -14501,12 +14867,14 @@
             if (!fxOverlay.classList.contains('show')) return;
             fxCheckCaption(item.label + ' 再生中');
             mythicFinishDispatch(item.cardId, panel);
+            fxFinCheckScheduleDone();
           }
         }, 150);
         return;
       }
       fxCheckCaption(item.label + ' 再生中');
       mythicFinishDispatch(item.cardId, panel);
+      fxFinCheckScheduleDone();
     }
     var fxFinishListEl = document.getElementById('fxFinishList');
     fxFinishListEl.innerHTML = FXCHECK_FINISH_ITEMS.map(function(item){
@@ -14546,6 +14914,7 @@
     function closeFxCheck(){
       fxCheckClearStageCard();
       fxCheckClearHatchFx();
+      fxFinCheckToken++; /* 終了表示の予約タイマーを無効化する */
       fxMythicGen++;
       mythicFxCleanup();
       showStart();
