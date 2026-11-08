@@ -7010,8 +7010,16 @@
          再生ボタン押下時点、実戦では対戦開始時点で先行して済ませる。
          場面転換の瞬間は構築済みノードの表示切替だけを行う
        ・フィルレート対策：広面積フィルターは使わない（filters は一切
-         付けない）。光・グロー・rim光は事前に Canvas へ焼いたテクスチャ
-         の重ねで表現し、加算ブレンドは斬撃のコア等の細い帯だけに限定する
+         付けない）。加算ブレンドは斬撃のコア等の細い帯だけに限定する
+       ・描画化（穴埋め）：エフェクト本体は素材の貼り付けをやめ、Pixi の
+         Graphics でその場で描く。対象はミラージュの斬撃／セレスティアの
+         光柱・光波とビーム／ダーククイーンの鎖と渦／ティアマトのブレス／
+         魔法陣の幾何学／ロンギヌスの光跡と亀裂／EXの飛翔斬撃と裂け目／
+         吹き飛びの破片。発光は「芯（白熱）→内光→外光」の多層描画で作り、
+         熱っぽさは輪郭を時間でうねらせる疑似ゆらぎで表す。素材のまま
+         残すのは造形物だけ：EXの剣／ロンギヌスの槍／アギトの顎（と
+         SD・カード絵そのもの）。rim光や接地影は従来どおり焼き込み
+         テクスチャで担う
        ・振付・拍・総尺・SE・スロー／ヒットストップ・決めセリフ・SDの
          大きさ（頭基準。ミラージュ0.388基準／アギト0.45例外）と位置・
          攻撃エフェクトの範囲（第2世代スケール）は現行（fin3Cinematic＋
@@ -7238,7 +7246,8 @@
       N.voidBg = PS(bake.voidBg);
       N.tint = PS(bake.glow);
       N.pool = PS(bake.glow);
-      N.circle = PS(bake.white); N.circle.alpha = 0.5;
+      N.circle = PC(); N.circle.alpha = 0.5;
+      N.circleGfx = new PIXI.Graphics(); N.circle.addChild(N.circleGfx);
       voidC.addChild(N.voidBg); voidC.addChild(N.tint); voidC.addChild(N.pool); voidC.addChild(N.circle);
       N.dots = [];
       for (var di = 0; di < 12; di++){ var dsp = PS(bake.glow); voidC.addChild(dsp); N.dots.push(dsp); }
@@ -7251,16 +7260,16 @@
       N.cshards = [];
       for (var ci2 = 0; ci2 < 10; ci2++){
         var csc = PC();
-        var css = PS(bake.white);
+        var csg = new PIXI.Graphics();
         var csm = new PIXI.Graphics();
-        csc.addChild(css); csc.addChild(csm);
-        css.mask = csm;
+        csc.addChild(csg); csc.addChild(csm);
+        csg.mask = csm;
         csc.visible = false;
         space.addChild(csc);
-        N.cshards.push({ cont: csc, sp: css, mask: csm });
+        N.cshards.push({ cont: csc, gfx: csg, mask: csm });
       }
       N.bshards = [];
-      for (var bi2 = 0; bi2 < 9; bi2++){ var bss = PS(bake.white); bss.tint = 0x241d3d; bss.visible = false; space.addChild(bss); N.bshards.push(bss); }
+      for (var bi2 = 0; bi2 < 9; bi2++){ var bss = new PIXI.Graphics(); bss.visible = false; space.addChild(bss); N.bshards.push(bss); }
       N.embers = [];
       for (var ei2 = 0; ei2 < 10; ei2++){ var esp = PS(bake.dot); esp.visible = false; space.addChild(esp); N.embers.push(esp); }
       /* ビーム（セレスティアの光の奔流／ティアマトの紅蒼クロスビーム）。
@@ -7268,19 +7277,31 @@
       N.beams = [];
       for (var bmi = 0; bmi < 2; bmi++){
         var bmc = PC();
-        var bmg = new PIXI.Sprite(bake.glow); bmg.anchor.set(0, 0.5);
-        var bmk = new PIXI.Sprite(bake.glow); bmk.anchor.set(0, 0.5); bmk.tint = 0xffffff;
+        var bmg = new PIXI.Graphics();
+        var bmk = new PIXI.Graphics();
         bmc.addChild(bmg); bmc.addChild(bmk);
         bmc.visible = false;
         space.addChild(bmc);
-        N.beams.push({ cont: bmc, glow: bmg, core: bmk, gsx: 1, gsy: 1, csx: 1, csy: 1 });
+        N.beams.push({ cont: bmc, glow: bmg, core: bmk, gsx: 1, gsy: 1, csx: 1, csy: 1, len: 0, thick: 0, seed: bmi * 7.31 + 1 });
       }
       /* 決め技素材の大型オーバーレイ（鎖／光柱／槍を1枚で兼用する） */
       N.fxBig = PS(bake.white); N.fxBig.visible = false;
       space.addChild(N.fxBig);
-      /* 溜めの光の珠／渦の代用グロー */
+      /* 溜めの光の珠（グロー＋描画コア） */
       N.orb = PS(bake.glow); N.orb.visible = false;
       space.addChild(N.orb);
+      N.orbGfx = new PIXI.Graphics(); N.orbGfx.visible = false;
+      space.addChild(N.orbGfx);
+      /* 描画エフェクト専用ノード（光柱／鎖／渦／亀裂） */
+      N.pillarG = new PIXI.Graphics(); N.pillarG.visible = false;
+      space.addChild(N.pillarG);
+      N.chainsC = PC(); N.chainsC.visible = false;
+      N.chainsG = new PIXI.Graphics(); N.chainsC.addChild(N.chainsG);
+      /* chainsC の addChild は受け側SDの後（鎖がSDに被さるよう、そちらで行う） */
+      N.vortexG = new PIXI.Graphics(); N.vortexG.visible = false;
+      space.addChild(N.vortexG);
+      N.crackG = new PIXI.Graphics(); N.crackG.visible = false;
+      space.addChild(N.crackG);
       /* 受け側SD＋破片 */
       var vicC = PC();
       N.vicShadow = PS(bake.white); N.vicShadow.alpha = 0.45;
@@ -7290,6 +7311,7 @@
       vicC.addChild(N.vicShadow); vicC.addChild(N.vicGlow); vicC.addChild(N.vicWhite); vicC.addChild(N.vic);
       space.addChild(vicC);
       N.vicC = vicC;
+      space.addChild(N.chainsC); /* 鎖は受け側SDの上に被せる */
       N.pieces = [];
       for (var pi2 = 0; pi2 < 6; pi2++){
         var pcc = PC();
@@ -7300,9 +7322,13 @@
         N.pieces.push({ cont: pcc, sp: pss });
       }
       /* 攻撃側SD＋オーラ */
-      N.atkCirc = PS(bake.white);
+      N.atkCirc = PC();
+      N.atkCircGfx = new PIXI.Graphics(); N.atkCirc.addChild(N.atkCircGfx);
       N.atkCirc.visible = false;
       space.addChild(N.atkCirc);
+      /* ロンギヌスの光跡（攻撃側SDより後ろに敷く） */
+      N.trailG = new PIXI.Graphics(); N.trailG.blendMode = PIXI.BLEND_MODES.ADD; N.trailG.visible = false;
+      space.addChild(N.trailG);
       var atkC = PC();
       N.atkGlow = PS(bake.glow);
       N.atkSil = PS(bake.white);
@@ -7318,17 +7344,15 @@
       /* 残像プール */
       N.aimgs = [];
       for (var ai2 = 0; ai2 < 5; ai2++){ var asp2 = PS(bake.white); asp2.visible = false; space.addChild(asp2); N.aimgs.push(asp2); }
-      /* 斬撃ユニット（画像＋加算の芯・外光は細い帯だけに限定する） */
+      /* 斬撃ユニット（Graphics の描画ブレード。加算はこの細い帯だけ） */
       N.slashUnits = [];
       for (var ui2 = 0; ui2 < 4; ui2++){
         var uc = PC();
-        var uo = PS(bake.glow); uo.blendMode = PIXI.BLEND_MODES.ADD;
-        var uimg = PS(bake.white);
-        var ucore = PS(bake.glow); ucore.tint = 0xffffff; ucore.blendMode = PIXI.BLEND_MODES.ADD;
-        uc.addChild(uo); uc.addChild(uimg); uc.addChild(ucore);
+        var ug = new PIXI.Graphics(); ug.blendMode = PIXI.BLEND_MODES.ADD;
+        uc.addChild(ug);
         uc.visible = false;
         space.addChild(uc);
-        N.slashUnits.push({ cont: uc, outer: uo, img: uimg, core: ucore });
+        N.slashUnits.push({ cont: uc, gfx: ug });
       }
       /* EX：剣（支点回転）と残像、飛翔する斬撃、光の裂け目 */
       N.sword = PS(bake.white); N.sword.visible = false;
@@ -7337,12 +7361,12 @@
       for (var sgi = 0; sgi < 3; sgi++){ var sgs = PS(bake.white); sgs.visible = false; space.addChild(sgs); N.swordGhosts.push(sgs); }
       var fuc = PC();
       var fug = PS(bake.glow); fug.blendMode = PIXI.BLEND_MODES.ADD;
-      var fui = PS(bake.white);
-      fuc.addChild(fug); fuc.addChild(fui);
+      var fuf = new PIXI.Graphics(); fuf.blendMode = PIXI.BLEND_MODES.ADD;
+      fuc.addChild(fug); fuc.addChild(fuf);
       fuc.visible = false;
       space.addChild(fuc);
-      N.flyUnit = { cont: fuc, glow: fug, img: fui };
-      N.fissure = PS(bake.glow); N.fissure.tint = 0xffffff; N.fissure.visible = false;
+      N.flyUnit = { cont: fuc, glow: fug, gfx: fuf };
+      N.fissure = new PIXI.Graphics(); N.fissure.visible = false;
       space.addChild(N.fissure);
       /* アギト：巨大な顎（口の位置を container 原点にして回転・昇降させる） */
       var jawC = PC();
@@ -7658,9 +7682,15 @@
       N.cshards.forEach(function(cs){ cs.cont.visible = false; cs.cont.alpha = 1; cs.cont.rotation = 0; });
       N.bshards.forEach(function(sp){ sp.visible = false; sp.alpha = 1; sp.rotation = 0; });
       N.embers.forEach(function(sp){ sp.visible = false; sp.alpha = 1; });
-      N.beams.forEach(function(b){ b.cont.visible = false; });
+      N.beams.forEach(function(b){ b.cont.visible = false; b.glow.alpha = 1; b.core.alpha = 1; b.glow.scale.set(1); b.core.scale.set(1); });
       hide(N.fxBig); N.fxBig.alpha = 1; N.fxBig.rotation = 0; N.fxBig.scale.set(1);
       hide(N.orb); N.orb.alpha = 1; N.orb.rotation = 0; N.orb.scale.set(1);
+      hide(N.orbGfx); N.orbGfx.alpha = 1;
+      hide(N.pillarG); N.pillarG.alpha = 1;
+      hide(N.chainsC); N.chainsC.alpha = 1; N.chainsC.rotation = 0; N.chainsC.scale.set(1);
+      hide(N.vortexG); N.vortexG.alpha = 1; N.vortexG.rotation = 0; N.vortexG.scale.set(1);
+      hide(N.crackG); N.crackG.alpha = 1; N.crackG.scale.set(1);
+      hide(N.trailG); N.trailG.alpha = 1; if (N.trailG.clear) N.trailG.clear();
       N.vicC.visible = true; N.vicC.alpha = 1; N.vicC.rotation = 0; N.vicC.scale.set(1);
       N.vic.alpha = 1; N.vic.rotation = 0; N.vic.position.set(0, 0);
       N.vicWhite.alpha = 0;
@@ -7671,7 +7701,7 @@
       N.atk.alpha = 1; N.atk.rotation = 0;
       N.atkWhite.alpha = 0;
       N.aimgs.forEach(function(sp){ sp.visible = false; sp.alpha = 1; });
-      N.slashUnits.forEach(function(u){ u.cont.visible = false; u.img.alpha = 1; u.outer.alpha = 0; u.core.alpha = 0; });
+      N.slashUnits.forEach(function(u){ u.cont.visible = false; u.cont.alpha = 1; u.cont.scale.set(1); u.gfx.alpha = 1; if (u.gfx.clear) u.gfx.clear(); });
       hide(N.sword); N.sword.alpha = 1; N.sword.scale.set(1);
       N.swordGhosts.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.flyUnit.cont.visible = false; N.flyUnit.cont.alpha = 1;
@@ -7695,8 +7725,7 @@
       var mainN = conf.auraN[0], subN = conf.auraN[1] || conf.auraN[0];
       function full(sp){ sp.position.set(vw / 2, vh / 2); sp.width = vw; sp.height = vh; }
       full(N.white); full(N.black); full(N.flash); full(N.voidBg);
-      /* テクスチャの流し込み */
-      N.circle.texture = T.circle;
+      /* テクスチャの流し込み（魔法陣は描画化したため、ここでは流し込まない） */
       N.vic.texture = T.vic;
       N.vicShadow.texture = T.silVicBlk;
       N.vicGlow.texture = T.silVic;
@@ -7704,15 +7733,9 @@
       N.atk.texture = T.atk;
       N.atkSil.texture = T.silAtk;
       N.atkWhite.texture = T.silAtkWht;
-      N.atkCirc.texture = T.circ || T.circle;
       N.aimgs.forEach(function(sp){ sp.texture = T.atk; sp.tint = 0xff9a80; });
-      N.slashUnits.forEach(function(u){
-        u.img.texture = T.fx;
-        u.outer.tint = mainN; u.core.tint = 0xffffff;
-      });
       N.fxBig.texture = T.fx;
       if (T.sword){ N.sword.texture = T.sword; N.swordGhosts.forEach(function(sp){ sp.texture = T.sword; }); }
-      N.flyUnit.img.texture = T.fx;
       N.flyUnit.glow.tint = mainN;
       N.jaw.texture = T.fx;
       N.cutImg.texture = T.card;
@@ -7745,7 +7768,8 @@
       N.voidC.position.set(vw / 2, vh / 2);
       N.tint.position.set(vw / 2, vh * 0.42); N.tint.width = vw * 1.5; N.tint.height = vh * 1.1; N.tint.alpha = 0.16;
       N.pool.position.set(G.circleCx, G.circleCy); N.pool.width = G.poolD; N.pool.height = G.poolD;
-      N.circle.position.set(G.circleCx, G.circleCy); N.circle.width = G.circleD; N.circle.height = G.circleD;
+      N.circle.position.set(G.circleCx, G.circleCy); N.circle.scale.set(G.circleD / 600);
+      finPDrawCircleGeom(N.circleGfx, 300, mainN, true);
       R.dots = N.dots.map(function(sp, i){
         var bx = fxFinRand(i * 3.17 + 1) * vw, by = fxFinRand(i * 5.71 + 2) * vh;
         var ds = 1.6 + fxFinRand(i * 7.13 + 3) * 2.8;
@@ -7765,8 +7789,7 @@
       N.ring.width = G.ringD * 1.09; N.ring.height = G.ringD * 1.09;
       R.cshards = N.cshards.map(function(cs, ri){
         cs.cont.position.set(G.circleCx, G.circleCy);
-        cs.sp.texture = T.circle;
-        cs.sp.width = G.circleD; cs.sp.height = G.circleD;
+        finPDrawCircleGeom(cs.gfx, G.circleD * 0.485, mainN, true);
         var ra0 = (ri / 10) * Math.PI * 2, ra1 = ((ri + 1) / 10) * Math.PI * 2;
         var RR = G.circleD * 0.56;
         cs.mask.clear();
@@ -7782,8 +7805,7 @@
           dur: 680 + Math.round(fxFinRand(ri * 11.1 + 9) * 260), delay: 150 + ri * 16 };
       });
       R.bshards = N.bshards.map(function(sp, i){
-        sp.width = 14 + Math.round(fxFinRand(i * 3.7 + 1) * 30);
-        sp.height = 8 + Math.round(fxFinRand(i * 5.3 + 2) * 20);
+        finPDrawShard(sp, 14 + Math.round(fxFinRand(i * 3.7 + 1) * 30), 8 + Math.round(fxFinRand(i * 5.3 + 2) * 20), i * 3.77 + 1);
         sp.position.set(G.cx, G.cy);
         var ang = fxFinRand(i * 7.9 + 3) * Math.PI * 2;
         var dist = 130 + fxFinRand(i * 11.3 + 4) * 190;
@@ -7861,7 +7883,8 @@
         });
       } else R.pieces = [];
       /* 攻撃側 */
-      N.atkCirc.width = Math.round(G.sdH * 1.85); N.atkCirc.height = Math.round(G.sdH * 1.85);
+      finPDrawCircleGeom(N.atkCircGfx, 300, mainN, false);
+      R.atkCircBase = (G.sdH * 1.85) / 600;
       N.atkCirc.position.set(G.ax, G.feetY - 4);
       N.atk.width = G.sdW; N.atk.height = G.sdH;
       N.atkSil.width = G.sdW * T.silAtk._kw; N.atkSil.height = G.sdH * T.silAtk._kh;
@@ -7888,8 +7911,8 @@
         sp.width = G.sdW; sp.height = G.sdH;
         sp.position.set(G.ax, G.feetY - G.sdH / 2);
       });
-      /* 斬撃ユニット（ミラージュ。寸法はユニット定義側で持つ） */
-      var slashAsp = (T.fx.height || 1) / (T.fx.width || 1);
+      /* 斬撃ユニット（ミラージュ。寸法はユニット定義側で持つ。
+         描画は更新側で毎フレーム Graphics へ行う） */
       R.units = [
         { st: 1480, dur: 430, rot: -11, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fx0: 0 },
         { st: 1760, dur: 430, rot: 9, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fx0: 0 },
@@ -7900,32 +7923,30 @@
         var un = N.slashUnits[i];
         un.cont.position.set(G.cx, G.cy);
         un.cont.rotation = u.rot * Math.PI / 180;
-        un.img.width = u.w; un.img.height = u.w * slashAsp;
-        un.outer.width = u.len; un.outer.height = u.len * 0.13;
-        un.core.width = u.len; un.core.height = u.len * 0.045;
         u.node = un;
       });
-      /* ビームの配置（セレスティア：両手→受け側／ティアマト：両下隅→受け側） */
+      /* ビームの配置（セレスティア：両手→受け側／ティアマト：両下隅→受け側）。
+         描画は Graphics（ローカル座標：起点が原点、+X が着弾方向） */
       function placeBeam(u, x0, y0, x1, y1, thick){
         var dx = x1 - x0, dy = y1 - y0;
         var len = Math.sqrt(dx * dx + dy * dy);
         u.cont.position.set(x0, y0);
         u.cont.rotation = Math.atan2(dy, dx);
-        u.glow.width = len; u.glow.height = thick * 2.0;
-        u.core.width = len; u.core.height = thick * 0.45;
-        u.gsx = u.glow.scale.x; u.gsy = u.glow.scale.y;
-        u.csx = u.core.scale.x; u.csy = u.core.scale.y;
+        u.len = len; u.thick = thick;
+        u.gsx = 1; u.gsy = 1; u.csx = 1; u.csy = 1;
         u.cont.visible = false;
       }
       if (G.id === '39'){
         placeBeam(N.beams[0], G.handX, G.handY, G.cx, G.cy, Math.max(18, G.sdH * 0.98));
-        N.beams[0].glow.tint = 0xffd76a; N.beams[0].core.tint = 0xffffff;
+        finPDrawBeam(N.beams[0], 0xffd76a);
       } else if (G.id === '51'){
         var srcL = { x: Math.max(14, Math.round(G.cx - vw * 0.44)), y: vh + 26 };
         var srcR = { x: Math.min(vw - 14, Math.round(G.cx + vw * 0.44)), y: vh + 26 };
         placeBeam(N.beams[0], srcL.x, srcL.y, G.cx + G.sumW * 0.20, G.cy - G.sumH * 0.12, Math.max(22, G.sdH * 1.0));
         placeBeam(N.beams[1], srcR.x, srcR.y, G.cx - G.sumW * 0.20, G.cy - G.sumH * 0.12, Math.max(22, G.sdH * 1.0));
-        N.beams[0].glow.tint = 0xff4030; N.beams[1].glow.tint = 0x4a90ff;
+        N.beams[0].glow.clear(); N.beams[0].core.clear();
+        N.beams[1].glow.clear(); N.beams[1].core.clear();
+        R.beamCols = [[0xff4030, 0xffa04a], [0x4a90ff, 0x9cc4ff]];
         R.srcL = srcL; R.srcR = srcR;
       }
       /* EX：剣の寸法（支点はSD中心。グリップ＝素材高さの19%位置） */
@@ -7945,9 +7966,10 @@
         R.fly = { sx: G.cx, sy: G.sdCy, tx: G.cx, ty: G.cy,
           len0: Math.max(14, G.sdH * 0.15), len1: flyLen1,
           th0: Math.max(4, G.sdH * 0.06), th1: Math.round(Math.max(30, Math.min(104, G.sdH * 0.60))) };
-        N.flyUnit.img.width = R.fly.len0; N.flyUnit.img.height = R.fly.th0;
+        finPDrawBlade(N.flyUnit.gfx, 200, 46, 1, [0xffd76a, 0xfff3c4], 0, 1.7);
+        N.flyUnit.gfx.scale.set(R.fly.len0 / 200, R.fly.th0 / 46);
         N.fissure.position.set(G.cx, G.cy);
-        N.fissure.width = G.fxW * 1.9; N.fissure.height = 26;
+        finPDrawCrackH(N.fissure, G.fxW * 1.9, 7.7);
         N.fissure.rotation = 0; /* 縦飛行の接線は水平 */
       }
       /* アギト：顎の寸法と口の位置（回転中心＝口） */
@@ -8029,6 +8051,8 @@
       N.lineC.position.set(vw / 2, Math.round(vh * 0.35) + lineFs);
       N.lineGlow.width = vw * 0.9; N.lineGlow.height = lineFs * 3.2;
       /* 動的状態 */
+      R.trailPts = [];
+      R.crackFx0 = null;
       R.curOff = [0, 0];
       R.curFloatY = 0;
       R.blown = false; R.blowFx = 0;
@@ -8293,7 +8317,7 @@
          N.bshards, N.embers, N.aimgs, N.swordGhosts, N.rush].forEach(function(arr){
           arr.forEach(function(sp){ if (sp.visible) vis++; });
         });
-        [N.fxBig, N.orb, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont].forEach(function(sp){ if (sp.visible) vis++; });
+        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont].forEach(function(sp){ if (sp && sp.visible) vis++; });
         N.beams.forEach(function(b){ if (b.cont.visible) vis++; });
         N.parts.forEach(function(p){ if (p.on) partsOn++; if (p.sp.visible) vis++; });
         if (N.space.visible) vis++;
@@ -8338,6 +8362,324 @@
         u.core.scale.y = u.csy * sy;
       }
       return true;
+    }
+    /* ===== 手続き描画ライブラリ（描画化の本体） =====
+       すべて PIXI.Graphics へのその場描画。発光は「外光（太い・淡い）→
+       内光→芯（白熱）」の多層で作り、熱っぽさは輪郭点へ時間依存の
+       うねりを足す疑似ゆらぎで表す。フィルターは使わない */
+    function finPDrawPoly(g, pts, fill, alpha){
+      if (!pts.length) return;
+      g.beginFill(fill, alpha);
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.closePath(); g.endFill();
+    }
+    function finPStrokePts(g, pts, w, col, alpha){
+      if (!pts.length) return;
+      g.lineStyle(w, col, alpha);
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    }
+    /* --- 斬撃ブレード（三日月）。ローカル座標：中心が原点、刃は +X 方向へ
+       伸び、頭（先端）が +X。sweep は尾→頭への描き込み率、lag は尾の反り、
+       wob は熱ゆらぎの振幅。cols = [外光色, 内光色]（芯は常に白熱） --- */
+    function finPBladeOutline(L, W, sweep, lag, wob, tF){
+      var n = 18, top = [], bot = [];
+      var headX = -L / 2 + L * Math.max(0.02, sweep);
+      for (var i = 0; i <= n; i++){
+        var s = i / n;
+        var x = -L / 2 + L * s;
+        if (x > headX) x = headX;
+        var prof = Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, 0.10 + 0.90 * s))), 0.8);
+        var hw = W * 0.5 * (0.05 + 0.95 * prof);
+        var bend = -lag * L * 0.16 * (1 - s) * (1 - s);
+        var wv = wob ? Math.sin(s * 9 - tF * 0.02) * wob * prof : 0;
+        top.push([x, bend - hw + wv]);
+        bot.push([x, bend + hw + wv]);
+      }
+      return top.concat(bot.reverse());
+    }
+    function finPDrawBlade(g, L, W, sweep, cols, tF, lagMul){
+      var lag = (lagMul == null ? 1 : lagMul);
+      g.clear();
+      /* 熱ゆらぎゴースト：輪郭をずらした薄い複写 */
+      finPDrawPoly(g, finPBladeOutline(L * 1.02, W * 1.2, sweep, lag, 3.4, tF), cols[0], 0.10);
+      /* 外光→内光→白熱コア */
+      finPDrawPoly(g, finPBladeOutline(L, W * 2.5, sweep, lag, 1.6, tF), cols[0], 0.30);
+      finPDrawPoly(g, finPBladeOutline(L * 0.99, W * 1.45, sweep, lag, 0.8, tF), cols[1], 0.65);
+      finPDrawPoly(g, finPBladeOutline(L * 0.985, W * 0.58, sweep, lag, 0, tF), 0xffffff, 0.95);
+      /* 刃の走る筋（頭へ向かう細い光の線） */
+      var streak = [];
+      for (var i = 0; i <= 8; i++){
+        var s = i / 8, x = -L / 2 + L * s * Math.max(0.02, sweep);
+        streak.push([x, -lag * L * 0.16 * (1 - s) * (1 - s)]);
+      }
+      finPStrokePts(g, streak, Math.max(1.2, W * 0.07), 0xffffff, 0.55);
+    }
+    /* --- 魔法陣の幾何学（現行 fin3CircleInner と同じ意匠：多重リング＋
+       六芒星＋八角・菱形＋中央の菱形。ローカル半径 R で描く） --- */
+    function finPDrawCircleGeom(g, R, col, whiteCore){
+      g.clear();
+      /* 衛星ドットと中心（塗りはストローク状態に触れない最初に置く） */
+      g.beginFill(col, 0.9);
+      for (var j = 0; j < 6; j++){ var b0 = j * Math.PI / 3; g.drawCircle(Math.cos(b0) * R * 0.44, Math.sin(b0) * R * 0.44, R * 0.019); }
+      g.endFill();
+      g.beginFill(0xffffff, 0.95); g.drawCircle(0, 0, R * 0.030); g.endFill();
+      function poly(pts){ g.moveTo(pts[0][0], pts[0][1]); for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); }
+      function tri(sign){ return [[0, -0.62 * R * sign], [0.537 * R * sign, 0.31 * R * sign], [-0.537 * R * sign, 0.31 * R * sign]]; }
+      function dia(r){ return [[0, -r * R], [r * R, 0], [0, r * R], [-r * R, 0]]; }
+      function sq(r){ return [[-r * R, -r * R], [r * R, -r * R], [r * R, r * R], [-r * R, r * R]]; }
+      function dashRing(r, seg, gap){
+        var tot = seg + gap, n = Math.floor(Math.PI * 2 / tot);
+        for (var i = 0; i < n; i++){ var a0 = i * tot; g.moveTo(Math.cos(a0) * r, Math.sin(a0) * r); g.arc(0, 0, r, a0, a0 + seg); }
+      }
+      function geom(w, a, white){
+        g.lineStyle(w, white ? 0xffffff : col, a);
+        g.drawCircle(0, 0, R * 0.97); g.drawCircle(0, 0, R * 0.93);
+        g.drawCircle(0, 0, R * 0.77);
+        dashRing(R * 0.72, 0.10, 0.16);
+        g.drawCircle(0, 0, R * 0.64);
+        poly(tri(1)); poly(tri(-1));
+        poly(sq(0.332)); poly(dia(0.47));
+        dashRing(R * 0.34, 0.09, 0.15);
+        g.drawCircle(0, 0, R * 0.30);
+        poly(dia(0.26)); poly(dia(0.14));
+      }
+      geom(R * 0.045, 0.13, false);   /* ハロー */
+      geom(R * 0.019, 0.28, false);   /* 中間光 */
+      geom(R * 0.008, 0.95, false);   /* 本線 */
+      if (whiteCore) geom(R * 0.0045, 0.5, true); /* 中心部の白熱層 */
+      /* ルーン帯の刻み（短い放射刻線） */
+      g.lineStyle(R * 0.007, col, 0.8);
+      for (var i = 0; i < 28; i++){
+        var a = i / 28 * Math.PI * 2, l = (i % 4 === 0) ? 0.10 : 0.055;
+        g.moveTo(Math.cos(a) * R * 0.80, Math.sin(a) * R * 0.80);
+        g.lineTo(Math.cos(a) * R * (0.80 + l), Math.sin(a) * R * (0.80 + l));
+      }
+    }
+    /* --- ビーム帯の描画（セレスティア。起点→着弾へ先細りの多層帯） --- */
+    function finPDrawBeam(u, colGlow){
+      var len = u.len, th = u.thick, L, w;
+      var g = u.glow; g.clear();
+      [[2.0, 0.20], [1.45, 0.36], [1.05, 0.55]].forEach(function(Ly){
+        w = th * Ly[0];
+        finPDrawPoly(g, [[0, -w * 0.30], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.30]], colGlow, Ly[1]);
+      });
+      var c = u.core; c.clear();
+      [[0.5, 0.8], [0.24, 1]].forEach(function(Ly){
+        w = th * Ly[0];
+        finPDrawPoly(c, [[0, -w * 0.3], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.3]], 0xffffff, Ly[1]);
+      });
+    }
+    /* --- ブレス（ティアマト。波打つ炎の錐を毎フレーム描き直す） --- */
+    function finPDrawBreath(g, len, thick, colA, colB, tF, seed){
+      g.clear();
+      if (len <= 2) return;
+      [[1.9, colA, 0.20], [1.35, colA, 0.34], [0.95, colB, 0.55], [0.5, 0xffffff, 0.92]].forEach(function(L, li){
+        var n = 16, top = [], bot = [], i, x, s, prof, hw, wv;
+        for (i = 0; i <= n; i++){
+          s = i / n; x = len * s;
+          prof = Math.pow(Math.sin(Math.PI * Math.min(1, 0.10 + 0.95 * s)), 0.75);
+          hw = thick * 0.5 * L[0] * (0.15 + 0.85 * prof);
+          wv = Math.sin(s * 11 - tF * 0.021 + seed * 3 + li * 1.3) * thick * 0.07 * s;
+          top.push([x, -hw + wv]); bot.push([x, hw + wv]);
+        }
+        finPDrawPoly(g, top.concat(bot.reverse()), L[1], L[2]);
+      });
+      /* 内側の炎の筋 */
+      for (var k = 0; k < 3; k++){
+        var off = (k - 1) * thick * 0.16;
+        finPStrokePts(g, [[len * 0.06, off], [len * 0.55, off + Math.sin(tF * 0.02 + k * 2.1 + seed) * thick * 0.08], [len * 0.94, off * 0.4]], 1.6, 0xffffff, 0.5);
+      }
+    }
+    /* ブレス帯の更新（finPBeamUpdate と同じ包絡：grow／減衰） */
+    function finPBreathUpdate(R, u, fx0, dur, colA, colB){
+      var p = finPProg(R.tF, fx0, dur);
+      if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
+      u.cont.visible = true;
+      var grow = Math.min(1, p / 0.14);
+      var env = p > 0.82 ? Math.max(0, 1 - (p - 0.82) / 0.18) : 1;
+      finPDrawBreath(u.glow, u.len * grow, u.thick * (0.92 + 0.16 * Math.abs(Math.sin(R.tF * 0.045 + u.seed))), colA, colB, R.tF, u.seed);
+      u.glow.alpha = env;
+      u.core.clear(); u.core.alpha = 0;
+      return true;
+    }
+    /* --- 光柱（セレスティア。縦の多層柱＋昇る光波＋足元の地リング） --- */
+    function finPDrawPillar(g, W, H, tF){
+      g.clear();
+      [[1.0, 0xffd76a, 0.10], [0.74, 0xffe9a8, 0.20], [0.50, 0xfff3c4, 0.38], [0.27, 0xffffff, 0.8]].forEach(function(L, li){
+        var w2 = W * L[0] / 2, pts = [], i, y, x, seg = 9;
+        for (i = 0; i <= seg; i++){ y = -H / 2 + H * i / seg; x = -w2 * (1 + 0.05 * Math.sin(y * 0.018 + tF * 0.012 + li * 1.7)) * (i === 0 ? 0.82 : 1); pts.push([x, y]); }
+        for (i = seg; i >= 0; i--){ y = -H / 2 + H * i / seg; x = w2 * (1 + 0.05 * Math.sin(y * 0.018 + tF * 0.012 + li * 1.7 + 0.9)) * (i === 0 ? 0.82 : 1); pts.push([x, y]); }
+        finPDrawPoly(g, pts, L[1], L[2]);
+      });
+      /* 光波：足元から昇る楕円の波 */
+      for (var k = 0; k < 3; k++){
+        var ph = ((tF / 640) + k / 3) % 1;
+        var wrx = W * (0.75 + 0.6 * ph);
+        g.lineStyle(2.4, 0xffeeb0, 0.5 * (1 - ph));
+        g.drawEllipse(0, H / 2 - ph * H * 0.88, wrx, wrx * 0.30);
+      }
+      /* 足元の地リング */
+      g.lineStyle(3, 0xfff3c4, 0.65);
+      g.drawEllipse(0, H / 2 - 2, W * 0.85, W * 0.26);
+      g.lineStyle(1.4, 0xffffff, 0.8);
+      g.drawEllipse(0, H / 2 - 2, W * 0.55, W * 0.17);
+    }
+    /* --- 溜めの光の珠のコア（セレスティア） --- */
+    function finPDrawOrb(g, r, tF){
+      g.clear();
+      g.beginFill(0xffeeb0, 0.22); g.drawCircle(0, 0, r); g.endFill();
+      g.beginFill(0xfff3c4, 0.5); g.drawCircle(0, 0, r * 0.62); g.endFill();
+      g.beginFill(0xffffff, 0.95); g.drawCircle(0, 0, r * 0.34); g.endFill();
+      g.lineStyle(2, 0xffd76a, 0.85); g.drawCircle(0, 0, r * 0.92);
+      g.lineStyle(1.4, 0xffffff, 0.7);
+      for (var i = 0; i < 6; i++){
+        var a = tF * 0.004 + i * Math.PI / 3;
+        g.moveTo(Math.cos(a) * r * 1.02, Math.sin(a) * r * 1.02);
+        g.lineTo(Math.cos(a) * r * 1.22, Math.sin(a) * r * 1.22);
+      }
+      var oa = -tF * 0.003;
+      g.beginFill(0xffffff, 0.9); g.drawCircle(Math.cos(oa) * r * 1.18, Math.sin(oa) * r * 1.18, Math.max(1.6, r * 0.07)); g.endFill();
+    }
+    /* --- 鎖（ダーククイーン。ベジェの束＋環リンクを描く） --- */
+    function finPDrawChains(g, W, H){
+      g.clear();
+      var strands = [
+        [-0.52, -0.28, 0.05, -0.60, 0.52, 0.24],
+        [0.52, -0.32, -0.05, -0.55, -0.52, 0.28],
+        [-0.50, 0.32, 0.02, 0.66, 0.50, -0.26],
+        [0.16, -0.52, -0.34, 0.02, -0.10, 0.52],
+        [-0.12, -0.52, 0.30, -0.04, 0.14, 0.52],
+        [-0.52, 0.02, 0.0, -0.18, 0.52, -0.04]
+      ];
+      function qpt(s, t){ var mt = 1 - t; return [(mt * mt * s[0] + 2 * mt * t * s[2] + t * t * s[4]) * W, (mt * mt * s[1] + 2 * mt * t * s[3] + t * t * s[5]) * H]; }
+      /* 鎖の下に敷く紫のグロー帯 */
+      strands.forEach(function(s){
+        var pts = [], i, p;
+        for (i = 0; i <= 12; i++){ p = qpt(s, i / 12); pts.push(p); }
+        finPStrokePts(g, pts, Math.max(5, W * 0.012), 0x7a3cff, 0.16);
+      });
+      /* リンク：楕円の環を進行方向と交互に90°回して並べる */
+      function link(x, y, rx, ry, ang, wMul, col, alpha){
+        var ca = Math.cos(ang), sa = Math.sin(ang), steps = 10, pts = [], i, t, ex, ey;
+        for (i = 0; i <= steps; i++){
+          t = i / steps * Math.PI * 2; ex = Math.cos(t) * rx; ey = Math.sin(t) * ry;
+          pts.push([x + ex * ca - ey * sa, y + ex * sa + ey * ca]);
+        }
+        finPStrokePts(g, pts, Math.max(1, rx * 0.34 * wMul), col, alpha);
+      }
+      strands.forEach(function(s, si){
+        var n = 15;
+        for (var i = 0; i <= n; i++){
+          var t = i / n, p = qpt(s, t), pn = qpt(s, Math.min(1, t + 0.02));
+          var ang = Math.atan2(pn[1] - p[1], pn[0] - p[0]) + (((i + si) % 2) ? Math.PI / 2 : 0);
+          link(p[0], p[1], W * 0.017, W * 0.0105, ang, 1, 0x241239, 0.95);
+          link(p[0], p[1], W * 0.0102, W * 0.0063, ang, 0.5, 0xc39bff, 0.55);
+        }
+      });
+      /* 中心の締め環 */
+      g.lineStyle(Math.max(3, W * 0.006), 0x2a1650, 0.9); g.drawCircle(0, 0, W * 0.055);
+      g.lineStyle(Math.max(1.5, W * 0.003), 0xd6bcff, 0.85); g.drawCircle(0, 0, W * 0.055);
+    }
+    /* --- 闇の渦（ダーククイーン。3腕の螺旋＋吸い込み筋） --- */
+    function finPDrawVortex(g, R, rot, suck){
+      g.clear();
+      g.beginFill(0x0d0618, 0.88); g.drawCircle(0, 0, R * 0.34); g.endFill();
+      g.beginFill(0x2a1650, 0.55); g.drawCircle(0, 0, R * 0.20); g.endFill();
+      [[0.055, 0x7a3cff, 0.20], [0.030, 0xa678ff, 0.45], [0.013, 0xe6d5ff, 0.85]].forEach(function(L){
+        g.lineStyle(Math.max(1.2, R * L[0]), L[1], L[2]);
+        for (var arm = 0; arm < 3; arm++){
+          var base = rot + arm * Math.PI * 2 / 3, steps = 26;
+          for (var i = 0; i <= steps; i++){
+            var s = i / steps, ang = base + s * 4.4;
+            var r = R * (0.10 + 0.90 * s) * (1 - 0.22 * suck * s);
+            var x = Math.cos(ang) * r, y = Math.sin(ang) * r;
+            if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+          }
+        }
+      });
+      /* 外周から中心へ吸い込まれる筋 */
+      g.lineStyle(Math.max(1, R * 0.008), 0xc39bff, 0.5);
+      for (var k = 0; k < 7; k++){
+        var a0 = rot * 1.7 + k * 0.93;
+        g.moveTo(Math.cos(a0) * R * 1.02, Math.sin(a0) * R * 1.02);
+        g.lineTo(Math.cos(a0 + 0.5) * R * 0.72, Math.sin(a0 + 0.5) * R * 0.72);
+      }
+    }
+    /* --- 光の裂け目（EX。横へ走るギザギザの亀裂＋枝） --- */
+    function finPDrawCrackH(g, len, seed){
+      g.clear();
+      function jag(x0, x1, y0, amp, sd){
+        var pts = [[x0, y0]], n = 7;
+        for (var i = 1; i < n; i++){ var s = i / n; pts.push([x0 + (x1 - x0) * s, y0 + (fxFinRand(sd + i * 3.3) - 0.5) * 2 * amp * Math.sin(Math.PI * s)]); }
+        pts.push([x1, y0]);
+        return pts;
+      }
+      var main = jag(-len / 2, len / 2, 0, len * 0.03, seed);
+      finPStrokePts(g, main, len * 0.016, 0xffd76a, 0.30);
+      finPStrokePts(g, main, len * 0.005, 0xffffff, 0.95);
+      for (var b = 0; b < 4; b++){
+        var bx = -len / 2 + len * (0.2 + 0.2 * b) + (fxFinRand(seed + b * 7.7) - 0.5) * len * 0.06;
+        var dir = (b % 2) ? 1 : -1;
+        var br = jag(bx, bx + len * (0.10 + fxFinRand(seed + b * 5.1) * 0.08), 0, len * 0.012, seed + b * 13.7)
+          .map(function(p){ return [p[0], p[1] + dir * (p[0] - bx) * 0.55]; });
+        finPStrokePts(g, br, len * 0.008, 0xffd76a, 0.25);
+        finPStrokePts(g, br, len * 0.003, 0xffffff, 0.8);
+      }
+    }
+    /* --- 放射状の亀裂（ロンギヌス着弾点。ギザギザの放射＋枝＋中心の閃光） --- */
+    function finPDrawCracks(g, R, seed){
+      g.clear();
+      function ray(ang, lenF, sd){
+        var pts = [[0, 0]], n = 4;
+        for (var i = 1; i <= n; i++){
+          var s = i / n, r = R * lenF * s, off = (fxFinRand(sd + i * 3.9) - 0.5) * R * 0.10 * s;
+          pts.push([Math.cos(ang) * r - Math.sin(ang) * off, Math.sin(ang) * r + Math.cos(ang) * off]);
+        }
+        return pts;
+      }
+      var rays = [], i;
+      for (i = 0; i < 6; i++) rays.push(ray(i / 6 * Math.PI * 2 + fxFinRand(seed + i * 3.1) * 0.5, 0.7 + fxFinRand(seed + i * 7.3) * 0.45, seed + i * 11.3));
+      rays.forEach(function(pts){ finPStrokePts(g, pts, R * 0.045, 0xffeeb0, 0.30); });
+      rays.forEach(function(pts){ finPStrokePts(g, pts, R * 0.016, 0xffffff, 0.95); });
+      rays.forEach(function(pts, i){
+        if (pts.length < 3) return;
+        var mid = pts[2], baseA = Math.atan2(mid[1], mid[0]) + ((i % 2) ? 0.6 : -0.6);
+        var br = ray(baseA, 0.3, seed + i * 17.9).map(function(p){ return [p[0] + mid[0], p[1] + mid[1]]; });
+        finPStrokePts(g, br, R * 0.02, 0xffeeb0, 0.3);
+        finPStrokePts(g, br, R * 0.008, 0xffffff, 0.8);
+      });
+      g.beginFill(0xffffff, 0.85); g.drawCircle(0, 0, R * 0.045); g.endFill();
+    }
+    /* --- 光跡リボン（ロンギヌス。攻撃側SDの軌跡点を先細りの帯にする） --- */
+    function finPDrawTrail(g, pts, sdH, alphaMul){
+      g.clear();
+      var n = pts.length;
+      if (n < 2) return;
+      [[0.55, 0xf2e7bd, 0.16], [0.32, 0xffeeb0, 0.32], [0.15, 0xffffff, 0.6]].forEach(function(L){
+        var left = [], right = [], i, p, q, q2, dx, dy, dl, hw, s;
+        for (i = 0; i < n; i++){
+          p = pts[i]; q = pts[Math.min(n - 1, i + 1)]; q2 = pts[Math.max(0, i - 1)];
+          dx = q.x - q2.x; dy = q.y - q2.y; dl = Math.sqrt(dx * dx + dy * dy) || 1; dx /= dl; dy /= dl;
+          s = i / (n - 1); /* 0=古い尾（細い）／1=新しい頭（太い） */
+          hw = sdH * L[0] * 0.5 * Math.pow(s, 1.4);
+          left.push([p.x - dy * hw, p.y + dx * hw]);
+          right.push([p.x + dy * hw, p.y - dx * hw]);
+        }
+        finPDrawPoly(g, left.concat(right.reverse()), L[1], L[2] * alphaMul);
+      });
+    }
+    /* --- 背景の破片（不定形の岩片ポリゴン＋上面のハイライト） --- */
+    function finPDrawShard(g, w, h, seed){
+      g.clear();
+      var pts = [], n = 6, i, a, rr;
+      for (i = 0; i < n; i++){
+        a = i / n * Math.PI * 2; rr = 0.65 + fxFinRand(seed + i * 3.77) * 0.5;
+        pts.push([Math.cos(a) * w * 0.5 * rr, Math.sin(a) * h * 0.5 * rr]);
+      }
+      finPDrawPoly(g, pts, 0x241d3d, 1);
+      finPStrokePts(g, [pts[0], pts[1], pts[2]], 1.4, 0x574a80, 0.9);
     }
     /* 攻撃側の退場（定位置でふっと消える。現行 sdFadeOut と同じ拍・尺） */
     var FINP_FADE_AT = { '39': 3750, '48': 2500, '51': 4550, '52ex': 3750 };
@@ -8446,7 +8788,8 @@
           am.sp.position.set(G.ax + am.from[0] + (am.from[0] < 0 ? -14 : 14) * ae, G.feetY + am.from[1] - G.sdH / 2 + 4 * ae);
           am.sp.alpha = 0.55 * (1 - ae);
         });
-        /* 斬撃 */
+        /* 斬撃（描画ブレード：尾→頭へ描き込みながら多層で発光する。
+           包絡（収縮 1.25→0.98／出現 0.25／減衰 0.55〜）は素材版と同一） */
         R.units.forEach(function(u){
           if (!u.on && tS >= u.st){
             u.on = true; u.fx0 = tFs;
@@ -8461,15 +8804,12 @@
           if (!u.on) return;
           var up = finPProg(tFs, u.fx0, u.dur);
           if (up >= 1){ u.on = false; u.node.cont.visible = false; return; }
-          finPKf([finPF(0, 0, 0, 1.25, 0), finPF(0.25, 0, 0, 1, 1), finPF(1, 0, 0, 0.98, 0)], FINP_EZ.easeOut, up, tmp);
-          u.node.img.scale.set(tmp.s);
-          u.node.img.alpha = tmp.a;
-          var head = Math.min(1, up / 0.22);
+          var sweep = Math.min(1, up / 0.22);
           var env = up < 0.55 ? 1 : Math.max(0, 1 - (up - 0.55) / 0.45);
-          u.node.outer.scale.set(0.35 + 0.65 * head, 1);
-          u.node.outer.alpha = 0.5 * env;
-          u.node.core.scale.set(0.35 + 0.65 * head, 1);
-          u.node.core.alpha = 0.95 * env;
+          var wid = u.len * 0.17 * (0.8 + 0.2 * Math.min(1, up / 0.25));
+          finPDrawBlade(u.node.gfx, u.len, wid, sweep, [conf.auraN[0], conf.auraN[1]], tFs + u.st, 1);
+          u.node.gfx.alpha = Math.min(1, up / 0.25) * env;
+          u.node.cont.scale.set(1.25 - 0.27 * FINP_EZ.easeOut(up));
         });
       } else if (id === '39'){
         /* セレスティア：両手に光を集める → ビーム → 光柱（従） → 浄化 */
@@ -8479,7 +8819,7 @@
         if (R.orbFx0 != null){
           var op = finPProg(tFs, R.orbFx0, 880);
           var op2 = finPProg(tFs, R.orbFx0 + 900, 220);
-          if (op2 >= 1) N.orb.visible = false;
+          if (op2 >= 1){ N.orb.visible = false; N.orbGfx.visible = false; }
           else {
             N.orb.visible = true;
             N.orb.position.set(G.handX, G.handY);
@@ -8493,6 +8833,11 @@
             N.orb.width = osc; N.orb.height = osc;
             N.orb.alpha = op2 > 0 ? 1 - FINP_EZ.easeIn(op2) : Math.min(1, op * 3);
             N.orb.tint = 0xffeeb0;
+            /* 珠の描画コア（白熱の芯＋回る刻み環） */
+            N.orbGfx.visible = true;
+            N.orbGfx.position.set(G.handX, G.handY);
+            finPDrawOrb(N.orbGfx, Math.max(4, osc * 0.30), tFs);
+            N.orbGfx.alpha = N.orb.alpha;
           }
         }
         [650, 950, 1220].forEach(function(ms, bi){
@@ -8505,22 +8850,20 @@
           finPSpawnBurst(R, G.cx, G.cy, { count: 34, colors: R.burstCols, power: 1.8 });
         });
         if (R.beamFx0 != null) finPBeamUpdate(R, N.beams[0], R.beamFx0, 1500, true);
-        finPOnce(R, 'pillar', tS, 1600, function(){
-          R.pillarFx0 = tFs;
-          var pilH = Math.round(G.sumH + vh * 0.3);
-          N.fxBig.width = Math.round(G.fxW * 0.34); N.fxBig.height = pilH;
-          N.fxBig.position.set(G.cx, G.ty + G.sumH - pilH / 2 + 6);
-          N.fxBig.rotation = 0;
-        });
+        finPOnce(R, 'pillar', tS, 1600, function(){ R.pillarFx0 = tFs; });
         if (R.pillarFx0 != null){
           var pp = finPProg(tFs, R.pillarFx0, 1900);
-          if (pp >= 1) N.fxBig.visible = false;
+          if (pp >= 1) N.pillarG.visible = false;
           else {
-            N.fxBig.visible = true;
-            N.fxBig.alpha = pp < 0.25 ? 0.5 * (pp / 0.25) : (pp < 0.78 ? 0.5 - 0.05 * ((pp - 0.25) / 0.53) : 0.45 * (1 - (pp - 0.78) / 0.22));
+            /* 光柱（描画）：包絡の形・上下動は素材版と同一。濃さは描画側の
+               多層アルファで担うため、ノードαは包絡を 0..1 へ正規化する */
+            N.pillarG.visible = true;
+            var pEnv = pp < 0.25 ? (pp / 0.25) : (pp < 0.78 ? 1 - 0.1 * ((pp - 0.25) / 0.53) : 0.9 * (1 - (pp - 0.78) / 0.22));
             var pilH2 = Math.round(G.sumH + vh * 0.3);
             var pilDy = pp < 0.25 ? -40 * (1 - pp / 0.25) : (pp > 0.78 ? 6 * ((pp - 0.78) / 0.22) : 0);
-            N.fxBig.position.y = G.ty + G.sumH - pilH2 / 2 + 6 + pilDy;
+            N.pillarG.position.set(G.cx, G.ty + G.sumH - pilH2 / 2 + 6 + pilDy);
+            finPDrawPillar(N.pillarG, G.fxW * 0.34, pilH2, tFs);
+            N.pillarG.alpha = pEnv;
           }
         }
         finPOnce(R, 'ring2', tS, 2500, function(){
@@ -8531,20 +8874,18 @@
         /* ダーククイーン：鎖が被さる → 闇の渦へ引きずり込む */
         finPOnce(R, 'chains', tS, 550, function(){
           R.chFx0 = tFs;
-          var fxAsp = (R.T.fx.height || 1) / (R.T.fx.width || 1);
-          var cw = Math.round(G.fxW * 1.5);
-          N.fxBig.width = cw; N.fxBig.height = cw * fxAsp;
-          N.fxBig.position.set(G.cx, G.cy);
+          finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2));
+          N.chainsC.position.set(G.cx, G.cy);
         });
         if (R.chFx0 != null){
           var chp = finPProg(tFs, R.chFx0, 1900);
-          if (chp >= 1) N.fxBig.visible = false;
+          if (chp >= 1) N.chainsC.visible = false;
           else {
-            N.fxBig.visible = true;
+            N.chainsC.visible = true;
             var chs = chp < 0.35 ? 0.45 + 0.55 * FINP_EZ.easeOut(chp / 0.35) : (chp < 0.8 ? 1 + 0.05 * ((chp - 0.35) / 0.45) : 1.05 - 0.03 * ((chp - 0.8) / 0.2));
-            N.fxBig.scale.set(chs);
-            N.fxBig.rotation = (chp < 0.35 ? -4 + 4 * (chp / 0.35) : (chp < 0.8 ? 2 * ((chp - 0.35) / 0.45) : 2)) * Math.PI / 180;
-            N.fxBig.alpha = chp < 0.1 ? chp / 0.1 : (chp > 0.85 ? Math.max(0, 1 - (chp - 0.85) / 0.15) : 1);
+            N.chainsC.scale.set(chs);
+            N.chainsC.rotation = (chp < 0.35 ? -4 + 4 * (chp / 0.35) : (chp < 0.8 ? 2 * ((chp - 0.35) / 0.45) : 2)) * Math.PI / 180;
+            N.chainsC.alpha = chp < 0.1 ? chp / 0.1 : (chp > 0.85 ? Math.max(0, 1 - (chp - 0.85) / 0.15) : 1);
           }
         }
         finPOnce(R, 'chHit', tS, 950, function(){
@@ -8572,8 +8913,8 @@
           finPSpawnBurst(R, G.cx, G.cy, { count: 30, colors: [0xff5030, 0xffa04a, 0x5aa2ff, 0xffffff], power: 1.7 });
         });
         if (R.beamFx0 != null){
-          finPBeamUpdate(R, N.beams[0], R.beamFx0, 1750, true);
-          finPBeamUpdate(R, N.beams[1], R.beamFx0, 1750, true);
+          finPBreathUpdate(R, N.beams[0], R.beamFx0, 1750, R.beamCols[0][0], R.beamCols[0][1]);
+          finPBreathUpdate(R, N.beams[1], R.beamFx0, 1750, R.beamCols[1][0], R.beamCols[1][1]);
           if (!R.blown) N.vicC.position.x = G.cx + Math.round(3 * Math.sin(tFs * 0.11));
         }
         [2750, 3350].forEach(function(ms, bi){
@@ -8633,7 +8974,7 @@
             N.flyUnit.cont.position.set(R.fly.sx + (R.fly.tx - R.fly.sx) * fe, R.fly.sy + (R.fly.ty - R.fly.sy) * fe);
             var fl2 = R.fly.len0 + (R.fly.len1 - R.fly.len0) * fe;
             var ft2 = R.fly.th0 + (R.fly.th1 - R.fly.th0) * fe;
-            N.flyUnit.img.width = fl2; N.flyUnit.img.height = ft2;
+            N.flyUnit.gfx.scale.set(fl2 / 200, ft2 / 46);
             N.flyUnit.glow.width = fl2 * 1.25; N.flyUnit.glow.height = ft2 * 2.6;
             N.flyUnit.glow.alpha = 0.4;
             N.flyUnit.cont.alpha = fp > 0.9 ? 1 - (fp - 0.9) / 0.1 : 1;
@@ -8744,6 +9085,7 @@
         /* 突き上げ */
         finPOnce(R, 'thrust', tS, 1870, function(){
           R.thFx0 = tFs;
+          R.trailPts.length = 0; /* 突き上げの光跡はここから新たに引く */
           finPSpawnWind(R, G.cx, G.cy + asg * G.sdH * 0.4, asg > 0 ? -90 : 90, G.sdH * 1.5, 0xffffff);
         });
         if (R.thFx0 != null && tS < 2500){
@@ -8761,6 +9103,10 @@
           N.fxBig.height = sph; N.fxBig.width = sph * fxAsp;
           N.fxBig.position.set(G.cx, G.cy);
           N.fxBig.rotation = asg > 0 ? 0 : Math.PI;
+          /* 着弾点の亀裂（描画）：放射状のギザギザを種から1回だけ作る */
+          R.crackFx0 = tFs;
+          finPDrawCracks(N.crackG, Math.round(G.fxW * 0.55), 54.7);
+          N.crackG.position.set(G.cx, G.cy);
         });
         if (R.spFx0 != null){
           var spp = finPProg(tFs, R.spFx0, 950);
@@ -8770,6 +9116,15 @@
             var sps = spp < 0.22 ? 1.5 - 0.5 * (spp / 0.22) : 1 - 0.02 * Math.min(1, (spp - 0.22) / 0.58);
             N.fxBig.scale.set(sps);
             N.fxBig.alpha = spp < 0.22 ? spp / 0.22 : (spp > 0.8 ? 1 - (spp - 0.8) / 0.2 : 1);
+          }
+        }
+        if (R.crackFx0 != null){
+          var ckp = finPProg(tFs, R.crackFx0, 720);
+          if (ckp >= 1){ N.crackG.visible = false; R.crackFx0 = null; }
+          else {
+            N.crackG.visible = true;
+            N.crackG.scale.set(0.35 + 0.65 * FINP_EZ.easeOut(ckp));
+            N.crackG.alpha = 0.95 * (1 - ckp);
           }
         }
         /* 締め：通り抜けた先で静まる */
@@ -8798,6 +9153,28 @@
       var fScale = atkS * warpS * (R.absScale != null ? R.absScale : R.dirScale) * (1 - 0.05 * fadeE);
       var fAlpha = atkA * warpA * (R.absAlpha != null ? R.absAlpha : R.dirAlpha) * (1 - fadeE);
       N.atkC.position.set(G.ax + fOffX, G.feetY + fOffY - G.sdH / 2 + floatY - (id === '46' ? 16 : 14) * fadeE);
+      /* ロンギヌスの光跡：加速の飛び去りと突き上げの軌跡を、先細りの
+         光のリボンとして攻撃側SDの実位置から毎フレーム描く */
+      if (id === '54'){
+        var recording = (R.flyFx0 != null && tS < 1870) || (R.thFx0 != null && tS < R.destroyMs + 60);
+        if (recording){
+          var lastPt = R.trailPts[R.trailPts.length - 1];
+          if (!lastPt || Math.abs(lastPt.x - N.atkC.position.x) > 2 || Math.abs(lastPt.y - N.atkC.position.y) > 2){
+            R.trailPts.push({ x: N.atkC.position.x, y: N.atkC.position.y });
+            if (R.trailPts.length > 18) R.trailPts.shift();
+          }
+        }
+        var tAlpha = 1;
+        if (R.thFx0 == null && tS >= 1700) tAlpha = Math.max(0, 1 - finPProg(tS, 1700, 240));
+        if (R.blown) tAlpha = Math.max(0, 1 - finPProg(tFs, R.blowFx, 600));
+        if (R.trailPts.length > 1 && tAlpha > 0){
+          N.trailG.visible = true;
+          finPDrawTrail(N.trailG, R.trailPts, G.sdH, tAlpha);
+        } else {
+          N.trailG.visible = false;
+          if (tAlpha <= 0) R.trailPts.length = 0;
+        }
+      }
       N.atkC.scale.set(fScale);
       N.atkC.alpha = Math.max(0, Math.min(1, fAlpha));
       R.curOffNow = [fOffX, fOffY];
@@ -8832,7 +9209,7 @@
       if (tFs < 1500){
         N.atkCirc.visible = true;
         finPKf([finPF(0, 0, 0, 0.45, 0), finPF(0.3, 0, 0, 1, 0.95), finPF(1, 0, 0, 1.06, 0)], FINP_EZ.easeOut, finPProg(tFs, 0, 1500), tmp);
-        N.atkCirc.scale.set(tmp.s);
+        N.atkCirc.scale.set((R.atkCircBase || 0.3) * tmp.s);
         N.atkCirc.rotation = (-14 + 52 * FINP_EZ.easeOut(finPProg(tFs, 0, 1500))) * Math.PI / 180;
         N.atkCirc.alpha = tmp.a;
       } else N.atkCirc.visible = false;
@@ -8936,13 +9313,14 @@
           N.vicC.position.y = G.cy + G.sumH * 0.95 * ve2;
           N.vicShadow.alpha = 0.45 + 0.4 * ve2;
           if (vo > 0 && vo < 1){
-            N.orb.visible = true;
-            N.orb.tint = 0x2a1650;
-            N.orb.width = G.fxW * 0.95; N.orb.height = G.fxW * 0.95 * 0.62;
-            N.orb.position.set(G.cx, G.cy + G.sumH * 0.22);
-            N.orb.rotation = bl * 0.004;
-            N.orb.alpha = 0.5 * (vo < 0.35 ? vo / 0.35 : (vo > 0.8 ? 1 - (vo - 0.8) / 0.2 : 1));
-          } else N.orb.visible = false;
+            /* 闇の渦（描画）：螺旋が回転しながら受け側を吸い込む。
+               包絡・位置・縦圧縮は代用グロー版と同一 */
+            N.vortexG.visible = true;
+            N.vortexG.position.set(G.cx, G.cy + G.sumH * 0.22);
+            finPDrawVortex(N.vortexG, G.fxW * 0.475, bl * 0.005, ve2);
+            N.vortexG.scale.set(1, 0.62);
+            N.vortexG.alpha = vo < 0.35 ? vo / 0.35 : (vo > 0.8 ? 1 - (vo - 0.8) / 0.2 : 1);
+          } else N.vortexG.visible = false;
         } else if (R.breakStyle === 'explode'){
           var ex = finPProg(bl, 0, 1100);
           N.vicWhite.alpha = ex < 0.16 ? ex / 0.16 : Math.max(0, 1 - (ex - 0.16) / 0.5);
