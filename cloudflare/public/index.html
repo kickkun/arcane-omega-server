@@ -5505,7 +5505,27 @@
             pixiFx.rings.forEach(function(rg){ try { if (rg.gfx.parent) rg.gfx.parent.removeChild(rg.gfx); rg.gfx.destroy(); } catch (e) {} });
             pixiFx.rings.length = 0;
           }
+          /* 最終保証：登録系（スコープ／アニメ／粒子／リング）で空に
+             なったはずの fxLayer に、登録漏れ・解除漏れの表示物（斬撃の
+             リボンコンテナ等）が残っていたら、ここで全て撤去・破棄する。
+             「カウンタはゼロなのに画面に残る」を構造的に無くすための段で、
+             通常時は何も残っていないため無動作になる */
+          while (pixiFx.fxLayer.children.length){
+            var fch = pixiFx.fxLayer.children[0];
+            try { pixiFx.fxLayer.removeChild(fch); } catch (e) {}
+            try { if (fch.destroy) fch.destroy({ children: true }); } catch (e) {}
+          }
         }
+        /* DOM 側の残りも同じ掃除で落とす：演出チェックの終了表示など
+           mythicFxCleanup を経ずに直接呼ばれた場合でも、複製要素と
+           隠した実パネルが残らないようにする（通常経路では済んでいる
+           ため無動作） */
+        if (fxMythicExtraCleanup){ var fxc2 = fxMythicExtraCleanup; fxMythicExtraCleanup = null; try { fxc2(); } catch (e) {} }
+        if (fxMythicFxNodes.length){
+          fxMythicFxNodes.forEach(function(n){ if (n.parentNode) n.parentNode.removeChild(n); });
+          fxMythicFxNodes = [];
+        }
+        if (fxMythicHiddenPanel){ fxMythicHiddenPanel.style.visibility = ''; fxMythicHiddenPanel = null; }
       } catch (e) {}
       finSweepBusy = false;
     }
@@ -5518,7 +5538,11 @@
       try { out.fx2 = (typeof fx2DebugCounts === 'function') ? fx2DebugCounts() : null; } catch (e) {}
       var t = out.domNodes + (out.extraCleanup ? 1 : 0);
       if (out.proto) t += (out.proto.runActive ? 1 : 0) + (out.proto.rootInStage ? 1 : 0) + out.proto.visibleNodes + out.proto.activeParticles;
-      if (out.fx2) t += out.fx2.scopes + Math.max(0, out.fx2.anims) + Math.max(0, out.fx2.bursts) + Math.max(0, out.fx2.rings);
+      /* fxChildren（fxLayer の実子要素数）も数える：登録系カウンタが
+         ゼロでもレイヤー上に表示物が残っていれば検出できるようにする。
+         これが無いと、斬撃コンテナ等が残っていても「異常なし」に
+         なってしまう（実機報告の矛盾の正体） */
+      if (out.fx2) t += out.fx2.scopes + Math.max(0, out.fx2.anims) + Math.max(0, out.fx2.bursts) + Math.max(0, out.fx2.rings) + Math.max(0, out.fx2.fxChildren);
       out.total = t;
       return out;
     };
@@ -8439,7 +8463,10 @@
     }
     /* ビーム帯の更新（grow／明滅／減衰）。active な間だけ true を返す */
     function finPBeamUpdate(R, u, fx0, dur, flick){
-      var p = finPProg(R.tF, fx0, dur);
+      /* fx0 は場面相対（tFs）で記録されるため、進行も場面相対時計で測る。
+         絶対時計 R.tF で測ると「間」のぶん（約1400ms）だけ p が先行し、
+         ビームが減衰区間から始まって一瞬で終わって見える（実機報告の不具合） */
+      var p = finPProg(R.tF - R.sceneFx0, fx0, dur);
       if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
       u.cont.visible = true;
       var grow = Math.min(1, p / 0.16);
@@ -8617,7 +8644,9 @@
     }
     /* 光波の更新（旧方式の包絡：出現は t/0.10+0.2、減衰は 0.74 から） */
     function finPCelestiaWaveUpdate(R, u, fx0, dur){
-      var p = finPProg(R.tF, fx0, dur);
+      /* fx0 は場面相対（tFs）。絶対時計で測ると p が約0.93 から始まり、
+         光波が最後の減衰だけ一瞬見えて終わるため、場面相対で測る */
+      var p = finPProg(R.tF - R.sceneFx0, fx0, dur);
       if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
       u.cont.visible = true;
       var head = Math.min(1, p / 0.16);
@@ -8686,7 +8715,9 @@
     /* 双ビームの更新（旧方式の包絡：12%で立ち上がり、80%から消える。
        帯は標的を10%突き抜ける長さで描く） */
     function finPBreathUpdate(R, u, fx0, dur, colA, colB){
-      var p = finPProg(R.tF, fx0, dur);
+      /* fx0 は場面相対（tFs）。絶対時計で測ると p が約0.8 の減衰開始点
+         から始まりビーム本体が描かれないため、場面相対で測る */
+      var p = finPProg(R.tF - R.sceneFx0, fx0, dur);
       if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
       u.cont.visible = true;
       var grow = Math.min(1, p / 0.12);
