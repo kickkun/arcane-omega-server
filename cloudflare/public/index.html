@@ -2853,6 +2853,13 @@
       @keyframes fin3Drift{from{transform:translateY(7px); opacity:.22;}to{transform:translateY(-17px); opacity:.92;}}
       .fx-fin3-shard{position:absolute; pointer-events:none; will-change:transform,opacity;
         background:linear-gradient(135deg, #241d3d, #0b0817); border:1px solid rgba(190,180,255,.28);}
+      /* 着弾3段化の衝撃波リング（着弾点から広がる短いバースト） */
+      .fx-fin3-ring{position:absolute; border-radius:50%; pointer-events:none; will-change:transform,opacity;}
+      /* 魔法陣の破片：陣の輪郭の切片ごと切り取ったテーマ色の光片 */
+      .fx-fin3-cshard{position:absolute; pointer-events:none; will-change:transform,opacity;}
+      .fx-fin3-cshard svg{width:100%; height:100%; display:block;}
+      /* 白の余波：純白の虚空に舞い続けるテーマ色の光の粒 */
+      .fx-fin3-ember{position:absolute; border-radius:50%; pointer-events:none; will-change:transform,opacity;}
       .fx-fin3-target{z-index:92; pointer-events:none;}
       .fx-fin3-victim{display:block; margin:0 auto; filter:drop-shadow(0 8px 18px rgba(0,0,0,.5)); will-change:transform,opacity,translate;}
       /* 白背景用の決めセリフ：濃い文字色＋テーマ色グロー（--fx-line-glow は
@@ -3544,7 +3551,7 @@
         </div>
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
-        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾で背景ごと吹っ飛び、白背景で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスだけは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。SD素材が読み込めない場合は従来の演出で再生されます。</p>
+        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスだけは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
@@ -5284,26 +5291,83 @@
           { translate: '0px 0px' }, { translate: '0px -7px' }, { translate: '0px 0px' }
         ], { duration: 2750, iterations: 4, easing: 'ease-in-out' });
       }
-      var scene = { bg: bg, whiteEl: bg.querySelector('.fx-fin3-white'), voidEl: bg.querySelector('.fx-fin3-void'), target: target, cx: tx + Math.round(sumW / 2), cy: ty + Math.round(sumH / 2) };
+      var scene = { bg: bg, whiteEl: bg.querySelector('.fx-fin3-white'), voidEl: bg.querySelector('.fx-fin3-void'), circleEl: bg.querySelector('.fx-fin3-circle'), target: target, cx: tx + Math.round(sumW / 2), cy: ty + Math.round(sumH / 2) };
       target._fin3Scene = scene; /* ロンギヌス専用構成が背景スクロール等で参照する */
       var sumDef = (typeof SUMMONER_BY_ID !== 'undefined') ? SUMMONER_BY_ID[vicId] : null;
       scene.vicName = sumDef ? sumDef.name : '';
       return scene;
     }
     /* クライマックス：専用空間の背景ごと全部吹っ飛ばして純白にする。
-       虚空レイヤーが膨らんで消え、破片が飛散し、白レイヤーが現れる */
+       着弾の3段化：(a) 一瞬の全画面フラッシュ → (b) 着弾点から広がる
+       放射状の衝撃波リング → (c) 背景の破片飛散＋魔法陣の破片化＋白化、
+       の順序を delay で明確に分ける（すべて短いバーストで持続させない）。
+       魔法陣はただ消えず、輪郭の切片ごとの光片に割れて回転しながら飛ぶ。
+       純白になった後も、テーマ色の光の粒が約1秒ヒラヒラ舞い続ける
+       「白の余波」の中で決めセリフが表示される */
     function fin3BlowAway(scene, conf){
       if (!scene) return;
+      var themeCol = conf ? conf.color : '#ffe9a8';
+      /* (a) フラッシュ＋着弾バースト */
+      fxFinFlash(0.9, 430);
+      pixiBurst(scene.cx, scene.cy, { count: 38, colors: [0xffffff, (SD_FIN && conf && conf.auraN) ? conf.auraN[0] : 0xffe9a8], power: 2.1, size: 1.2 });
+      /* (b) 衝撃波リング：着弾点から画面いっぱいへ広がる輪（DOMの輪＋
+         Pixiの輪の二重。どちらか欠けても単独で読める） */
+      var ringD = Math.round(Math.min(window.innerWidth, window.innerHeight) * 1.5);
+      var ringEl = document.createElement('div');
+      ringEl.className = 'fx-fin3-ring';
+      ringEl.style.width = ringD + 'px'; ringEl.style.height = ringD + 'px';
+      ringEl.style.left = scene.cx + 'px'; ringEl.style.top = scene.cy + 'px';
+      ringEl.style.border = '3px solid ' + themeCol;
+      ringEl.style.boxShadow = '0 0 22px ' + themeCol + ', inset 0 0 22px ' + themeCol;
+      scene.bg.appendChild(ringEl);
+      fxFinAnimate(ringEl, [
+        { transform: 'translate(-50%,-50%) scale(.06)', opacity: 0.95 },
+        { transform: 'translate(-50%,-50%) scale(.55)', opacity: 0.75, offset: 0.55 },
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 0 }
+      ], { duration: 560, delay: 70, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'both' });
+      pixiRing(scene.cx, scene.cy, { maxR: Math.round(window.innerWidth * 0.72), dur: 620, color: 0xffffff });
+      /* 魔法陣の破片化：陣を扇形12片に割り、各片が輪郭の切片を保ったまま
+         回転しながら外へ飛散する。元の陣は隠し、破片の集合が delay の間は
+         陣の形を保つため「輪郭が砕ける」瞬間が読める。虚空の破片とは別要素 */
+      if (scene.circleEl){
+        var cRect = null;
+        try { cRect = scene.circleEl.getBoundingClientRect(); } catch (e) {}
+        if (cRect && cRect.width > 40){
+          scene.circleEl.style.opacity = '0';
+          for (var ci = 0; ci < 12; ci++){
+            var ca0 = (ci / 12) * Math.PI * 2, ca1 = ((ci + 1) / 12) * Math.PI * 2;
+            var cp1 = (50 + 54 * Math.cos(ca0)).toFixed(1) + '% ' + (50 + 54 * Math.sin(ca0)).toFixed(1) + '%';
+            var cp2 = (50 + 54 * Math.cos(ca1)).toFixed(1) + '% ' + (50 + 54 * Math.sin(ca1)).toFixed(1) + '%';
+            var csh = document.createElement('div');
+            csh.className = 'fx-fin3-cshard';
+            csh.style.left = Math.round(cRect.left) + 'px'; csh.style.top = Math.round(cRect.top) + 'px';
+            csh.style.width = Math.round(cRect.width) + 'px'; csh.style.height = Math.round(cRect.height) + 'px';
+            csh.style.clipPath = 'polygon(50% 50%, ' + cp1 + ', ' + cp2 + ')';
+            csh.innerHTML = fin3CircleSvg(themeCol);
+            scene.bg.appendChild(csh);
+            var cmid = (ca0 + ca1) / 2;
+            var cdist = 90 + fxFinRand(ci * 3.9 + 7) * 190;
+            var cdx = Math.round(Math.cos(cmid) * cdist), cdy = Math.round(Math.sin(cmid) * cdist);
+            var crot = Math.round((fxFinRand(ci * 7.3 + 8) - 0.5) * 300);
+            fxFinAnimate(csh, [
+              { transform: 'translate(0px,0px) rotate(0deg)', opacity: 0.95 },
+              { transform: 'translate(' + cdx + 'px,' + cdy + 'px) rotate(' + crot + 'deg)', opacity: 0 }
+            ], { duration: 680 + Math.round(fxFinRand(ci * 11.1 + 9) * 260), delay: 150 + ci * 16, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'both' });
+          }
+        }
+      }
+      /* (c) 背景の破片飛散＋虚空の吹き飛び＋白化（リングの後の一拍） */
       if (scene.voidEl){
         fxFinAnimate(scene.voidEl, [
           { transform: 'scale(1)', opacity: 1 },
           { transform: 'scale(1.16)', opacity: 1, offset: 0.25 },
           { transform: 'scale(1.45)', opacity: 0 }
-        ], { duration: 430, easing: 'ease-in', fill: 'forwards' });
+        ], { duration: 430, delay: 150, easing: 'ease-in', fill: 'both' });
         /* 背景の破片：虚空色の欠片が中心から放射状に飛ぶ */
         for (var i = 0; i < 12; i++){
           var sh = document.createElement('div');
           sh.className = 'fx-fin3-shard';
+          sh.style.opacity = '0';
           var sw = 14 + Math.round(fxFinRand(i * 3.7 + 1) * 30);
           var shh = 8 + Math.round(fxFinRand(i * 5.3 + 2) * 20);
           sh.style.width = sw + 'px'; sh.style.height = shh + 'px';
@@ -5316,14 +5380,35 @@
           fxFinAnimate(sh, [
             { transform: 'translate(-50%,-50%) translate(0px,0px) rotate(0deg)', opacity: 1 },
             { transform: 'translate(-50%,-50%) translate(' + dx + 'px,' + dy + 'px) rotate(' + rot + 'deg)', opacity: 0 }
-          ], { duration: 640, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'forwards' });
+          ], { duration: 640, delay: 150, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'forwards' });
         }
       }
       if (scene.whiteEl){
-        fxFinAnimate(scene.whiteEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out', fill: 'forwards' });
+        fxFinAnimate(scene.whiteEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 220, delay: 150, easing: 'ease-out', fill: 'forwards' });
       }
-      fxFinFlash(0.75, 520);
-      pixiBurst(scene.cx, scene.cy, { count: 38, colors: [0xffffff, (SD_FIN && conf && conf.auraN) ? conf.auraN[0] : 0xffe9a8], power: 2.1, size: 1.2 });
+      /* 白の余波：純白の虚空にテーマ色の光の粒が約1秒舞い続ける。
+         小さく疎ら（14個）に、transform／opacity のみの軽い処理で描く */
+      var emberCols = ((conf && conf.aura) || [themeCol]).filter(function(c){ return c && c !== '#ffffff' && c !== '#fff3c4'; });
+      if (!emberCols.length) emberCols = [themeCol];
+      for (var ei = 0; ei < 14; ei++){
+        var em = document.createElement('div');
+        em.className = 'fx-fin3-ember';
+        var esz = (2.5 + fxFinRand(ei * 3.3 + 21) * 3.5).toFixed(1);
+        var ecol = emberCols[ei % emberCols.length];
+        em.style.width = esz + 'px'; em.style.height = esz + 'px';
+        em.style.left = (4 + fxFinRand(ei * 5.7 + 22) * 92).toFixed(1) + '%';
+        em.style.top = (6 + fxFinRand(ei * 7.9 + 23) * 84).toFixed(1) + '%';
+        em.style.background = ecol;
+        em.style.boxShadow = '0 0 7px 1px ' + ecol;
+        scene.bg.appendChild(em);
+        var edx = Math.round((fxFinRand(ei * 11.3 + 24) - 0.5) * 90);
+        var edy = -Math.round(24 + fxFinRand(ei * 13.7 + 25) * 66);
+        fxFinAnimate(em, [
+          { transform: 'translate(0px,0px)', opacity: 0 },
+          { transform: 'translate(' + Math.round(edx * 0.45) + 'px,' + Math.round(edy * 0.45) + 'px)', opacity: 0.9, offset: 0.3 },
+          { transform: 'translate(' + edx + 'px,' + edy + 'px)', opacity: 0 }
+        ], { duration: 1050 + Math.round(fxFinRand(ei * 17.9 + 26) * 350), delay: 240 + ei * 45, easing: 'ease-in-out', fill: 'both' });
+      }
     }
     /* 白背景用の決めセリフ：既存の太い明朝＋縁取り＋叩きつけ表示を、
        色だけ白用（濃い文字＋テーマ色グロー）に適応して出す */
@@ -5534,6 +5619,17 @@
       /* 第3世代（専用空間＋浮遊対峙）では、決めセリフは開始時ではなく
          白背景フェーズで fin3ShowWhiteLine が表示する（ここでは出さない） */
       var isFin3 = !!panelEl._fxFin3;
+      /* ===== 攻撃エフェクトのスケール（第3世代の範囲復元） =====
+         着弾点（pcx／pcy）・受け側の複製破壊・ヒット反応・拍は受け側SD
+         基準（w／h）のまま維持する。一方、斬撃・鎖・ビーム・ヒビ・衝撃
+         リング等の「届く範囲と大きさ」は対象の寸法から切り離し、第2世代
+         （受け側がプレート全体だった頃）のスケールで描く：このフィニッシュ
+         は相手個人を狙う攻撃ではなく、背景ごと全部吹っ飛ばす一撃だから。
+         第3世代では fxW を実パネル幅相当（アプリ最大幅から左右余白を
+         差し引いた幅）に戻し、fxDiag をその対角とする。非第3世代では
+         fxW＝w／fxDiag＝実対角となり、従来の見え方は一切変わらない */
+      var fxW = isFin3 ? Math.max(280, Math.min(544, window.innerWidth - 16)) : w;
+      var fxDiag = Math.sqrt(fxW * fxW + h * h);
       /* slow：[開始, 終了]（着弾直前だけ速度を落とす）／stop：[着弾時刻, 静止ms]／
          destroy：パネル破壊SEの時刻／se：キャラ別の主音キュー [時刻, 音名]。
          時刻はすべてこの関数（＝フィニッシュ開始）からの相対msで、
@@ -6121,7 +6217,7 @@
           exSlashDrawn = pixiExFlyingSlashFx({
             sx: flySx, sy: flySy, tx: pcx, ty: pcy, ang: flyAng, bulge: 0,
             len0: Math.max(14, sdH * 0.15),
-            len1: Math.round(Math.max(window.innerWidth * 0.62, flyDist * 1.05, w * 2.4)),
+            len1: Math.round(Math.max(window.innerWidth * 0.62, flyDist * 1.05, fxW * 2.4)),
             th0: Math.max(4, sdH * 0.06),
             th1: Math.round(Math.max(30, Math.min(104, sdH * 0.60))),
             dur: 1020
@@ -6155,9 +6251,9 @@
           sdImpact(true, [0xffffff, 0xffd76a, 0xfff3c4]);
           fxFinFlash(0.95, 720);
           pixiBurst(pcx, pcy, { count: 60, colors: [0xffffff, 0xffd76a, 0xfff3c4, 0xffa04a], power: 2.7, size: 1.35 });
-          pixiRing(pcx, pcy, { maxR: w * 1.5, dur: 800, color: 0xffffff });
-          var fissDrawn = exSlashDrawn && pixiExPanelSlashFx(pcx, pcy, w, h, exSlashTan, 980);
-          if (!fissDrawn) pixiCrackFx(pcx, pcy, Math.max(w, h) * 1.15, 1500, 8);
+          pixiRing(pcx, pcy, { maxR: fxW * 1.5, dur: 800, color: 0xffffff });
+          var fissDrawn = exSlashDrawn && pixiExPanelSlashFx(pcx, pcy, fxW, h, exSlashTan, 980);
+          if (!fissDrawn) pixiCrackFx(pcx, pcy, Math.max(fxW, h) * 1.15, 1500, 8);
           later(function(){
             var mk = fxFinMakeWrap(panelEl); if (!mk) return;
             /* 裂け目が横方向なら上下2片、縦方向なら左右2片に割る */
@@ -6294,7 +6390,8 @@
             { transform: 'translate(-50%,-50%) rotate(' + angS + 'deg) scale(0.98)', opacity: 0 }
           ], { duration: 950, easing: 'ease-out', fill: 'forwards' });
           sdImpact(true, [0xffffff, 0xf2e7bd]);
-          if (!pixiFinCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1500, 8, 0xe8ecf5)) pixiCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1500, 8);
+          pixiRing(pcx, pcy, { maxR: fxW * 0.9, dur: 700, color: 0xffffff });
+          if (!pixiFinCrackFx(pcx, pcy, fxDiag * 0.95, 1500, 8, 0xe8ecf5)) pixiCrackFx(pcx, pcy, fxDiag * 0.95, 1500, 8);
           /* 受け側は着弾の衝撃で小刻みに震えてから、白の中で砕ける */
           fxFinAnimate(panelEl, [
             { transform: 'translate(0px,0px)' }, { transform: 'translate(-3px,1px)' },
@@ -6362,7 +6459,7 @@
           sdImpact(true, [0xffffff, 0xf2e7bd]);
           sdDust(pcx, r.bottom, true);
         }, 850);
-        later(function(){ if (!pixiFinCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1750, 8, 0xe8ecf5)) pixiCrackFx(pcx, pcy, Math.sqrt(w * w + h * h) * 0.95, 1750, 8); }, 1250); /* 第4弾：ヒビを発光の亀裂へ */
+        later(function(){ if (!pixiFinCrackFx(pcx, pcy, fxDiag * 0.95, 1750, 8, 0xe8ecf5)) pixiCrackFx(pcx, pcy, fxDiag * 0.95, 1750, 8); }, 1250); /* 第4弾：ヒビを発光の亀裂へ */
         later(function(){
           fxQuake('fx-quake-sm', 480);
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
@@ -6433,14 +6530,14 @@
         });
         [1480, 1760].forEach(function(ms, i){
           later(function(){
-            var sl = sdOverlay(conf.fx, { w: Math.round(w * 1.6) });
+            var sl = sdOverlay(conf.fx, { w: Math.round(fxW * 1.6) });
             var rotS = i ? 9 : -11;
             fxFinAnimate(sl, [
               { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(1.25)', opacity: 0 },
               { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(1)', opacity: 1, offset: 0.25 },
               { transform: 'translate(-50%,-50%) rotate(' + rotS + 'deg) scale(0.98)', opacity: 0 }
             ], { duration: 430, easing: 'ease-out', fill: 'forwards' });
-            if (!pixiFinMirageSlashFx(pcx, pcy, w * 1.5, rotS, 460)) pixiSlashFx(pcx, pcy, rotS, w * 1.5, 0xff5a4d, 420); /* 第4弾：斬撃のリボン化 */
+            if (!pixiFinMirageSlashFx(pcx, pcy, fxW * 1.5, rotS, 460)) pixiSlashFx(pcx, pcy, rotS, fxW * 1.5, 0xff5a4d, 420); /* 第4弾：斬撃のリボン化 */
             pixiBurst(pcx, pcy, { count: 14, colors: [0xff5a4d, 0xff8a70, 0xffffff], power: 1.2 });
           }, ms);
         });
@@ -6450,20 +6547,20 @@
           document.body.appendChild(sd);
         }, 1980);
         later(function(){
-          var sl2 = sdOverlay(conf.fx, { w: Math.round(w * 1.9) });
+          var sl2 = sdOverlay(conf.fx, { w: Math.round(fxW * 1.9) });
           fxFinAnimate(sl2, [
             { transform: 'translate(-50%,-50%) rotate(-14deg) scale(1.3)', opacity: 0 },
             { transform: 'translate(-50%,-50%) rotate(-14deg) scale(1)', opacity: 1, offset: 0.22 },
             { transform: 'translate(-50%,-50%) rotate(-14deg) scale(0.98)', opacity: 0 }
           ], { duration: 480, easing: 'ease-out', fill: 'forwards' });
-          var sl3 = sdOverlay(conf.fx, { w: Math.round(w * 1.7) });
+          var sl3 = sdOverlay(conf.fx, { w: Math.round(fxW * 1.7) });
           fxFinAnimate(sl3, [
             { transform: 'translate(-50%,-50%) rotate(16deg) scale(1.3)', opacity: 0 },
             { transform: 'translate(-50%,-50%) rotate(16deg) scale(1)', opacity: 1, offset: 0.3 },
             { transform: 'translate(-50%,-50%) rotate(16deg) scale(0.98)', opacity: 0 }
           ], { duration: 480, delay: 90, easing: 'ease-out', fill: 'forwards' });
-          if (!pixiFinMirageSlashFx(pcx, pcy, w * 1.8, -14, 500)) pixiSlashFx(pcx, pcy, -14, w * 1.8, 0xff5a4d, 460); /* 第4弾：最終斬撃もリボン化 */
-          if (!pixiFinMirageSlashFx(pcx, pcy, w * 1.6, 16, 500)) pixiSlashFx(pcx, pcy, 16, w * 1.6, 0xffffff, 460);
+          if (!pixiFinMirageSlashFx(pcx, pcy, fxW * 1.8, -14, 500)) pixiSlashFx(pcx, pcy, -14, fxW * 1.8, 0xff5a4d, 460); /* 第4弾：最終斬撃もリボン化 */
+          if (!pixiFinMirageSlashFx(pcx, pcy, fxW * 1.6, 16, 500)) pixiSlashFx(pcx, pcy, 16, fxW * 1.6, 0xffffff, 460);
           sdImpact(true, [0xff5a4d, 0xff8a70, 0xffffff]);
         }, 2230);
         later(function(){
@@ -6493,14 +6590,14 @@
            （演出自体は好評のため基本維持。登場位置を攻撃側寄りへ変更し、
              鎖の着弾に発光・揺れ・紫の粒子を足して貼り付け感を誤魔化す） */
         later(function(){
-          var ch = sdOverlay(conf.fx, { w: Math.round(w * 1.5) });
+          var ch = sdOverlay(conf.fx, { w: Math.round(fxW * 1.5) });
           fxFinAnimate(ch, [
             { transform: 'translate(-50%,-50%) scale(.45) rotate(-4deg)', opacity: 0 },
             { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.35 },
             { transform: 'translate(-50%,-50%) scale(1.05) rotate(2deg)', opacity: 1, offset: 0.8 },
             { transform: 'translate(-50%,-50%) scale(1.02)', opacity: 0 }
           ], { duration: 1900, easing: 'ease-out', fill: 'forwards' });
-          if (!pixiFinQueenChainsFx(pcx, pcy, Math.max(w, h) * 0.85, 1500)) pixiChainsFx(pcx, pcy, Math.max(w, h) * 0.85, 1500); /* 第4弾：鎖のリボン化 */
+          if (!pixiFinQueenChainsFx(pcx, pcy, Math.max(fxW, h) * 0.85, 1500)) pixiChainsFx(pcx, pcy, Math.max(fxW, h) * 0.85, 1500); /* 第4弾：鎖のリボン化 */
         }, 550);
         later(function(){
           fxFinFlash(0.32, 480);
@@ -6510,7 +6607,7 @@
         later(function(){
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
           var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
-          var vsize = w * 0.95;
+          var vsize = fxW * 0.95;
           var vortex = document.createElement('div');
           vortex.className = 'fx-fin-vortex';
           vortex.style.width = vsize + 'px';
@@ -6518,7 +6615,7 @@
           vortex.style.left = (w / 2 - vsize / 2) + 'px';
           vortex.style.top = (h - vsize * 0.28) + 'px';
           mk.wrap.appendChild(vortex);
-          pixiFinQueenVortexFx(pcx, r.bottom - Math.round(h * 0.05), w * 0.52, 1700); /* 第4弾：渦への引き込みに歪みを重ねる（描画のみ） */
+          pixiFinQueenVortexFx(pcx, r.bottom - Math.round(h * 0.05), fxW * 0.52, 1700); /* 第4弾：渦への引き込みに歪みを重ねる（描画のみ） */
           fxFinAnimate(vortex, [
             { transform: 'rotate(0deg) scale(.35)', opacity: 0 },
             { transform: 'rotate(200deg) scale(1)', opacity: 1, offset: 0.35 },
@@ -6615,7 +6712,7 @@
         later(function(){
           sdImpact(true, [0xffffff, 0xffa04a, 0xff5030, 0x5aa2ff, 0x9cc4ff]);
           pixiBurst(pcx, pcy, { count: 70, colors: [0xffffff, 0xffa04a, 0xff5030, 0x5aa2ff, 0x9cc4ff], power: 2.4, size: 1.3 });
-          pixiRing(pcx, pcy, { maxR: w * 1.15, dur: 750, color: 0xffffff });
+          pixiRing(pcx, pcy, { maxR: fxW * 1.15, dur: 750, color: 0xffffff });
           sdDust(pcx, r.bottom, true);
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
           var cl = fxFinClone(panelEl, mk.wrap); fxFinHidePanel(panelEl);
@@ -6699,21 +6796,21 @@
           pixiBurst(pcx, pcy, { count: 34, colors: [0xffffff, 0xffeeb0, 0xeccd7e], power: 1.8 });
           fxFinFlash(0.62, 520);
           fxQuake('fx-quake-sm', 480);
-          pixiRing(pcx, pcy, { maxR: w * 0.9, dur: 750, color: 0xffffff });
+          pixiRing(pcx, pcy, { maxR: fxW * 0.9, dur: 750, color: 0xffffff });
         }, 1420);
         /* 光柱（従）：細く半透明で添えるだけ */
         later(function(){
           var pilH = Math.round(h + window.innerHeight * 0.3);
-          var pil = sdOverlay(conf.fx, { h: pilH, w: Math.round(w * 0.34) }, pcx, r.bottom - pilH / 2 + 6);
+          var pil = sdOverlay(conf.fx, { h: pilH, w: Math.round(fxW * 0.34) }, pcx, r.bottom - pilH / 2 + 6);
           fxFinAnimate(pil, [
             { transform: 'translate(-50%,-50%) translateY(-40px)', opacity: 0 },
             { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 0.5, offset: 0.25 },
             { transform: 'translate(-50%,-50%) translateY(0px)', opacity: 0.45, offset: 0.78 },
             { transform: 'translate(-50%,-50%) translateY(6px)', opacity: 0 }
           ], { duration: 1900, easing: 'ease-out', fill: 'forwards' });
-          pixiBeamFx(pcx, 0, r.bottom + 4, Math.max(13, w * 0.15), [0xffe9a8, 0xfff3c4], 1900);
+          pixiBeamFx(pcx, 0, r.bottom + 4, Math.max(13, fxW * 0.15), [0xffe9a8, 0xfff3c4], 1900);
         }, 1600);
-        later(function(){ fxFinFlash(0.65, 600); pixiRing(pcx, pcy, { maxR: w * 1.05, dur: 800, color: 0xffffff }); }, 2500);
+        later(function(){ fxFinFlash(0.65, 600); pixiRing(pcx, pcy, { maxR: fxW * 1.05, dur: 800, color: 0xffffff }); }, 2500);
         /* パネルが光に包まれ、光の粒になって浄化される */
         later(function(){
           var mk = fxFinMakeWrap(panelEl); if (!mk) return;
@@ -6766,7 +6863,7 @@
              中心から動かないようにする。最終位置・大きさは従来どおり。
              開始オフセットは回転後の見かけの高さ（＝素材の幅 jawW）基準で、
              顎全体が画面上端の外に出切る量にする */
-          var jawW = Math.round(Math.max(w * 2.35, 330));
+          var jawW = Math.round(Math.max(fxW * 2.35, 330));
           var jaw = sdFinNode('img', 'fx-sd-char');
           jaw.src = conf.fx; jaw.alt = '';
           jaw.style.width = jawW + 'px';
