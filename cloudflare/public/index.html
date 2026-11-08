@@ -562,22 +562,6 @@
         position:relative; z-index:3; margin:0; text-align:center; flex:0 0 auto;
         font-size:12.5px; font-weight:700; letter-spacing:.06em; color:#f4e8c8; text-shadow:0 1px 4px #000; pointer-events:none;
       }
-      /* フィニッシュ再生のフレーム計測パネル（カクつき診断の表示先） */
-      .fx-diag{margin-top:14px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:rgba(10,14,24,.55);}
-      .fx-diag-head{margin:0 0 4px; font-size:12px; font-weight:700; letter-spacing:.08em; color:#f4e8c8;}
-      .fx-diag-body{margin:0; font-size:12px; line-height:1.7; color:#dfe6f2;}
-      /* ===== フィニッシュ診断モード（ステップ1：DOM／Pixi の犯人切り分け） =====
-         演出チェック専用のモード切替。実戦の再生には一切使わない */
-      .fx-diag-modes{margin-top:14px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:rgba(10,14,24,.55);}
-      .fx-diag-modes-head{margin:0 0 4px; font-size:12px; font-weight:700; letter-spacing:.08em; color:#f4e8c8;}
-      .fx-diag-modes-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
-      .fx-diag-mode-btn{
-        flex:1 1 0; min-width:96px; padding:9px 6px; border-radius:9px; cursor:pointer;
-        border:1px solid var(--line); background:var(--panel2); color:var(--ink-dim);
-        font-family:inherit; font-size:12.5px; font-weight:800; letter-spacing:.03em;
-      }
-      .fx-diag-mode-btn.on{border-color:var(--gold-bright); color:#241a05; background:linear-gradient(180deg,#eccd7e,#c9a24b);}
-      .fx-diag-modes-note{margin:7px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-dim);}
       /* DOM演出OFF時の描画除外：装飾専用のDOMレイヤーは display:none で
          描画ツリーから外す（透明化ではなく、塗りも合成も発生しない）。
          WAAPIアニメーションと重い装飾ノードの生成自体は JS 側
@@ -4186,32 +4170,7 @@
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
         <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスだけは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。SD素材が読み込めない場合は従来の演出で再生されます。</p>
-        <div class="fx-diag-modes" role="group" aria-label="フィニッシュ診断モード">
-          <p class="fx-diag-modes-head">診断モード（カクつきの切り分け）</p>
-          <div class="fx-diag-modes-row">
-            <button type="button" class="fx-diag-mode-btn" data-diag-mode="normal" aria-pressed="true">通常</button>
-            <button type="button" class="fx-diag-mode-btn" data-diag-mode="dom-off" aria-pressed="false">DOM演出 OFF</button>
-            <button type="button" class="fx-diag-mode-btn" data-diag-mode="pixi-off" aria-pressed="false">Pixi OFF</button>
-          </div>
-          <p class="fx-diag-modes-note">同じフィニッシュを3モードで再生してフレーム計測を比べると、着弾の重さがDOM側（CSS／WAAPIアニメ・DOM描画）かPixi側（粒子・加算ブレンド）か切り分けられます。OFF中も再生の進行・タイミング・SE・計測は通常どおり動きます。この切替は演出チェック内だけのもので、実戦のフィニッシュには影響しません。</p>
-        </div>
-        <div class="fx-diag-modes" role="group" aria-label="フィニッシュ方式（現行／新方式）">
-          <p class="fx-diag-modes-head">方式（全神話フィニッシュ共通・ステップ4）</p>
-          <div class="fx-diag-modes-row">
-            <button type="button" class="fx-diag-mode-btn" data-proto-mode="current" aria-pressed="true">現行</button>
-            <button type="button" class="fx-diag-mode-btn" data-proto-mode="proto" aria-pressed="false">新方式（Pixi単一レイヤー）</button>
-          </div>
-          <p class="fx-diag-modes-note">新方式は、全神話のフィニッシュの全要素（両SD・魔法陣・決め技・着弾・吹き飛び・白の余波・決めセリフ）を単一のPixiレイヤーと単一の時計で描く方式です。場面構築（素材のデコード・テクスチャ生成・場面ノード生成とGPU転送）は再生ボタンが押された時点から先行して済ませ、「間」の間の場面転換では生成・デコード・レイアウト計算をしません。振付・タイミング・総尺・SE・SDの大きさと位置は現行と同一です。実戦（CPU戦・オンライン戦）のフィニッシュは常時この新方式で再生され、新方式の準備が間に合わない場合や素材が読めない場合だけ現行方式にフォールバックします。ここの切替は演出チェック内での見比べ用で、再生終了・画面を閉じる・対戦リセットで「現行」へ自動で戻ります。診断モード（通常／DOM OFF／Pixi OFF）とも併用でき、計測は方式別にも比較できます。</p>
-        </div>
         <div class="fx-list" id="fxFinishList"></div>
-        <div class="fx-diag" id="fxDiagPanel" hidden>
-          <p class="fx-diag-head">フレーム計測・位置実測（直近の神話フィニッシュ再生）</p>
-          <p class="fx-diag-body" id="fxDiagBody"></p>
-          <p class="fx-diag-body" id="fxDiagModeBody"></p>
-          <p class="fx-diag-body" id="fxDiagCompareBody"></p>
-          <p class="fx-diag-body" id="fxDiagProtoBody"></p>
-          <p class="fx-diag-body" id="fxPosBody"></p>
-        </div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
     </div>
@@ -6167,8 +6126,8 @@
          万一OFF状態が残っていてもここで通常へ戻る */
       var dMode = finDiagPendingMode; finDiagPendingMode = null;
       /* 新方式（ステップ4）の確定：実戦（CPU戦・オンライン戦）は常時
-         新方式で再生する。演出チェックは方式切替で「現行」を選んだ時だけ
-         予約（finProtoPending=false）が積まれ、新方式を使わない。
+         新方式で再生する。演出チェックも実戦と同じく新方式で再生する
+         （予約 finProtoPending=true を積む）。
          使える条件（全神話共通／Pixi有効／素材・新方式の先行構築が完了／
          モーション低減でない）を満たさなければ、そのまま現行方式へ
          フォールバックする（実戦でも同様） */
@@ -7020,6 +6979,15 @@
          残すのは造形物だけ：EXの剣／ロンギヌスの槍／アギトの顎（と
          SD・カード絵そのもの）。rim光や接地影は従来どおり焼き込み
          テクスチャで担う
+       ・スケール復元（実機フィードバック：描画化で3体が大幅に縮んだ）：
+         もともと描画だったセレスティア／ティアマト／EX-キャリバーは、
+         現行方式の描画実装の幾何学とスケールをそのまま移植した。
+         セレスティア＝うねるリボン光波（半幅 sdH*0.30＋2周波のうねり＋
+         着弾発光）、ティアマト＝白熱芯＋流れノイズの双ビーム（全幅
+         sdH*1.0／0.58／0.22、標的を10%突き抜け＋着弾発光）、EX＝画面幅
+         約6割の「半長」を持つ三日月斬撃（旧方式の len は半長指定のため
+         全長換算で2倍。到達拍0.465・拡大 pow(gt,1.5)・突き抜け+10%も
+         旧方式の飛行カーブどおり）
        ・振付・拍・総尺・SE・スロー／ヒットストップ・決めセリフ・SDの
          大きさ（頭基準。ミラージュ0.388基準／アギト0.45例外）と位置・
          攻撃エフェクトの範囲（第2世代スケール）は現行（fin3Cinematic＋
@@ -7962,9 +7930,15 @@
           sp.position.set(G.sdCx, G.sdCy);
           sp.tint = 0xffe9a8;
         });
-        var flyLen1 = Math.round(Math.max(vw * 0.62, Math.abs(G.cy - G.sdCy) * 1.05, G.fxW * 2.4));
+        /* 旧方式（pixiExFlyingSlashFx）の len は「中心から角までの半長」
+           指定だった（全長＝2×len で画面幅の約1.24倍まで伸びる）。新方式の
+           finPDrawBlade は L を全長として扱うため、そのまま渡すと斬撃が
+           半分の長さに縮んでいた。半長→全長へ換算して2倍で渡し、旧方式の
+           スケール（画面幅約6割の半長＝全長は画面をはみ出す超巨大サイズ）
+           をそのまま復元する */
+        var flyLen1 = Math.round(Math.max(vw * 0.62, Math.abs(G.cy - G.sdCy) * 1.05, G.fxW * 2.4)) * 2;
         R.fly = { sx: G.cx, sy: G.sdCy, tx: G.cx, ty: G.cy,
-          len0: Math.max(14, G.sdH * 0.15), len1: flyLen1,
+          len0: Math.max(28, G.sdH * 0.30), len1: flyLen1,
           th0: Math.max(4, G.sdH * 0.06), th1: Math.round(Math.max(30, Math.min(104, G.sdH * 0.60))) };
         finPDrawBlade(N.flyUnit.gfx, 200, 46, 1, [0xffd76a, 0xfff3c4], 0, 1.7);
         N.flyUnit.gfx.scale.set(R.fly.len0 / 200, R.fly.th0 / 46);
@@ -8471,37 +8445,98 @@
         finPDrawPoly(c, [[0, -w * 0.3], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.3]], 0xffffff, Ly[1]);
       });
     }
-    /* --- ブレス（ティアマト。波打つ炎の錐を毎フレーム描き直す） --- */
-    function finPDrawBreath(g, len, thick, colA, colB, tF, seed){
-      g.clear();
-      if (len <= 2) return;
-      [[1.9, colA, 0.20], [1.35, colA, 0.34], [0.95, colB, 0.55], [0.5, 0xffffff, 0.92]].forEach(function(L, li){
-        var n = 16, top = [], bot = [], i, x, s, prof, hw, wv;
+    /* --- 光波（セレスティア。旧方式 pixiFinCelestiaWaveFx の幾何学と
+       スケールをそのまま移植：起点→着弾を結ぶ帯に2周波のうねりを重ねた
+       3層リボン。半幅は外 2.5+sdH*0.30／中 1.8+sdH*0.17／芯 1.2+sdH*0.075
+       （sin包絡つき）、うねりの振幅は sdH*0.085。先端は尺の16%で届き、
+       着弾点には旧方式のシェーダ発光（sdH*0.9級）に相当する多層円の
+       発光を置く。直線の先細り帯（旧 finPDrawBeam）では光の奔流の
+       厚みとうねりが消えて見えたため、この形へ戻した） --- */
+    function finPDrawWaveBeam(u, sdH, head, tF){
+      var len = u.len * head;
+      var ph = tF * 0.016;
+      function waveOff(s){
+        var wv = Math.sin(s * Math.PI * 2.3 - ph) + 0.45 * Math.sin(s * Math.PI * 5.1 - ph * 1.7);
+        return wv * sdH * 0.085 * Math.sin(Math.PI * s);
+      }
+      function ribbon(halfBase, halfAmp, pw){
+        var n = 20, top = [], bot = [], i, s, hw, yo;
         for (i = 0; i <= n; i++){
-          s = i / n; x = len * s;
-          prof = Math.pow(Math.sin(Math.PI * Math.min(1, 0.10 + 0.95 * s)), 0.75);
-          hw = thick * 0.5 * L[0] * (0.15 + 0.85 * prof);
-          wv = Math.sin(s * 11 - tF * 0.021 + seed * 3 + li * 1.3) * thick * 0.07 * s;
-          top.push([x, -hw + wv]); bot.push([x, hw + wv]);
+          s = i / n;
+          hw = Math.max(0.5, halfBase + halfAmp * Math.pow(Math.sin(Math.PI * s), pw));
+          yo = waveOff(s);
+          top.push([len * s, yo - hw]); bot.push([len * s, yo + hw]);
         }
-        finPDrawPoly(g, top.concat(bot.reverse()), L[1], L[2]);
-      });
-      /* 内側の炎の筋 */
-      for (var k = 0; k < 3; k++){
-        var off = (k - 1) * thick * 0.16;
-        finPStrokePts(g, [[len * 0.06, off], [len * 0.55, off + Math.sin(tF * 0.02 + k * 2.1 + seed) * thick * 0.08], [len * 0.94, off * 0.4]], 1.6, 0xffffff, 0.5);
+        return top.concat(bot.reverse());
+      }
+      var g = u.glow; g.clear();
+      finPDrawPoly(g, ribbon(2.5, sdH * 0.30, 0.8), 0xffd76a, 0.34);
+      finPDrawPoly(g, ribbon(1.8, sdH * 0.17, 0.8), 0xffe9a8, 0.50);
+      var c = u.core; c.clear();
+      finPDrawPoly(c, ribbon(1.2, sdH * 0.075, 0.7), 0xffffff, 0.95);
+      /* 着弾点の発光（手元は光の珠が担う。こちらは受け口の輝き） */
+      if (head >= 1){
+        [[0.45, 0xffd76a, 0.20], [0.30, 0xffeeb0, 0.32], [0.16, 0xffffff, 0.55]].forEach(function(L){
+          c.beginFill(L[1], L[2]); c.drawCircle(len, 0, sdH * L[0]); c.endFill();
+        });
       }
     }
-    /* ブレス帯の更新（finPBeamUpdate と同じ包絡：grow／減衰） */
+    /* 光波の更新（旧方式の包絡：出現は t/0.10+0.2、減衰は 0.74 から） */
+    function finPCelestiaWaveUpdate(R, u, fx0, dur){
+      var p = finPProg(R.tF, fx0, dur);
+      if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
+      u.cont.visible = true;
+      var head = Math.min(1, p / 0.16);
+      var env = Math.min(1, p / 0.10 + 0.2) * (p > 0.74 ? Math.max(0, 1 - (p - 0.74) / 0.26) : 1);
+      finPDrawWaveBeam(u, R.G.sdH, head, R.tF);
+      u.glow.alpha = env; u.core.alpha = env;
+      return true;
+    }
+    /* --- 双ビーム（ティアマト。旧方式 pixiFinTiamatBeamFx の幾何学と
+       スケールをそのまま移植：色帯＋白熱芯の帯に流れのノイズ（2周波の
+       うねり＋明滅）を重ね、標的を10%突き抜ける。半幅プロファイルは
+       旧リボンと同じ sin(πu) 系で、外＝半幅 3+sdH*0.46／中＝2+sdH*0.27／
+       芯＝1.2+sdH*0.105（従来3層ラインの全幅 sdH*1.0／0.58／0.22 と一致）。
+       先細りの錐（着弾端で消える形）では着弾点が痩せて見えたため、
+       着弾点には旧方式のシェーダ発光（sdH*1.5級）に相当する多層円の
+       発光も足す） --- */
+    function finPDrawBreath(g, len, sdH, colA, colB, tF, seed){
+      g.clear();
+      if (len <= 2) return;
+      var fl = 0.84 + 0.16 * Math.sin(tF * 0.055 + seed) * Math.sin(tF * 0.021 + seed + 1.1);
+      function band(halfBase, halfAmp, pw, col, alpha){
+        var n = 18, top = [], bot = [], i, s, hw, wv;
+        for (i = 0; i <= n; i++){
+          s = i / n;
+          hw = Math.max(0.5, (halfBase + halfAmp * Math.pow(Math.sin(Math.PI * s), pw)) * fl);
+          wv = (Math.sin(s * 9 - tF * 0.030 + seed) * 0.7 + Math.sin(s * 23 + tF * 0.052 + seed * 2.0) * 0.3) * sdH * 0.05 * Math.sin(Math.PI * s);
+          top.push([len * s, wv - hw]); bot.push([len * s, wv + hw]);
+        }
+        finPDrawPoly(g, top.concat(bot.reverse()), col, alpha);
+      }
+      band(3, sdH * 0.46, 0.7, colA, 0.34);         /* 外：色帯 */
+      band(2, sdH * 0.27, 0.7, colB, 0.50);         /* 中：明色帯 */
+      band(1.2, sdH * 0.105, 0.6, 0xffffff, 0.92);  /* 芯：白熱 */
+    }
+    /* 双ビームの更新（旧方式の包絡：12%で立ち上がり、80%から消える。
+       帯は標的を10%突き抜ける長さで描く） */
     function finPBreathUpdate(R, u, fx0, dur, colA, colB){
       var p = finPProg(R.tF, fx0, dur);
       if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
       u.cont.visible = true;
-      var grow = Math.min(1, p / 0.14);
-      var env = p > 0.82 ? Math.max(0, 1 - (p - 0.82) / 0.18) : 1;
-      finPDrawBreath(u.glow, u.len * grow, u.thick * (0.92 + 0.16 * Math.abs(Math.sin(R.tF * 0.045 + u.seed))), colA, colB, R.tF, u.seed);
+      var grow = Math.min(1, p / 0.12);
+      var env = Math.min(1, p / 0.12) * (p > 0.8 ? Math.max(0, 1 - (p - 0.8) / 0.2) : 1);
+      var sdH = R.G.sdH;
+      finPDrawBreath(u.glow, u.len * 1.10 * grow, sdH, colA, colB, R.tF, u.seed);
       u.glow.alpha = env;
-      u.core.clear(); u.core.alpha = 0;
+      /* 着弾点の発光（帯の受け口。突き抜け分の手前＝標的点に置く） */
+      var c = u.core; c.clear();
+      if (grow >= 1){
+        [[0.75, colB, 0.16], [0.48, colB, 0.26], [0.26, 0xffffff, 0.50]].forEach(function(L){
+          c.beginFill(L[1], L[2] * env); c.drawCircle(u.len, 0, sdH * L[0]); c.endFill();
+        });
+      }
+      u.core.alpha = 1;
       return true;
     }
     /* --- 光柱（セレスティア。縦の多層柱＋昇る光波＋足元の地リング） --- */
@@ -8849,7 +8884,7 @@
           finPSpawnBurst(R, G.handX, G.handY, { count: 18, colors: [0xffffff, 0xffeeb0], power: 1.0 });
           finPSpawnBurst(R, G.cx, G.cy, { count: 34, colors: R.burstCols, power: 1.8 });
         });
-        if (R.beamFx0 != null) finPBeamUpdate(R, N.beams[0], R.beamFx0, 1500, true);
+        if (R.beamFx0 != null) finPCelestiaWaveUpdate(R, N.beams[0], R.beamFx0, 1500);
         finPOnce(R, 'pillar', tS, 1600, function(){ R.pillarFx0 = tFs; });
         if (R.pillarFx0 != null){
           var pp = finPProg(tFs, R.pillarFx0, 1900);
@@ -8969,15 +9004,22 @@
           var fp = finPProg(tFs, R.flyFx0, 1020);
           if (fp >= 1) N.flyUnit.cont.visible = false;
           else {
-            var fe = FINP_EZ.easeOut(fp);
+            /* 旧方式（pixiExFlyingSlashFx の stateAt／envAt）の飛行カーブを
+               そのまま移植：位置は到達拍 0.465 まで pow(u,1.18) で加速して
+               届き、その後は13%だけ突き抜ける。拡大は ge=pow(gt,1.5) で
+               後半に加速し、到達後はさらに+10%伸びる。減衰は 0.60 から */
+            var fArr = 0.465;
+            var fOver = fp <= fArr ? 0 : Math.min(1, (fp - fArr) / 0.30);
+            var fU = fp <= fArr ? Math.pow(fp / fArr, 1.18) : 1 + 0.13 * (fOver * fOver * (3 - 2 * fOver));
+            var fGe = Math.pow(Math.min(1, fp / (fArr * 1.05)), 1.5);
             N.flyUnit.cont.visible = true;
-            N.flyUnit.cont.position.set(R.fly.sx + (R.fly.tx - R.fly.sx) * fe, R.fly.sy + (R.fly.ty - R.fly.sy) * fe);
-            var fl2 = R.fly.len0 + (R.fly.len1 - R.fly.len0) * fe;
-            var ft2 = R.fly.th0 + (R.fly.th1 - R.fly.th0) * fe;
+            N.flyUnit.cont.position.set(R.fly.sx + (R.fly.tx - R.fly.sx) * fU, R.fly.sy + (R.fly.ty - R.fly.sy) * fU);
+            var fl2 = (R.fly.len0 + (R.fly.len1 - R.fly.len0) * fGe) * (1 + 0.10 * fOver);
+            var ft2 = R.fly.th0 + (R.fly.th1 - R.fly.th0) * fGe;
             N.flyUnit.gfx.scale.set(fl2 / 200, ft2 / 46);
             N.flyUnit.glow.width = fl2 * 1.25; N.flyUnit.glow.height = ft2 * 2.6;
             N.flyUnit.glow.alpha = 0.4;
-            N.flyUnit.cont.alpha = fp > 0.9 ? 1 - (fp - 0.9) / 0.1 : 1;
+            N.flyUnit.cont.alpha = Math.min(1, fp / 0.04) * (fp > 0.60 ? Math.max(0, 1 - (fp - 0.60) / 0.37) : 1);
           }
         }
       } else if (id === '53ag'){
@@ -18965,89 +19007,9 @@
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは最初は映らず、溜めで背景の光が流れ始め、加速区間（スピード線＋本人が画面下へ飛び去る＋名前帯の予告）を経て相手SDが上方から登場して静止した瞬間、下から突き上げて着弾し、背景ごと吹っ飛んで白背景で締める' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
-    /* フレーム計測と位置実測の結果を診断パネルへ出す（計測自体は振り分け側の
-       finDiagStart／fin3BuildScene 等が実戦と共通で行う。ここは表示だけ） */
-    function fxDiagRender(){
-      var panel = document.getElementById('fxDiagPanel');
-      var body = document.getElementById('fxDiagBody');
-      if (!panel || !body) return;
-      var txt = (typeof finDiagSummaryText === 'function') ? finDiagSummaryText() : '';
-      var posTxt = (typeof finPosSummaryText === 'function') ? finPosSummaryText() : '';
-      var allTxt = (typeof finPosAllText === 'function') ? finPosAllText() : '';
-      if (allTxt) posTxt = posTxt ? (posTxt + ' ' + allTxt) : allTxt;
-      var posBody = document.getElementById('fxPosBody');
-      if (posBody) posBody.textContent = posTxt;
-      if (!txt && !posTxt){ panel.hidden = true; return; }
-      body.textContent = txt;
-      /* 診断モード：直近の再生モードと、モード別の最新計測の並列表示。
-         3モードで同じフィニッシュを再生すると、ここに最新値が揃う */
-      var modeBody = document.getElementById('fxDiagModeBody');
-      if (modeBody){
-        var last = window.__finDiagLast;
-        modeBody.textContent = last ? ('直近の再生：' + finDiagModeLabel(last.mode || 'normal') + 'モード／方式：' + finProtoLabel(!!last.proto) + '（カード ' + (last.cardId || '') + '）') : '';
-      }
-      var cmpBody = document.getElementById('fxDiagCompareBody');
-      if (cmpBody){
-        cmpBody.textContent = 'モード別比較（各モードの最新）：' + ['normal', 'dom-off', 'pixi-off'].map(function(m){
-          var d = finDiagByMode[m];
-          if (!d) return finDiagModeLabel(m) + '＝未計測';
-          return finDiagModeLabel(m) + '＝最大 ' + d.maxMs + 'ms／50ms超 ' + d.over50 + '回（' + d.frames + 'フレーム・' + (d.cardId || '') + '）';
-        }).join('／');
-      }
-      /* 方式別比較：現行と試作を、診断モードごとに横並びで見比べる */
-      var protoBody = document.getElementById('fxDiagProtoBody');
-      if (protoBody){
-        var fmtP = function(key){
-          var d = finDiagByProto[key];
-          if (!d) return '未計測';
-          return '最大 ' + d.maxMs + 'ms／50ms超 ' + d.over50 + '回（' + d.frames + 'フレーム）';
-        };
-        protoBody.textContent = '方式別比較（新方式・各方式×モードの最新）：' + ['normal', 'dom-off', 'pixi-off'].map(function(m){
-          return '［' + finDiagModeLabel(m) + '］現行＝' + fmtP('cur|' + m) + '／試作＝' + fmtP('proto|' + m);
-        }).join('／');
-      }
-      panel.hidden = false;
-    }
-    /* ===== 診断モードの切替UI（演出チェック内だけ） =====
-       選択はメモリ上にだけ持ち、再生のたびに fxCheckPlayFinish が
-       finDiagPendingMode へ積んで振り分け側へ渡す。実戦は積まない */
-    var fxDiagModeBtns = document.querySelectorAll('[data-diag-mode]');
-    function fxDiagModeRender(){
-      fxDiagModeBtns.forEach(function(b){
-        var on = b.getAttribute('data-diag-mode') === finDiagModeSel;
-        b.classList.toggle('on', on);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-    }
-    fxDiagModeBtns.forEach(function(b){
-      b.addEventListener('click', function(){
-        finDiagModeSel = b.getAttribute('data-diag-mode') || 'normal';
-        fxDiagModeRender();
-      });
-    });
-    fxDiagModeRender();
-    /* ===== 方式切替UI（新方式・演出チェック内だけの見比べ用） =====
-       選択はメモリ上にだけ持ち、再生のたびに fxCheckPlayFinish が
-       finProtoPending へ積んで振り分け側へ渡す。実戦は常時新方式のため
-       積まない（振り分け側で実戦は新方式固定になる）。
-       再生終了・画面を閉じる・対戦リセットでは finDiagResetActiveMode が
-       「現行」へ戻す（その際にこの render が呼ばれて表示も追随する） */
-    var fxProtoModeBtns = document.querySelectorAll('[data-proto-mode]');
-    function finProtoUiRender(){
-      fxProtoModeBtns.forEach(function(b){
-        var on = b.getAttribute('data-proto-mode') === finProtoSel;
-        b.classList.toggle('on', on);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      });
-    }
-    fxProtoModeBtns.forEach(function(b){
-      b.addEventListener('click', function(){
-        finProtoSel = b.getAttribute('data-proto-mode') || 'current';
-        if (finProtoSel === 'proto') finProtoPrebuildCheck(); /* 選択した時点から先行構築を始める */
-        finProtoUiRender();
-      });
-    });
-    finProtoUiRender();
+    /* フレーム計測・位置実測は内部（window.__finDiagLast 等）だけで行い、
+       演出チェック画面には表示しない（画面は再生ボタンだけのシンプルな
+       構成に戻した） */
     function fxCheckPlayFinish(item){
       fxCheckClearStageCard();
       fxSummonCheckToken++; /* 登場側の終了表示予約が残っていたら無効化する */
@@ -19055,10 +19017,9 @@
       if (!panel) return;
       /* 新方式：場面構築の先行化は再生ボタンが押されたこの時点から始める
          （テクスチャ生成・ノード生成・GPU転送を「間」の開始までに非同期で
-         済ませるため。受け側はダミーのクロエで固定） */
-      if (finProtoSel === 'proto') finProtoPrebuild(item.cardId, 'chloe');
-      var diagPanel = document.getElementById('fxDiagPanel');
-      if (diagPanel) diagPanel.hidden = true; /* 前回の計測表示は消してから再生する */
+         済ませるため。受け側はダミーのクロエで固定）。演出チェックも
+         実戦と同じく常時新方式で再生する */
+      finProtoPrebuild(item.cardId, 'chloe');
       var myToken = ++fxFinCheckToken;
       /* 再生が終わったら「再生中」表示とボタンの再生中ハイライトを必ず戻す
          （第2世代の確認で、終了後も表示が残る問題があったための後片付け） */
@@ -19067,8 +19028,7 @@
           if (myToken !== fxFinCheckToken) return;
           if (!fxOverlay.classList.contains('show')) return;
           fxCheckCaption(item.label + ' 再生終了');
-          finDiagResetActiveMode(); /* 再生終了：診断モードの適用を通常へ戻す（Pixi再開・DOM OFF解除）。計測結果は保持される */
-          fxDiagRender(); /* フレーム計測の結果を診断パネルへ表示する */
+          finDiagResetActiveMode(); /* 再生終了：診断モードの適用を通常へ戻す（Pixi再開・DOM OFF解除）。計測結果は内部に保持される */
           if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
         }, ms);
       }
@@ -19104,8 +19064,7 @@
             clearInterval(iv);
             if (!fxOverlay.classList.contains('show')) return;
             fxCheckCaption(item.label + ' 再生中');
-            finDiagPendingMode = finDiagModeSel; /* 診断モードはこの再生だけに適用する */
-            finProtoPending = (finProtoSel === 'proto'); /* 試作方式もこの再生だけに適用する */
+            finProtoPending = true; /* 実戦と同じく新方式で再生する */
             mythicFinishDispatch(item.cardId, panel);
             fxFinCheckScheduleDone();
           }
@@ -19113,8 +19072,7 @@
         return;
       }
       fxCheckCaption(item.label + ' 再生中');
-      finDiagPendingMode = finDiagModeSel; /* 診断モードはこの再生だけに適用する */
-      finProtoPending = (finProtoSel === 'proto'); /* 試作方式もこの再生だけに適用する */
+      finProtoPending = true; /* 実戦と同じく新方式で再生する */
       mythicFinishDispatch(item.cardId, panel);
       fxFinCheckScheduleDone();
     }
