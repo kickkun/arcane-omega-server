@@ -566,6 +566,54 @@
       .fx-diag{margin-top:14px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:rgba(10,14,24,.55);}
       .fx-diag-head{margin:0 0 4px; font-size:12px; font-weight:700; letter-spacing:.08em; color:#f4e8c8;}
       .fx-diag-body{margin:0; font-size:12px; line-height:1.7; color:#dfe6f2;}
+      /* ===== フィニッシュ診断モード（ステップ1：DOM／Pixi の犯人切り分け） =====
+         演出チェック専用のモード切替。実戦の再生には一切使わない */
+      .fx-diag-modes{margin-top:14px; border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:rgba(10,14,24,.55);}
+      .fx-diag-modes-head{margin:0 0 4px; font-size:12px; font-weight:700; letter-spacing:.08em; color:#f4e8c8;}
+      .fx-diag-modes-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+      .fx-diag-mode-btn{
+        flex:1 1 0; min-width:96px; padding:9px 6px; border-radius:9px; cursor:pointer;
+        border:1px solid var(--line); background:var(--panel2); color:var(--ink-dim);
+        font-family:inherit; font-size:12.5px; font-weight:800; letter-spacing:.03em;
+      }
+      .fx-diag-mode-btn.on{border-color:var(--gold-bright); color:#241a05; background:linear-gradient(180deg,#eccd7e,#c9a24b);}
+      .fx-diag-modes-note{margin:7px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-dim);}
+      /* DOM演出OFF時の描画除外：装飾専用のDOMレイヤーは display:none で
+         描画ツリーから外す（透明化ではなく、塗りも合成も発生しない）。
+         WAAPIアニメーションと重い装飾ノードの生成自体は JS 側
+         （fxFinAnimate／fxFinFlash／fxFinPieces／fin3PrebuildFx 等）で止める。
+         SDキャラ本体・専用空間の土台・対象SDは被写体なので残す（動きは
+         WAAPI遮断で静止する） */
+      body.fin-diag-dom-off .fx-fin-flash,
+      body.fin-diag-dom-off .fx-fin-vortex,
+      body.fin-diag-dom-off .fx-fin-line,
+      body.fin-diag-dom-off .fx-fin-letterbox,
+      body.fin-diag-dom-off .fx-fin-dimlayer,
+      body.fin-diag-dom-off .fx-fin2-cutin,
+      body.fin-diag-dom-off .fx-fin2-blackout,
+      body.fin-diag-dom-off .fx-fin2-aura,
+      body.fin-diag-dom-off .fx-fin3-ring,
+      body.fin-diag-dom-off .fx-fin3-shard,
+      body.fin-diag-dom-off .fx-fin3-cshard,
+      body.fin-diag-dom-off .fx-fin3-ember,
+      body.fin-diag-dom-off .fx-fin3-dot,
+      body.fin-diag-dom-off .fx-fin3-heat,
+      body.fin-diag-dom-off .fx-fin3-streak,
+      body.fin-diag-dom-off .fx-sd-fximg,
+      body.fin-diag-dom-off .fx-sd-aura-ring,
+      body.fin-diag-dom-off .fx-sd-aura-shadow,
+      body.fin-diag-dom-off .fx-sd-aura-wisp,
+      body.fin-diag-dom-off .fx-sd-aura-spark,
+      body.fin-diag-dom-off .fx-sd-aura-orb,
+      body.fin-diag-dom-off .fx-sd-beamdiv,
+      body.fin-diag-dom-off .aura-glow2,
+      body.fin-diag-dom-off .aura-wisp2,
+      body.fin-diag-dom-off .aura-orbit,
+      body.fin-diag-dom-off .aura-ring2,
+      body.fin-diag-dom-off .aura-shadow2{display:none !important;}
+      body.fin-diag-dom-off .fx-fin3-circle,
+      body.fin-diag-dom-off .fx-fin3-pool,
+      body.fin-diag-dom-off .fx-fin3-circle .mc-halo{animation:none !important;}
       /* 背の低い画面ではステージ（約570px）がビューポートの大半を占有して
          ボタン一覧がほぼ見えなくなるため、sticky を解除して通常スクロールに
          逃がす（再生時は JS が scrollIntoView でステージへ戻す） */
@@ -4138,10 +4186,21 @@
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
         <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスだけは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。SD素材が読み込めない場合は従来の演出で再生されます。</p>
+        <div class="fx-diag-modes" role="group" aria-label="フィニッシュ診断モード">
+          <p class="fx-diag-modes-head">診断モード（カクつきの切り分け）</p>
+          <div class="fx-diag-modes-row">
+            <button type="button" class="fx-diag-mode-btn" data-diag-mode="normal" aria-pressed="true">通常</button>
+            <button type="button" class="fx-diag-mode-btn" data-diag-mode="dom-off" aria-pressed="false">DOM演出 OFF</button>
+            <button type="button" class="fx-diag-mode-btn" data-diag-mode="pixi-off" aria-pressed="false">Pixi OFF</button>
+          </div>
+          <p class="fx-diag-modes-note">同じフィニッシュを3モードで再生してフレーム計測を比べると、着弾の重さがDOM側（CSS／WAAPIアニメ・DOM描画）かPixi側（粒子・加算ブレンド）か切り分けられます。OFF中も再生の進行・タイミング・SE・計測は通常どおり動きます。この切替は演出チェック内だけのもので、実戦のフィニッシュには影響しません。</p>
+        </div>
         <div class="fx-list" id="fxFinishList"></div>
         <div class="fx-diag" id="fxDiagPanel" hidden>
           <p class="fx-diag-head">フレーム計測・位置実測（直近の神話フィニッシュ再生）</p>
           <p class="fx-diag-body" id="fxDiagBody"></p>
+          <p class="fx-diag-body" id="fxDiagModeBody"></p>
+          <p class="fx-diag-body" id="fxDiagCompareBody"></p>
           <p class="fx-diag-body" id="fxPosBody"></p>
         </div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
@@ -5336,6 +5395,7 @@
       fxFinishReg = {};
       fxFinishOverDelay = 1750;
       fxMythicGen++;
+      finDiagResetActiveMode(); /* 対戦リセット時：診断モードの適用は実戦へ持ち込まない */
       fx2DisposeAll(); /* 第2弾：対戦リセット時も通常演出の残留を即時ゼロにする */
       mythicFxCleanup();
       fxFinishTimers.forEach(clearTimeout); fxFinishTimers = [];
@@ -5385,6 +5445,11 @@
     }
     function fxFinAnimate(el, frames, opt){
       if (!el) return null;
+      /* 診断モード DOM OFF：WAAPIアニメーションを生成しない（フィニッシュの
+         DOMアニメーションは全てこの入口を通るため、ここで止めればDOM側の
+         アニメーションコストは丸ごと消える。要素の生成・タイマー進行・
+         SE・計測は通常どおり） */
+      if (typeof finDiagIsDomOff === 'function' && finDiagIsDomOff()) return null;
       try {
         var a = el.animate(frames, opt);
         if (a && a.finished && a.finished.catch) a.finished.catch(function(){});
@@ -5417,6 +5482,57 @@
       fxMythicFxNodes = [];
       if (fxMythicHiddenPanel){ fxMythicHiddenPanel.style.visibility = ''; fxMythicHiddenPanel = null; }
     }
+    /* ===== フィニッシュ診断モード（基本見直し ステップ1：犯人の切り分け） =====
+       演出チェック画面でのみ使う。着弾の瞬間に重いのが DOM 側か Pixi 側かを
+       実測で切り分けるため、同じフィニッシュを3モードで再生できるようにする：
+       ・normal ：通常どおり
+       ・dom-off：DOM側の演出コストを払わない。fxFinAnimate が WAAPI を
+         一切生成せず（フィニッシュのDOMアニメーションは全てこの入口を
+         通る）、fxFinFlash／fxFinPieces／fin3PrebuildFx 等の装飾ノード
+         生成も止め、残る装飾レイヤーは body.fin-diag-dom-off の CSS で
+         display:none（描画ツリーから除外）にする。画面シェイク
+         （fxQuake）も止める。再生の進行・タイミング・SE・計測は不変
+       ・pixi-off：Pixi側の描画コストを払わない。pixiAnim／pixiBurst／
+         pixiRing の生成を止め、FxKit（available／scope.anim）を不可に
+         して第2〜4弾の Pixi 演出を丸ごと止め、さらに Pixi アプリ自体を
+         stop() してキャンバスを display:none にする（ティッカーの
+         描画ループごと止まる）。DOM側は通常どおり
+       実戦（fxTriggerFinish 経由）は pending を積まないため、振り分け側で
+       常に normal に固定される。モードはメモリ上だけに持ち、保存しない */
+    var finDiagModeSel = 'normal';    /* 演出チェックで選択中のモード */
+    var finDiagActiveMode = 'normal'; /* 再生中のフィニッシュに適用中のモード */
+    var finDiagPendingMode = null;    /* 次回の振り分けだけに適用する予約（演出チェックが直前に積む） */
+    var finDiagByMode = {};           /* モード別の最新計測 {mode: finDiagData} */
+    window.__finDiagByMode = finDiagByMode;
+    var finDiagPixiStopped = false;
+    function finDiagModeLabel(m){ return m === 'dom-off' ? 'DOM OFF' : (m === 'pixi-off' ? 'Pixi OFF' : '通常'); }
+    function finDiagIsDomOff(){ return finDiagActiveMode === 'dom-off'; }
+    function finDiagIsPixiOff(){ return finDiagActiveMode === 'pixi-off'; }
+    function finDiagPixiStop(){
+      try {
+        if (typeof pixiFx !== 'undefined' && pixiFx && pixiFx.app){
+          pixiFx.app.view.style.display = 'none';
+          if (!finDiagPixiStopped){ pixiFx.app.stop(); finDiagPixiStopped = true; }
+        }
+      } catch (e) {}
+    }
+    function finDiagPixiRestore(){
+      try {
+        if (typeof pixiFx !== 'undefined' && pixiFx && pixiFx.app){
+          if (finDiagPixiStopped){ pixiFx.app.start(); finDiagPixiStopped = false; }
+          if (pixiFx.app.view.style.display === 'none' && !pixiFx.blocked) pixiFx.app.view.style.display = '';
+        }
+      } catch (e) {}
+    }
+    function finDiagSetActiveMode(mode){
+      finDiagActiveMode = (mode === 'dom-off' || mode === 'pixi-off') ? mode : 'normal';
+      document.body.classList.toggle('fin-diag-dom-off', finDiagActiveMode === 'dom-off');
+      if (finDiagActiveMode === 'pixi-off') finDiagPixiStop(); else finDiagPixiRestore();
+    }
+    function finDiagResetActiveMode(){
+      finDiagPendingMode = null;
+      finDiagSetActiveMode('normal');
+    }
     /* ===== フィニッシュ再生のフレーム計測（カクつき診断） =====
        軽量化を推測で重ねるのをやめ、再生中のフレーム時間を実測するための
        仕組み。振り分け（mythicFinishDispatch）の入口で計測を始め、
@@ -5447,7 +5563,7 @@
       try { sdReady = sdFxReady(cardId); willFin3 = sdReady && fin2WillRun(cardId, panelEl); } catch (e) {}
       var total = (willFin3 ? FIN2_TOTAL_MS : 0) + (sdReady ? (SD_FIN_MS[id] || 2500) : 2600);
       var st = {
-        cardId: id, fin3: willFin3,
+        cardId: id, fin3: willFin3, mode: finDiagActiveMode,
         destroyAt: FIN2_DESTROY_MS[id] || 1500,
         t0: performance.now(), last: 0, frames: 0, max: 0, over33: 0, over50: 0, long: [], done: false
       };
@@ -5464,27 +5580,35 @@
         }
         st.last = now;
         if (now - st.t0 < total + 500){ finDiag.raf = requestAnimationFrame(step); }
-        else { st.done = true; window.__finDiagLast = finDiagData(st); }
+        else { st.done = true; finDiagPublish(st); }
       }
       finDiag.raf = requestAnimationFrame(step);
     }
     function finDiagStop(){
       if (finDiag.raf) cancelAnimationFrame(finDiag.raf);
       finDiag.raf = 0;
-      if (finDiag.cur){ finDiag.cur.done = true; window.__finDiagLast = finDiagData(finDiag.cur); }
+      if (finDiag.cur){ finDiag.cur.done = true; finDiagPublish(finDiag.cur); }
       finDiag.cur = null;
+    }
+    /* 計測結果の確定：直近結果（__finDiagLast）と、診断モード別の最新結果
+       （__finDiagByMode）へ同時に残す。モード別比較はこの蓄積から出す */
+    function finDiagPublish(st){
+      var d = finDiagData(st);
+      if (!d) return;
+      window.__finDiagLast = d;
+      if (d.mode){ finDiagByMode[d.mode] = d; window.__finDiagByMode = finDiagByMode; }
     }
     function finDiagData(st){
       if (!st) return null;
       var worst = st.long.slice().sort(function(a, b){ return b.dt - a.dt; }).slice(0, 5).map(function(w){
         return { phase: finDiagPhase(w.t, st.fin3, st.destroyAt), t: w.t, dt: w.dt };
       });
-      return { cardId: st.cardId, fin3: st.fin3, frames: st.frames, maxMs: Math.round(st.max), over33: st.over33, over50: st.over50, worst: worst };
+      return { cardId: st.cardId, fin3: st.fin3, mode: st.mode || 'normal', frames: st.frames, maxMs: Math.round(st.max), over33: st.over33, over50: st.over50, worst: worst };
     }
     function finDiagSummaryText(){
       var d = window.__finDiagLast;
       if (!d) return '';
-      var head = '最大フレーム ' + d.maxMs + 'ms／33ms超 ' + d.over33 + '回／50ms超 ' + d.over50 + '回（計測 ' + d.frames + ' フレーム）';
+      var head = 'モード：' + finDiagModeLabel(d.mode || 'normal') + '／最大フレーム ' + d.maxMs + 'ms／33ms超 ' + d.over33 + '回／50ms超 ' + d.over50 + '回（計測 ' + d.frames + ' フレーム）';
       if (!d.worst.length) return head + '。26msを超えるフレームはありませんでした。';
       return head + '。長いフレーム：' + d.worst.map(function(w){ return w.phase + '（+' + w.t + 'ms）で ' + w.dt + 'ms'; }).join('／');
     }
@@ -5568,6 +5692,9 @@
     }
     /* パネル複製を cols×rows の破片に切り分ける（clip-path で各セルだけを見せる） */
     function fxFinPieces(panelEl, wrap, cols, rows){
+      /* 診断DOM OFF：パネル破片（複製×最大16枚＋clip-path）の生成自体を止める。
+         呼び出し側は配列の走査だけなので空配列で安全に進む */
+      if (typeof finDiagIsDomOff === 'function' && finDiagIsDomOff()) return [];
       var pieces = [];
       for (var ri = 0; ri < rows; ri++){
         for (var ci = 0; ci < cols; ci++){
@@ -5588,6 +5715,7 @@
     }
     /* 全画面フラッシュ（EX-キャリバーの光／ティアマトの爆発用） */
     function fxFinFlash(maxOp, dur){
+      if (typeof finDiagIsDomOff === 'function' && finDiagIsDomOff()) return; /* 診断DOM OFF：全画面フラッシュの要素自体を作らない */
       var f = document.createElement('div');
       f.className = 'fx-fin-flash';
       document.body.appendChild(f);
@@ -5985,6 +6113,11 @@
        実戦（fxTriggerFinish）と演出チェック画面の共通入口 */
     function mythicFinishDispatch(cardId, panelEl){
       if (HEADLESS || !panelEl) return;
+      /* 診断モードの確定：演出チェックが直前に積んだ予約だけを消費する。
+         実戦（fxTriggerFinish経由）は予約を積まないため常に通常モードになり、
+         万一OFF状態が残っていてもここで通常へ戻る */
+      var dMode = finDiagPendingMode; finDiagPendingMode = null;
+      finDiagSetActiveMode(dMode || 'normal');
       finDiagStart(cardId, panelEl); /* カクつき診断：再生中のフレーム時間を実測する */
       finPosSet(null); /* 位置実測は再生ごとに作り直す（前回の値を残さない） */
       if (!(stageReducedMotion || pixiReducedMotion) && sdFxReady(cardId)){
@@ -6225,7 +6358,7 @@
       bg.className = 'fx-fin3-bg';
       bg.setAttribute('aria-hidden', 'true');
       var dotsHtml = '';
-      for (var i = 0; i < 12; i++){
+      for (var i = 0; i < (finDiagIsDomOff() ? 0 : 12); i++){ /* 診断DOM OFF：漂う光の粒（CSSアニメ）を作らない */
         var dl = (fxFinRand(i * 3.17 + 1) * 100).toFixed(1);
         var dt = (fxFinRand(i * 5.71 + 2) * 100).toFixed(1);
         var ds = (1.6 + fxFinRand(i * 7.13 + 3) * 2.8).toFixed(1);
@@ -6237,7 +6370,7 @@
       /* 熱の揺らぎ：陣の上を昇る小さな光の粒（5個だけ。面積も個数も
          抑え、専用空間の表示中だけ存在する） */
       var heatHtml = '';
-      for (var h = 0; h < 5; h++){
+      for (var h = 0; h < (finDiagIsDomOff() ? 0 : 5); h++){ /* 診断DOM OFF：熱の粒（CSSアニメ）を作らない */
         var hl = (34 + fxFinRand(h * 3.71 + 21) * 32).toFixed(1);
         var ht = (54 + fxFinRand(h * 5.37 + 22) * 22).toFixed(1);
         var hs = (1.8 + fxFinRand(h * 7.91 + 23) * 1.8).toFixed(1);
@@ -6339,6 +6472,11 @@
        位置の確定とアニメーション開始だけに絞る */
     function fin3PrebuildFx(scene, conf){
       if (!scene || !scene.bg) return;
+      /* 診断DOM OFF：吹き飛び用の装飾要素（リング・陣破片・背景破片・余波の粒、
+         合計30個近いDOM生成＋clip-path計算）を事前生成しない。fin3BlowAway
+         側も同じ判定でフォールバック生成を止めるため、吹き飛びの瞬間に
+         DOM生成は発生しない */
+      if (finDiagIsDomOff()) return;
       var themeCol = conf ? conf.color : '#ffe9a8';
       /* 衝撃波リング */
       var ringD = Math.round(Math.min(window.innerWidth, window.innerHeight) * 1.5);
@@ -6437,7 +6575,7 @@
          二重描画していた）。要素は場面構築時に作成済み（scene._ring）で、
          ここでは表示とアニメ開始だけを行う */
       var ringEl = scene._ring;
-      if (!ringEl){
+      if (!ringEl && !finDiagIsDomOff()){
         var ringD = Math.round(Math.min(window.innerWidth, window.innerHeight) * 1.5);
         ringEl = document.createElement('div');
         ringEl.className = 'fx-fin3-ring';
@@ -6447,12 +6585,14 @@
         ringEl.style.boxShadow = '0 0 22px ' + themeCol + ', inset 0 0 22px ' + themeCol;
         scene.bg.appendChild(ringEl);
       }
-      ringEl.style.visibility = 'visible';
-      fxFinAnimate(ringEl, [
-        { transform: 'translate(-50%,-50%) scale(.06)', opacity: 0.95 },
-        { transform: 'translate(-50%,-50%) scale(.55)', opacity: 0.75, offset: 0.55 },
-        { transform: 'translate(-50%,-50%) scale(1)', opacity: 0 }
-      ], { duration: 560, delay: 70, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'both' });
+      if (ringEl){
+        ringEl.style.visibility = 'visible';
+        fxFinAnimate(ringEl, [
+          { transform: 'translate(-50%,-50%) scale(.06)', opacity: 0.95 },
+          { transform: 'translate(-50%,-50%) scale(.55)', opacity: 0.75, offset: 0.55 },
+          { transform: 'translate(-50%,-50%) scale(1)', opacity: 0 }
+        ], { duration: 560, delay: 70, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'both' });
+      }
       /* 魔法陣の破片化：陣を扇形10片に割り、各片が輪郭の切片を保ったまま
          回転しながら外へ飛散する。元の陣は隠し、破片の集合が delay の間は
          陣の形を保つため「輪郭が砕ける」瞬間が読める。虚空の破片とは別要素。
@@ -6481,7 +6621,7 @@
                     { transform: 'translate(' + cs.dx + 'px,' + cs.dy + 'px) rotate(' + cs.rot + 'deg)', opacity: 0 }
                   ], { duration: cs.dur, delay: cs.delay, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'both' });
                 });
-              } else {
+              } else if (!finDiagIsDomOff()) {
                 var RSHARDS = 10;
                 for (var ri = 0; ri < RSHARDS; ri++){
                   var ra0 = (ri / RSHARDS) * Math.PI * 2, ra1 = ((ri + 1) / RSHARDS) * Math.PI * 2;
@@ -6505,7 +6645,7 @@
                 }
               }
             } catch (e) { /* 破片化に失敗しても吹き飛び自体は続行する */ }
-          } else try {
+          } else if (!finDiagIsDomOff()) try {
             var shardHtml = '<defs><symbol id="fin3circSym" viewBox="0 0 200 200">' + fin3CircleInner(themeCol, true) + '</symbol>';
             var SHARDS = 10;
             for (var ci = 0; ci < SHARDS; ci++){
@@ -6558,7 +6698,7 @@
               { transform: 'translate(-50%,-50%) translate(' + bs.dx + 'px,' + bs.dy + 'px) rotate(' + bs.rot + 'deg)', opacity: 0 }
             ], { duration: 640, delay: 150, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'forwards' });
           });
-        } else {
+        } else if (!finDiagIsDomOff()) {
           for (var i = 0; i < 9; i++){
             var sh = document.createElement('div');
             sh.className = 'fx-fin3-shard';
@@ -6596,7 +6736,7 @@
             { transform: 'translate(' + eb.dx + 'px,' + eb.dy + 'px)', opacity: 0 }
           ], { duration: eb.dur, delay: eb.delay, easing: 'ease-in-out', fill: 'both' });
         });
-      } else {
+      } else if (!finDiagIsDomOff()) {
         var emberCols = ((conf && conf.aura) || [themeCol]).filter(function(c){ return c && c !== '#ffffff' && c !== '#fff3c4'; });
         if (!emberCols.length) emberCols = [themeCol];
         for (var ei = 0; ei < 10; ei++){
@@ -8438,7 +8578,7 @@
     }
     /* 粒子バースト。rise:true は召喚用（下から舞い上がる）、false は放射状 */
     function pixiBurst(x, y, opt){
-      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return;
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion || finDiagIsPixiOff()) return; /* Pixi OFF時は粒子スプライトを生成しない */
       opt = opt || {};
       var count = opt.count || 20;
       var colors = opt.colors || [0xffd76a, 0xeccd7e, 0xfff3c4];
@@ -8459,7 +8599,7 @@
     }
     /* 足元（または着弾点）に広がる光の輪 */
     function pixiRing(x, y, opt){
-      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return;
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion || finDiagIsPixiOff()) return; /* Pixi OFF時はリングを生成しない */
       opt = opt || {};
       var gfx = new PIXI.Graphics();
       pixiFx.fxLayer.addChild(gfx);
@@ -8497,7 +8637,7 @@
        毎フレーム描き直す。pixiTick が進行と後片付けを担当する。
        モーション低減時は個別エフェクトを一切出さない（魔法陣の淡い表示のみ）。 */
     function pixiAnim(dur, update){
-      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return null;
+      if (!pixiFx.enabled || HEADLESS || pixiReducedMotion || finDiagIsPixiOff()) return null; /* Pixi OFF時：汎用Graphicsアニメ（光柱・斬撃・鎖・砂煙等）を登録しない */
       var gfx = new PIXI.Graphics();
       pixiFx.fxLayer.addChild(gfx);
       var rec = { gfx: gfx, life: 0, max: dur, update: update };
@@ -8749,7 +8889,7 @@
           add: function(o){ layer.addChild(o); S.objs.push(o); return o; },
           /* pixiTick 駆動のアニメ登録。onDone は完了時に1回だけ呼ばれる */
           anim: function(dur, update, onDone){
-            if (!pixiFx.enabled || HEADLESS || pixiReducedMotion) return null;
+            if (!pixiFx.enabled || HEADLESS || pixiReducedMotion || finDiagIsPixiOff()) return null;
             var rec = { gfx: null, life: 0, max: dur,
               update: function(g, t, l){ if (!dead) update(g, t, l); },
               onDone: function(){ if (onDone){ try { onDone(); } catch (e) {} } return true; } };
@@ -8881,7 +9021,7 @@
         glowMaterial: glowMaterial, glowQuad: glowQuad, tintLerp: tintLerp,
         scope: scope,
         available: function(){
-          return !!(pixiFx.enabled && !HEADLESS && !pixiReducedMotion && pixiFx.fxLayer &&
+          return !!(pixiFx.enabled && !HEADLESS && !pixiReducedMotion && !finDiagIsPixiOff() && pixiFx.fxLayer &&
             typeof window.PIXI !== 'undefined' && PIXI.Mesh && PIXI.Shader && PIXI.Geometry && PIXI.Buffer);
         }
       };
@@ -11584,6 +11724,7 @@
     }
     function pixiTick(){
       if (!pixiFx.app) return;
+      if (finDiagIsPixiOff()) return; /* 診断Pixi OFF中は描画ステップを回さない（通常はアプリ自体も停止している） */
       var dt = Math.min(50, pixiFx.app.ticker.deltaMS) * fxFinRateScale; /* 第5弾：フィニッシュのスロー／ヒットストップに Pixi 演出も連動させる */
       var now = fxNow();
       /* 全面画面（詳細・タイトル等）が開いている間はキャンバスごと隠す */
@@ -11771,6 +11912,7 @@
        フィニッシュ専用の fxTriggerFinish とは別系統で、短く弱く揺らすだけ */
     function fxQuake(cls, ms){
       if (HEADLESS || stageReducedMotion) return;
+      if (typeof finDiagIsDomOff === 'function' && finDiagIsDomOff()) return; /* 診断DOM OFF：画面シェイク（全面CSSアニメーション）もDOM側コストとして止める */
       /* 第3世代の専用空間が表示されている間はシェイクを発生させない：
          シェイク対象の #app／チェック画面は不透明な専用空間（body直下・
          z-index 91）に覆われて見えず、揺れは視覚に届かないのに、全面の
@@ -16364,8 +16506,41 @@
       if (posBody) posBody.textContent = posTxt;
       if (!txt && !posTxt){ panel.hidden = true; return; }
       body.textContent = txt;
+      /* 診断モード：直近の再生モードと、モード別の最新計測の並列表示。
+         3モードで同じフィニッシュを再生すると、ここに最新値が揃う */
+      var modeBody = document.getElementById('fxDiagModeBody');
+      if (modeBody){
+        var last = window.__finDiagLast;
+        modeBody.textContent = last ? ('直近の再生：' + finDiagModeLabel(last.mode || 'normal') + 'モード（カード ' + (last.cardId || '') + '）') : '';
+      }
+      var cmpBody = document.getElementById('fxDiagCompareBody');
+      if (cmpBody){
+        cmpBody.textContent = 'モード別比較（各モードの最新）：' + ['normal', 'dom-off', 'pixi-off'].map(function(m){
+          var d = finDiagByMode[m];
+          if (!d) return finDiagModeLabel(m) + '＝未計測';
+          return finDiagModeLabel(m) + '＝最大 ' + d.maxMs + 'ms／50ms超 ' + d.over50 + '回（' + d.frames + 'フレーム・' + (d.cardId || '') + '）';
+        }).join('／');
+      }
       panel.hidden = false;
     }
+    /* ===== 診断モードの切替UI（演出チェック内だけ） =====
+       選択はメモリ上にだけ持ち、再生のたびに fxCheckPlayFinish が
+       finDiagPendingMode へ積んで振り分け側へ渡す。実戦は積まない */
+    var fxDiagModeBtns = document.querySelectorAll('[data-diag-mode]');
+    function fxDiagModeRender(){
+      fxDiagModeBtns.forEach(function(b){
+        var on = b.getAttribute('data-diag-mode') === finDiagModeSel;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    fxDiagModeBtns.forEach(function(b){
+      b.addEventListener('click', function(){
+        finDiagModeSel = b.getAttribute('data-diag-mode') || 'normal';
+        fxDiagModeRender();
+      });
+    });
+    fxDiagModeRender();
     function fxCheckPlayFinish(item){
       fxCheckClearStageCard();
       var panel = document.getElementById('fxDummyLeader');
@@ -16380,6 +16555,7 @@
           if (myToken !== fxFinCheckToken) return;
           if (!fxOverlay.classList.contains('show')) return;
           fxCheckCaption(item.label + ' 再生終了');
+          finDiagResetActiveMode(); /* 再生終了：診断モードの適用を通常へ戻す（Pixi再開・DOM OFF解除）。計測結果は保持される */
           fxDiagRender(); /* フレーム計測の結果を診断パネルへ表示する */
           if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
         }, ms);
@@ -16416,6 +16592,7 @@
             clearInterval(iv);
             if (!fxOverlay.classList.contains('show')) return;
             fxCheckCaption(item.label + ' 再生中');
+            finDiagPendingMode = finDiagModeSel; /* 診断モードはこの再生だけに適用する */
             mythicFinishDispatch(item.cardId, panel);
             fxFinCheckScheduleDone();
           }
@@ -16423,6 +16600,7 @@
         return;
       }
       fxCheckCaption(item.label + ' 再生中');
+      finDiagPendingMode = finDiagModeSel; /* 診断モードはこの再生だけに適用する */
       mythicFinishDispatch(item.cardId, panel);
       fxFinCheckScheduleDone();
     }
@@ -16449,6 +16627,7 @@
     window.addEventListener('resize', function(){ fxCheckPlaceCard(); });
     function openFxCheck(){
       closeAllOverlays();
+      finDiagResetActiveMode(); /* 前回の診断モード適用が残っていたら通常へ戻してから開く */
       sdFxPreload(); /* SDフィニッシュ素材の読み込みを開始しておく */
       fxCheckClearStageCard();
       fxCheckClearHatchFx();
@@ -16465,6 +16644,7 @@
       fxCheckClearStageCard();
       fxCheckClearHatchFx();
       finDiagStop(); /* フレーム計測が残っていたら止める（結果は保持される） */
+      finDiagResetActiveMode(); /* 診断モードの適用が残っていたら通常へ戻す（Pixi再開・DOM OFF解除） */
       fxFinCheckToken++; /* 終了表示の予約タイマーを無効化する */
       fxMythicGen++;
       mythicFxCleanup();
