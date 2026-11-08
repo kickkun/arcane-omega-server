@@ -8009,12 +8009,20 @@
         sp.position.set(G.ax, G.feetY - G.sdH / 2);
       });
       /* 斬撃ユニット（ミラージュ。寸法はユニット定義側で持つ。
-         描画は更新側で毎フレーム Graphics へ行う） */
+         描画は更新側で毎フレーム Graphics へ行う）
+         試作の段取り変更：斬撃の区間は破壊拍（2480ms・白化の開始）より
+         前に閉じる。dur は演出時間（スロー／ヒットストップで拡縮する
+         時計）で測られるため、実時間の破壊拍までに完了する長さへ
+         換算してある（第2斬はスロー区間を跨ぐぶん 390、第3・第4斬は
+         ヒットストップを跨ぐぶん 130／115）。あわせて fired／dead の
+         2フラグで状態を持つ：従来は on だけで管理していたため、破壊拍で
+         消した斬撃を次のフレームでディレクターが「未発火」と誤認して
+         再表示し、白化後や復帰画面へ斬撃が残って見えた */
       R.units = [
-        { st: 1480, dur: 430, rot: -11, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fx0: 0 },
-        { st: 1760, dur: 430, rot: 9, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fx0: 0 },
-        { st: 2230, dur: 480, rot: -14, w: G.fxW * 1.9, len: G.fxW * 1.8, on: false, fx0: 0, impact: true },
-        { st: 2320, dur: 480, rot: 16, w: G.fxW * 1.7, len: G.fxW * 1.6, on: false, fx0: 0 }
+        { st: 1480, dur: 430, rot: -11, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fired: false, dead: false, fx0: 0 },
+        { st: 1760, dur: 390, rot: 9, w: G.fxW * 1.6, len: G.fxW * 1.5, on: false, fired: false, dead: false, fx0: 0 },
+        { st: 2230, dur: 130, rot: -14, w: G.fxW * 1.9, len: G.fxW * 1.8, on: false, fired: false, dead: false, fx0: 0, impact: true },
+        { st: 2320, dur: 115, rot: 16, w: G.fxW * 1.7, len: G.fxW * 1.6, on: false, fired: false, dead: false, fx0: 0 }
       ];
       R.units.forEach(function(u, i){
         var un = N.slashUnits[i];
@@ -8616,6 +8624,55 @@
         finPDrawPoly(c, [[0, -w * 0.3], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.3]], finPRampColor(FINP_GOLD_RAMP, Ly[1]), Ly[2]);
       });
     }
+    /* --- ミラージュ試作：リボン斬撃（案Aの試作。ミラージュ1体だけに適用し、
+       実機判定を経てから他キャラへ展開するかどうかを決める） ---
+       従来の finPDrawBlade は「輪郭ポリゴンを5層重ねる」方式で、帯の内側は
+       層ごとの平色だった。こちらは帯を長さ方向に18分割したリボンの面として
+       描き、各セグメントの色を尾（深紅）→刃先（白熱）のランプで補間する。
+       あわせて時間差の残像ブレード2枚と、帯の中を流れる光の筋3本を重ね、
+       「面・流れ・副要素」で厚みを作る。輪郭そのもの（長さ・幅・反り）は
+       finPBladeOutline を共用し、従来と同一に保つ */
+    var FINP_MIRAGE_RAMP = [[0, 0x8f130b], [0.3, 0xff3b26], [0.55, 0xff6a3d], [0.78, 0xffa37a], [0.92, 0xffe3d2], [1, 0xffffff]];
+    function finPDrawMirageRibbonBlade(g, L, W, sweep, tF){
+      g.clear();
+      var lag = 1;
+      /* 残像ブレード：少し遅れた sweep の輪郭を薄く重ね、斬撃の軌跡を面で残す */
+      [[0.34, 1.18, 0.07], [0.17, 1.08, 0.13]].forEach(function(gh){
+        var gs = Math.max(0.02, sweep - gh[0]);
+        if (gs <= 0.02) return;
+        finPDrawPoly(g, finPBladeOutline(L, W * gh[1], gs, lag * 1.12, 2.4, tF - 120), 0xff5a3d, gh[2]);
+      });
+      /* リボン本体：外光→芯まで幅の違うリボンを重ね、各セグメントを
+         長さ方向のランプ色で塗る（平色の縞ではなく面のグラデーション） */
+      function ribbonLayer(wMul, alphaMul, wob){
+        var out = finPBladeOutline(L, W * wMul, sweep, lag, wob, tF);
+        var n = 18;
+        for (var i = 0; i < n; i++){
+          var s = (i + 0.5) / n;
+          var pts = [out[i], out[i + 1], out[2 * n - i], out[2 * n + 1 - i]];
+          finPDrawPoly(g, pts, finPRampColor(FINP_MIRAGE_RAMP, s), alphaMul * (0.5 + 0.5 * s));
+        }
+      }
+      ribbonLayer(2.6, 0.15, 2.2);
+      ribbonLayer(1.9, 0.26, 1.6);
+      ribbonLayer(1.35, 0.42, 1.1);
+      ribbonLayer(0.85, 0.66, 0.6);
+      /* 白熱コア */
+      finPDrawPoly(g, finPBladeOutline(L * 0.985, W * 0.46, sweep, lag, 0, tF), 0xffffff, 0.92);
+      /* 流れの筋：帯の中を尾→刃先へ光が走る読みを作る破線3本 */
+      [-0.42, 0, 0.42].forEach(function(fj, fi){
+        for (var k = 0; k < 10; k++){
+          var s0 = k / 10, s1 = s0 + 0.055;
+          if (s1 > Math.max(0.02, sweep)) break;
+          function cpt(s){
+            var prof = Math.pow(Math.max(0, Math.sin(Math.PI * Math.min(1, 0.10 + 0.90 * s))), 0.8);
+            return [-L / 2 + L * s, -lag * L * 0.16 * (1 - s) * (1 - s) + fj * W * 0.5 * prof];
+          }
+          var fa = 0.34 + 0.30 * Math.sin(s0 * 16 - tF * 0.030 + fi * 2.1);
+          finPStrokePts(g, [cpt(s0), cpt(s1)], Math.max(1.1, W * 0.05), 0xffffff, Math.max(0.06, fa));
+        }
+      });
+    }
     /* --- 光波（セレスティア。旧方式 pixiFinCelestiaWaveFx の幾何学と
        スケールをそのまま移植：起点→着弾を結ぶ帯に2周波のうねりを重ねた
        3層リボン。半幅は外 2.5+sdH*0.30／中 1.8+sdH*0.17／芯 1.2+sdH*0.075
@@ -9141,8 +9198,9 @@
         /* 斬撃（描画ブレード：尾→頭へ描き込みながら多層で発光する。
            包絡（収縮 1.25→0.98／出現 0.25／減衰 0.55〜）は素材版と同一） */
         R.units.forEach(function(u){
-          if (!u.on && tS >= u.st){
-            u.on = true; u.fx0 = tFs;
+          if (u.dead) return; /* 破壊拍で閉じた斬撃は二度と発火しない */
+          if (!u.fired && tS >= u.st){
+            u.fired = true; u.on = true; u.fx0 = tFs;
             u.node.cont.visible = true;
             if (u.impact){
               finPFlash(R, 0.9, 620);
@@ -9155,11 +9213,12 @@
           }
           if (!u.on) return;
           var up = finPProg(tFs, u.fx0, u.dur);
-          if (up >= 1){ u.on = false; u.node.cont.visible = false; return; }
+          if (up >= 1){ u.on = false; u.node.cont.visible = false; if (u.node.gfx.clear) u.node.gfx.clear(); return; }
           var sweep = Math.min(1, up / 0.22);
           var env = up < 0.55 ? 1 : Math.max(0, 1 - (up - 0.55) / 0.45);
           var wid = u.len * 0.17 * (0.8 + 0.2 * Math.min(1, up / 0.25));
-          finPDrawBlade(u.node.gfx, u.len, wid, sweep, [conf.auraN[0], conf.auraN[1]], tFs + u.st, 1);
+          /* 試作：斬撃はリボン描画（面＋流れ＋残像）で描く */
+          finPDrawMirageRibbonBlade(u.node.gfx, u.len, wid, sweep, tFs + u.st);
           u.node.gfx.alpha = Math.min(1, up / 0.25) * env;
           u.node.cont.scale.set(1.25 - 0.27 * FINP_EZ.easeOut(up));
         });
@@ -9648,13 +9707,14 @@
         R.blowFx = tFs;
         finPFlash(R, 0.9, 430);
         finPSpawnBurst(R, G.cx, G.cy, { count: 28, colors: [0xffffff, conf.auraN[0]], power: 2.1, size: 1.2 });
-        /* 斬撃は吹き飛びの拍で即座に消す：斬撃ユニットの減衰は演出
-           時間（スロー／ヒットストップで実時間より遅れる時計）で
-           進むため、破壊拍を過ぎても最後の斬撃が白の余波や復帰画面の
-           上に残って見えた。ここで一括で落とし、白への切り替わりを
-           パリッとさせる（ミラージュの斬撃残存の対策） */
+        /* 斬撃の封印（試作の二重保証）：斬撃の区間は段取りの上で破壊拍
+           より前に閉じるよう dur を換算してあるが、万一残っていた場合も
+           ここで dead を立てて封印する。従来は on を落とすだけで、
+           ディレクターが次のフレームで再発火させてしまい、白の余波や
+           復帰画面の上に斬撃が残って見えた */
         if (R.units) R.units.forEach(function(u){
           u.on = false;
+          u.dead = true; /* 試作：発火済みとして封印し、ディレクターの再発火を止める */
           if (u.node){ u.node.cont.visible = false; if (u.node.gfx.clear) u.node.gfx.clear(); }
         });
         if (R.breakStyle === 'pieces' || R.breakStyle === 'split' || R.breakStyle === 'quads'){
@@ -19403,7 +19463,7 @@
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
       { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'SDセレスティアが攻撃側に登場し、両手に集めた光をビームで浮遊する相手SDへ放ち、光の粒に浄化する（金のオーラ付き）' },
-      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
+      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【試作】斬撃をリボン描画（面のグラデーション＋流れの筋＋残像ブレード）へ作り替え、斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に被さり、闇の渦へ引きずり込む' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'SDティアマトが攻撃側で力を集中させ、画面の左下・右下から紅蒼ビームがクロスして相手SDを爆発させる' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振って刃先が大きな弧を描き、SDから小さな三日月斬撃が光の帯メッシュとして相手SDへ真っすぐ上に飛び出し、飛翔しながら画面をはみ出す超巨大サイズへ拡大（流れる光の帯＋残像＋粒子3系統）して相手SDに光の裂け目を走らせ、真っ二つに崩す' },
