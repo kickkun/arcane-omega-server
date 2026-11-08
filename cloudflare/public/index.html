@@ -8494,6 +8494,27 @@
       for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
       g.closePath(); g.endFill();
     }
+    /* 色の補間（グラーデーション用）：2色間を t で線形に混ぜる。
+       平たい単色の層の重なりでは色の段差が目立ってアッサリ見えるため、
+       ビーム／光柱／斬撃の多層描画はこのランプで色を滑らかにつなぐ */
+    function finPLerpColor(c1, c2, t){
+      var r1 = (c1 >> 16) & 255, g1 = (c1 >> 8) & 255, b1 = c1 & 255;
+      var r2 = (c2 >> 16) & 255, g2 = (c2 >> 8) & 255, b2 = c2 & 255;
+      return ((Math.round(r1 + (r2 - r1) * t) << 16) | (Math.round(g1 + (g2 - g1) * t) << 8) | Math.round(b1 + (b2 - b1) * t));
+    }
+    /* 多段ランプ：stops = [[位置0..1, 色], ...] から t の色を引く */
+    function finPRampColor(stops, t){
+      if (t <= stops[0][0]) return stops[0][1];
+      for (var i = 1; i < stops.length; i++){
+        if (t <= stops[i][0]){
+          var p0 = stops[i - 1], p1 = stops[i];
+          return finPLerpColor(p0[1], p1[1], (t - p0[0]) / ((p1[0] - p0[0]) || 1));
+        }
+      }
+      return stops[stops.length - 1][1];
+    }
+    /* 金色系の基本ランプ（外側の深い琥珀→金→淡金→白熱） */
+    var FINP_GOLD_RAMP = [[0, 0xff9e3d], [0.35, 0xffd76a], [0.65, 0xffeeb0], [0.85, 0xfff8e0], [1, 0xffffff]];
     function finPStrokePts(g, pts, w, col, alpha){
       if (!pts.length) return;
       g.lineStyle(w, col, alpha);
@@ -8524,9 +8545,12 @@
       g.clear();
       /* 熱ゆらぎゴースト：輪郭をずらした薄い複写 */
       finPDrawPoly(g, finPBladeOutline(L * 1.02, W * 1.2, sweep, lag, 3.4, tF), cols[0], 0.10);
-      /* 外光→内光→白熱コア */
-      finPDrawPoly(g, finPBladeOutline(L, W * 2.5, sweep, lag, 1.6, tF), cols[0], 0.30);
-      finPDrawPoly(g, finPBladeOutline(L * 0.99, W * 1.45, sweep, lag, 0.8, tF), cols[1], 0.65);
+      /* 外光→内光→白熱コア：色を補間でつないだ5層にし、平色の
+         段差（外色／内色／白の縞）を消してグラーデーションにする */
+      finPDrawPoly(g, finPBladeOutline(L, W * 2.5, sweep, lag, 1.6, tF), cols[0], 0.24);
+      finPDrawPoly(g, finPBladeOutline(L * 0.995, W * 1.9, sweep, lag, 1.2, tF), finPLerpColor(cols[0], cols[1], 0.35), 0.38);
+      finPDrawPoly(g, finPBladeOutline(L * 0.99, W * 1.45, sweep, lag, 0.8, tF), cols[1], 0.55);
+      finPDrawPoly(g, finPBladeOutline(L * 0.985, W * 1.0, sweep, lag, 0.4, tF), finPLerpColor(cols[1], 0xffffff, 0.5), 0.78);
       finPDrawPoly(g, finPBladeOutline(L * 0.985, W * 0.58, sweep, lag, 0, tF), 0xffffff, 0.95);
       /* 刃の走る筋（頭へ向かう細い光の線） */
       var streak = [];
@@ -8577,18 +8601,19 @@
         g.lineTo(Math.cos(a) * R * (0.80 + l), Math.sin(a) * R * (0.80 + l));
       }
     }
-    /* --- ビーム帯の描画（セレスティア。起点→着弾へ先細りの多層帯） --- */
+    /* --- ビーム帯の描画（セレスティア。起点→着弾へ先細りの多層帯。
+       色は金のランプで外側の琥珀から白熱まで滑らかにつなぐ） --- */
     function finPDrawBeam(u, colGlow){
-      var len = u.len, th = u.thick, L, w;
+      var len = u.len, th = u.thick, w;
       var g = u.glow; g.clear();
-      [[2.0, 0.20], [1.45, 0.36], [1.05, 0.55]].forEach(function(Ly){
+      [[2.0, 0.00, 0.15], [1.62, 0.25, 0.24], [1.28, 0.50, 0.36], [1.05, 0.72, 0.52]].forEach(function(Ly){
         w = th * Ly[0];
-        finPDrawPoly(g, [[0, -w * 0.30], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.30]], colGlow, Ly[1]);
+        finPDrawPoly(g, [[0, -w * 0.30], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.30]], finPRampColor(FINP_GOLD_RAMP, Ly[1]), Ly[2]);
       });
       var c = u.core; c.clear();
-      [[0.5, 0.8], [0.24, 1]].forEach(function(Ly){
+      [[0.5, 0.88, 0.75], [0.24, 1, 1]].forEach(function(Ly){
         w = th * Ly[0];
-        finPDrawPoly(c, [[0, -w * 0.3], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.3]], 0xffffff, Ly[1]);
+        finPDrawPoly(c, [[0, -w * 0.3], [len, -w * 0.5], [len, w * 0.5], [0, w * 0.3]], finPRampColor(FINP_GOLD_RAMP, Ly[1]), Ly[2]);
       });
     }
     /* --- 光波（セレスティア。旧方式 pixiFinCelestiaWaveFx の幾何学と
@@ -8598,12 +8623,18 @@
        着弾点には旧方式のシェーダ発光（sdH*0.9級）に相当する多層円の
        発光を置く。直線の先細り帯（旧 finPDrawBeam）では光の奔流の
        厚みとうねりが消えて見えたため、この形へ戻した） --- */
-    function finPDrawWaveBeam(u, sdH, head, tF){
+    function finPDrawWaveBeam(u, sdH, head, tF, settle){
       var len = u.len * head;
       var ph = tF * 0.016;
+      /* 着弾後の形の安定化：帯が相手SDへ届いた（head=1）あとは、うねりの
+         振幅を settle の進行で絞っていく。届くまでは奔流らしく大きく
+         うねるが、届いたあとも同じ振幅で位相だけ進み続けると帯が
+         蛇行し続けて「被弾したあと形が変になる」見え方になるため、
+         持続中は穏やかな揺らぎだけを残して形を落ち着かせる */
+      var ampMul = 1 - 0.74 * (settle || 0);
       function waveOff(s){
         var wv = Math.sin(s * Math.PI * 2.3 - ph) + 0.45 * Math.sin(s * Math.PI * 5.1 - ph * 1.7);
-        return wv * sdH * 0.085 * Math.sin(Math.PI * s);
+        return wv * sdH * 0.085 * ampMul * Math.sin(Math.PI * s);
       }
       function ribbon(halfBase, halfAmp, pw){
         var n = 20, top = [], bot = [], i, s, hw, yo;
@@ -8616,11 +8647,14 @@
         return top.concat(bot.reverse());
       }
       var g = u.glow; g.clear();
-      /* ハロー：帯の外側へ光がにじむ最外層（面の量感を担う） */
-      finPDrawPoly(g, ribbon(3.6, sdH * 0.42, 0.9), 0xffd76a, 0.15);
-      finPDrawPoly(g, ribbon(2.5, sdH * 0.30, 0.8), 0xffd76a, 0.34);
-      finPDrawPoly(g, ribbon(1.8, sdH * 0.17, 0.8), 0xffe9a8, 0.50);
+      /* ハロー→外光→中間光：金のランプで色を滑らかにつないだ多層。
+         平色3層では色の段差が帯状に残ってアッサリ見えるため、幅と
+         不透明度を細かく刻んでグラーデーションとして読ませる */
+      [[3.6, 0.42, 0.90, 0.00, 0.10], [3.05, 0.365, 0.87, 0.20, 0.15], [2.5, 0.30, 0.80, 0.42, 0.23], [2.12, 0.238, 0.78, 0.62, 0.33], [1.8, 0.17, 0.80, 0.80, 0.45]].forEach(function(L){
+        finPDrawPoly(g, ribbon(L[0], sdH * L[1], L[2]), finPRampColor(FINP_GOLD_RAMP, L[3]), L[4]);
+      });
       var c = u.core; c.clear();
+      finPDrawPoly(c, ribbon(1.45, sdH * 0.115, 0.75), finPRampColor(FINP_GOLD_RAMP, 0.92), 0.62);
       finPDrawPoly(c, ribbon(1.2, sdH * 0.075, 0.7), 0xffffff, 0.95);
       /* 着弾点の発光（手元は光の珠が担う。こちらは受け口の輝き） */
       if (head >= 1){
@@ -8651,7 +8685,10 @@
       u.cont.visible = true;
       var head = Math.min(1, p / 0.16);
       var env = Math.min(1, p / 0.10 + 0.2) * (p > 0.74 ? Math.max(0, 1 - (p - 0.74) / 0.26) : 1);
-      finPDrawWaveBeam(u, R.G.sdH, head, R.tF);
+      /* 着弾してからの経過で settle を進める：帯が届いた直後から
+         うねりを絞り、持続中の形を安定させる（形変の対策） */
+      var settle = head >= 1 ? Math.min(1, Math.max(0, (p - 0.16) / 0.30)) : 0;
+      finPDrawWaveBeam(u, R.G.sdH, head, R.tF, settle);
       u.glow.alpha = env; u.core.alpha = env;
       /* 手元と着弾点の放射グロー（旧方式の glowQuad と同じ脈動で拡縮する） */
       if (u.src && u.srcBase){
@@ -8695,10 +8732,14 @@
         }
         finPDrawPoly(g, top.concat(bot.reverse()), col, alpha);
       }
-      band(4.5, sdH * 0.62, 0.8, colA, 0.13);       /* ハロー：外側のにじみ */
-      band(3, sdH * 0.46, 0.7, colA, 0.34);         /* 外：色帯 */
-      band(2, sdH * 0.27, 0.7, colB, 0.50);         /* 中：明色帯 */
-      band(1.2, sdH * 0.105, 0.6, 0xffffff, 0.92);  /* 芯：白熱 */
+      /* 色帯のグラーデーション：最外の深色（colAを暗く締めた色）から
+         colA→colB→白熱までを6段で補間し、平色の縞にならないように
+         する。幅プロファイルも外形から芯まで滑らかに絞る */
+      var deepA = finPLerpColor(colA, 0x000000, 0.25);
+      [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(function(t){
+        var bc = t < 0.55 ? finPLerpColor(deepA, colB, t / 0.55) : finPLerpColor(colB, 0xffffff, (t - 0.55) / 0.45);
+        band(4.5 + (1.2 - 4.5) * t, sdH * (0.62 + (0.105 - 0.62) * t), 0.8 + (0.6 - 0.8) * t, bc, 0.10 + 0.82 * Math.pow(t, 1.5));
+      });
       /* 流れの筋：帯の中を速い位相で走る光の線。ブレスが「流れている」
          質感（旧方式リボンの流れノイズに相当）を芯の両脇に足す */
       [-0.35, 0.3].forEach(function(fj, fi){
@@ -8757,11 +8798,14 @@
     /* --- 光柱（セレスティア。縦の多層柱＋昇る光波＋足元の地リング） --- */
     function finPDrawPillar(g, W, H, tF){
       g.clear();
-      [[1.0, 0xffd76a, 0.10], [0.74, 0xffe9a8, 0.20], [0.50, 0xfff3c4, 0.38], [0.27, 0xffffff, 0.8]].forEach(function(L, li){
-        var w2 = W * L[0] / 2, pts = [], i, y, x, seg = 9;
+      /* 柱のグラーデーション：外周の琥珀から中心の白熱まで、金の
+         ランプで7層に刻む（平色4層では層の境目が縞に見えた） */
+      [1.0, 0.88, 0.76, 0.64, 0.52, 0.40, 0.28].forEach(function(wMul, li){
+        var rampT = li / 6;
+        var w2 = W * wMul / 2, pts = [], i, y, x, seg = 9;
         for (i = 0; i <= seg; i++){ y = -H / 2 + H * i / seg; x = -w2 * (1 + 0.05 * Math.sin(y * 0.018 + tF * 0.012 + li * 1.7)) * (i === 0 ? 0.82 : 1); pts.push([x, y]); }
         for (i = seg; i >= 0; i--){ y = -H / 2 + H * i / seg; x = w2 * (1 + 0.05 * Math.sin(y * 0.018 + tF * 0.012 + li * 1.7 + 0.9)) * (i === 0 ? 0.82 : 1); pts.push([x, y]); }
-        finPDrawPoly(g, pts, L[1], L[2]);
+        finPDrawPoly(g, pts, finPRampColor(FINP_GOLD_RAMP, rampT), 0.08 + 0.72 * Math.pow(rampT, 1.4));
       });
       /* 光波：足元から昇る楕円の波 */
       for (var k = 0; k < 3; k++){
@@ -9604,6 +9648,15 @@
         R.blowFx = tFs;
         finPFlash(R, 0.9, 430);
         finPSpawnBurst(R, G.cx, G.cy, { count: 28, colors: [0xffffff, conf.auraN[0]], power: 2.1, size: 1.2 });
+        /* 斬撃は吹き飛びの拍で即座に消す：斬撃ユニットの減衰は演出
+           時間（スロー／ヒットストップで実時間より遅れる時計）で
+           進むため、破壊拍を過ぎても最後の斬撃が白の余波や復帰画面の
+           上に残って見えた。ここで一括で落とし、白への切り替わりを
+           パリッとさせる（ミラージュの斬撃残存の対策） */
+        if (R.units) R.units.forEach(function(u){
+          u.on = false;
+          if (u.node){ u.node.cont.visible = false; if (u.node.gfx.clear) u.node.gfx.clear(); }
+        });
         if (R.breakStyle === 'pieces' || R.breakStyle === 'split' || R.breakStyle === 'quads'){
           if (id !== '54'){ N.vicC.visible = false; N.vicC.position.x = G.cx; }
           var pcN = R.breakStyle === 'pieces' ? 6 : (R.breakStyle === 'split' ? 2 : 4);
@@ -9737,11 +9790,14 @@
       /* ===== 外枠 ===== */
       var total = R.totalMs;
       var barIn = FINP_EZ.letter(finPProg(tS, 0, 400));
-      var barOut = tS >= total - 360 ? FINP_EZ.easeIn(finPProg(tS, total - 360, 340)) : 0;
+      /* 締めの切り替わりは短くパリッと：白のフェードと帯の退場を
+         終端の約140msに圧縮し、戻り際に向こうの画面が透けて
+         エフェクトの残りが透けて見える時間をほぼ無くす */
+      var barOut = tS >= total - 150 ? FINP_EZ.easeIn(finPProg(tS, total - 150, 140)) : 0;
       var barK = barIn * (1 - barOut);
       N.barT.position.y = -G.barH * 1.04 * (1 - barK);
       N.barB.position.y = vh + G.barH * 1.04 * (1 - barK);
-      if (R.blown && tS >= total - 360) N.white.alpha *= Math.max(0, 1 - FINP_EZ.easeIn(finPProg(tS, total - 360, 340)));
+      if (R.blown && tS >= total - 150) N.white.alpha *= Math.max(0, 1 - FINP_EZ.easeIn(finPProg(tS, total - 150, 140)));
       /* 決めセリフ（白の虚空の中。現行と同じく破壊拍+140msで出す） */
       if (!R.lineOn && tS >= R.destroyMs + 140){ R.lineOn = true; R.lineFx0 = tFs; N.lineC.visible = true; }
       if (R.lineOn){
