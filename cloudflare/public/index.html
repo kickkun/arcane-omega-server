@@ -3145,6 +3145,221 @@
       }
       .btn-end:disabled{box-shadow:0 2px 6px rgba(0,0,0,.4), inset 0 0 0 4px rgba(122,92,14,.35);}
       .menu-toggle{border-radius:99px;}
+      /* ===== 本編実装便：間取りA＋デッキ召喚士ライン＋立ち絵プレート＋カード枠装飾 =====
+         間取りA：手札・操作系も #fieldWrap（石板アート）の内側に置き、画面の
+         高さいっぱいを1枚の戦場にする。召喚士とデッキ束は .leader-row の
+         同じラインに置き（プレート中央／デッキ右端）、場の列はデッキと
+         同居しないため幅いっぱいを使える。ログは相手プレート直下の細帯。
+         旧レイアウト用ルール（#fieldWrap > .leader 等）は新しい親子関係では
+         一致しないため、ここで必要な指定をすべて引き継いで定義する */
+      #fieldWrap{gap:4px;}
+      #fieldWrap > .hand-zone,#fieldWrap > .controls,#fieldWrap > .battle-menu{position:relative; z-index:1;}
+      /* --- 召喚士ライン（プレート＋デッキ束） --- */
+      .leader-row{position:relative; flex:0 0 auto; z-index:5; min-height:104px;}
+      .leader-row.enemy-row{margin-top:8px;}
+      #fieldWrap .leader-row .deck-pile{
+        position:absolute; right:2px; top:50%; transform:translateY(-50%);
+        z-index:2; margin:0; width:40px;
+        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+      }
+      /* --- 立ち絵プレート（対戦画面の2枚だけ。fxダミーは対象外） --- */
+      #fieldWrap .leader{
+        position:relative; left:auto; transform:none; z-index:6;
+        width:118px; margin:0 auto;
+        display:flex; flex-direction:column; align-items:center; gap:3px;
+        padding:0; background:none; border:none; box-shadow:none; border-radius:0;
+      }
+      #fieldWrap .leader .plate-frame{position:relative; align-self:stretch; flex:0 0 auto;}
+      #fieldWrap .leader .plate-art{
+        position:relative; display:block; width:100%; height:64px; padding:0; overflow:hidden;
+        border:2px solid rgba(201,169,79,.9); background:#10151f; cursor:pointer;
+        box-shadow:0 4px 14px rgba(0,0,0,.5), inset 0 0 0 3px rgba(20,22,38,.45);
+      }
+      #fieldWrap .leader.enemy .plate-art{border-radius:52px 52px 8px 8px;}
+      #fieldWrap .leader.me .plate-art{border-radius:52px 52px 8px 8px;}
+      #fieldWrap .leader .plate-face{position:absolute; inset:0; display:block; overflow:hidden; border-radius:inherit;}
+      #fieldWrap .leader .plate-img{width:100%; height:100%; object-fit:cover; object-position:50% 12%; display:block;}
+      #fieldWrap .leader .plate-icon{width:100%; height:100%; object-fit:cover; object-position:top center; display:block;}
+      #fieldWrap .leader .plate-badge{display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:30px; background:#1a2233;}
+      #fieldWrap .leader .hp-label{display:none;}
+      #fieldWrap .leader .hpbar{
+        position:absolute; left:12%; right:12%; bottom:3px; height:4px; margin:0; z-index:3;
+        border:1px solid rgba(0,0,0,.55); background:rgba(5,8,14,.72);
+      }
+      /* 金属リボン：名前（名前のみ・二つ名なし）とライフ宝石を一体化 */
+      #fieldWrap .leader .plate-ribbon{
+        position:relative; z-index:2; margin:-11px 2px 0;
+        display:flex; align-items:center; justify-content:center;
+        padding:3px 20px 3px 8px; border-radius:99px;
+        background:linear-gradient(180deg,#39424f,#1c232e 60%,#12161d);
+        border:1.5px solid rgba(201,169,79,.9); color:#f5edd2;
+        box-shadow:0 3px 8px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.22);
+        font-family:"Shippori Mincho B1",serif; font-weight:800; font-size:13px; letter-spacing:.05em; line-height:1.3;
+      }
+      #fieldWrap .leader .leader-name-text{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
+      #fieldWrap .leader .hp-num{
+        position:absolute; z-index:4; right:-4px; top:50%; transform:translateY(-50%);
+        width:24px; height:28px; display:flex; align-items:center; justify-content:center;
+        font-size:13.5px; font-weight:900; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.65);
+        clip-path:polygon(50% 0, 88% 38%, 82% 78%, 50% 100%, 18% 78%, 12% 38%);
+        background:radial-gradient(circle at 38% 26%, #ffb1b1, #cf2438 58%, #7d1220);
+      }
+      #fieldWrap .leader .hp-num.warn{background:radial-gradient(circle at 38% 26%, #ffd9a0, #e07b2a 58%, #8a4410);}
+      #fieldWrap .leader .hp-num.crit{background:radial-gradient(circle at 38% 26%, #ff8a8a, #e01a1a 55%, #6d0505);}
+      #fieldWrap .leader .side-tag{
+        position:absolute; left:50%; transform:translateX(-50%); top:3px; z-index:4;
+        font-size:8px; font-weight:700; padding:0 5px; line-height:1.6; border-radius:99px;
+        background:rgba(58,42,42,.92); color:#f0a49c; border:1px solid #6e403d;
+      }
+      #fieldWrap .leader.me .side-tag{background:rgba(34,56,76,.92); color:#a9d4f5; border-color:#3c5d7d;}
+      #fieldWrap .leader .leader-info{
+        flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+        gap:4px; flex-wrap:wrap; width:max-content; max-width:82vw;
+      }
+      #fieldWrap .leader .leader-deck,
+      #fieldWrap .leader .pp-wrap,
+      #fieldWrap .leader .turn-chip{
+        display:inline-flex; align-items:center; gap:3px;
+        padding:2px 7px; border-radius:99px; font-size:9px; font-weight:700; line-height:1.35;
+        background:rgba(16,20,36,.88); border:1px solid rgba(201,169,79,.55); color:#cfd8ea;
+        box-shadow:0 2px 6px rgba(0,0,0,.45); white-space:nowrap; margin:0;
+      }
+      #fieldWrap .leader .leader-deck{color:#e9dcb2;}
+      #fieldWrap .leader .pp-wrap{gap:1.5px;}
+      #fieldWrap .leader .pp-dot{width:6px; height:6px; flex:0 0 auto;}
+      #fieldWrap .leader .pp-text{font-size:9px; font-weight:700; margin:0 0 0 3px; color:#bfe2ff;}
+      #fieldWrap .leader .turn-chip b{font-size:9.5px; display:inline; color:var(--gold-bright);}
+      /* --- ログ：相手プレート直下の細帯（魔法陣を横切らない位置） --- */
+      #fieldWrap .log-wrap{flex:0 0 auto;}
+      #fieldWrap .log{height:36px; padding:4px 9px; font-size:11px; line-height:1.45;}
+      #fieldWrap .log-wrap.expanded .log{height:100%; font-size:14px; line-height:1.85;}
+      /* --- 場：デッキと同居しないため幅いっぱいを使う --- */
+      #fieldWrap .board{width:100%; margin-left:0; margin-right:0;}
+      #cpuBoard{margin-top:0;}
+      .field-wrap.art-on #cpuBoard{margin-top:0;}
+      #myBoard{margin-bottom:0;}
+      #fieldWrap .board-zone{padding:5px 6px;}
+      /* --- 手札・操作系も石板の上へ（アート時） --- */
+      .field-wrap.art-on .hand-zone{background:transparent; border-color:transparent; box-shadow:none;}
+      .field-wrap.art-on .hand-label{color:#2e3138; font-weight:700; text-shadow:0 1px 0 rgba(255,255,255,.35);}
+      .field-wrap.art-on .hand-label #handCount{
+        background:rgba(20,26,36,.78); color:#f5edd2; border:1px solid rgba(201,169,79,.7);
+        border-radius:99px; padding:1px 9px; text-shadow:none;
+      }
+      .field-wrap.art-on .battle-menu{background:rgba(16,20,36,.88); border:1px solid rgba(201,169,79,.5); border-radius:10px; padding:6px;}
+      /* ===== カード枠の装飾デザイン（場・手札・図鑑・オンライン共通） =====
+         立体感は .shade の内側シャドウ（本体の box-shadow は状態表示が使う
+         ため触らない）、金属リングは既存 ::before のパディングを太くして
+         二重縁にする。数字バッジは宝石化、キーワードチップは金属プレート
+         ＋色ガラス風にする。フィルターの常時使用はしない */
+      .follower .shade,.hcard .shade,.gcard .shade{
+        box-shadow:inset 0 0 0 1px var(--frame-line), inset 0 0 0 3px rgba(8,6,4,.38), inset 0 0 0 4px rgba(238,224,186,.13),
+          inset 0 12px 16px rgba(0,0,0,.30), inset 0 -16px 20px rgba(0,0,0,.34),
+          inset 5px 0 12px rgba(0,0,0,.20), inset -5px 0 12px rgba(0,0,0,.20);
+      }
+      @supports ((mask-composite:exclude) or (-webkit-mask-composite:xor)){
+        .follower:not(.mythic):not(.rainbow):not(.agito):not(.can-attack):not(.selected-attacker):not(.targetable):not(.buffable):not(.fx-spawn-mythic)::before,
+        .hcard:not(.mythic):not(.rainbow):not(.agito):not(.playable)::before,
+        .gcard:not(.mythic):not(.rainbow):not(.agito)::before,
+        .ov-unit:not(.mythic):not(.rainbow):not(.agito):not(.can-attack):not(.selected):not(.targetable):not(.fx-spawn-mythic)::before,
+        .ov-hcard:not(.mythic):not(.rainbow):not(.agito):not(.playable):not(.selected)::before{padding:3px;}
+      }
+      /* 数字バッジの宝石化：コスト＝青宝石（金の縁）／攻撃＝金の菱形宝石／体力＝赤宝石 */
+      .hcard .cost,.gcard .cost,.detail-art .cost,.hand-tabs .cost{
+        background:radial-gradient(circle at 33% 27%, #eaf7ff 0%, #7db9ec 30%, #2f6fb4 62%, #173f6e 88%, #0f2c50);
+        border:1.5px solid rgba(240,214,140,.95);
+        box-shadow:inset 0 -4px 7px rgba(0,0,0,.5), inset 0 3px 5px rgba(255,255,255,.55), 0 2px 5px rgba(0,0,0,.6);
+        text-shadow:0 -1px 1px rgba(0,0,0,.45), 0 2px 3px rgba(0,0,0,.75);
+      }
+      .badge-atk::before{
+        background:radial-gradient(circle at 35% 28%, #fff3bd 0%, #f0cd55 34%, #c9930f 66%, #7d5a06 92%);
+        border:1.5px solid rgba(240,214,140,.95);
+        box-shadow:inset 0 -3px 5px rgba(90,55,0,.5), inset 0 2px 3px rgba(255,255,255,.55), 0 2px 4px rgba(0,0,0,.55);
+      }
+      .badge-hp::before{
+        background:radial-gradient(circle at 33% 27%, #ffe3dd 0%, #f08375 30%, #cf3524 62%, #7e170c 90%);
+        box-shadow:inset 0 -3px 5px rgba(70,0,0,.5), inset 0 2px 3px rgba(255,255,255,.5);
+      }
+      .badge-atk,.badge-hp{text-shadow:0 -1px 1px rgba(0,0,0,.45), 0 2px 3px rgba(0,0,0,.75);}
+      .follower .badge-atk{
+        background:radial-gradient(circle at 35% 28%, #fff3bd 0%, #f0cd55 34%, #c9930f 66%, #7d5a06 92%);
+        box-shadow:inset 0 -4px 7px rgba(90,55,0,.55), inset 0 3px 5px rgba(255,255,255,.6), 0 3px 6px rgba(0,0,0,.6);
+      }
+      .follower .badge-hp{
+        background:radial-gradient(circle at 33% 27%, #ffe3dd 0%, #f08375 30%, #cf3524 62%, #7e170c 90%);
+        box-shadow:inset 0 -4px 7px rgba(70,0,0,.55), inset 0 3px 5px rgba(255,255,255,.55), 0 3px 6px rgba(0,0,0,.6);
+      }
+      .follower .badge-hp.hurt{box-shadow:inset 0 -4px 7px rgba(70,0,0,.55), inset 0 3px 5px rgba(255,255,255,.55), 0 0 7px rgba(255,80,60,.95);}
+      .ov-b-cost{
+        background:radial-gradient(circle at 33% 27%, #eaf7ff 0%, #7db9ec 30%, #2f6fb4 62%, #173f6e 88%, #0f2c50);
+        border:1px solid rgba(240,214,140,.95);
+        box-shadow:inset 0 -3px 5px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,255,255,.55);
+      }
+      .ov-b-atk::before{
+        background:radial-gradient(circle at 35% 28%, #fff3bd 0%, #f0cd55 34%, #c9930f 66%, #7d5a06 92%);
+        border:1px solid rgba(240,214,140,.95);
+      }
+      .ov-b-hp::before{
+        background:radial-gradient(circle at 33% 27%, #ffe3dd 0%, #f08375 30%, #cf3524 62%, #7e170c 90%);
+      }
+      /* キーワードチップ：金属プレート＋色ガラス（上半分のツヤ＋内側の影） */
+      .kw{
+        position:relative; overflow:hidden; color:#fff; border:1px solid rgba(15,12,4,.8);
+        text-shadow:0 1px 2px rgba(0,0,0,.65);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -4px 7px rgba(0,0,0,.32), inset 2px 0 3px rgba(0,0,0,.28), inset -2px 0 3px rgba(0,0,0,.28), 0 2px 4px rgba(0,0,0,.5);
+      }
+      .kw::before{
+        content:''; position:absolute; top:0; left:0; right:0; height:34%;
+        background:linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.02)); pointer-events:none;
+      }
+      .kw.mythic{background:linear-gradient(180deg,#f3cd4e,#c9930f 55%,#96690a);}
+      .kw.guard{background:linear-gradient(180deg,#f3cd4e,#c9930f 55%,#96690a);}
+      .kw.armor{background:linear-gradient(180deg,#c3d9ec,#7d9cbd 55%,#4d6a8a);}
+      .kw.counter{background:linear-gradient(180deg,#f5b3c0,#d96a82 55%,#a03a52);}
+      .kw.weaken{background:linear-gradient(180deg,#a8dcf5,#5aa8d4 55%,#35719c);}
+      .kw.shield{background:linear-gradient(180deg,#e6edf7,#a9bcd6 55%,#7186a3);}
+      .kw.multi{background:linear-gradient(180deg,#ffb054,#e07b1e 55%,#a85410);}
+      .kw.nodmg{background:linear-gradient(180deg,#a8dcf5,#5aa8d4 55%,#35719c);}
+      .kw.rush{background:linear-gradient(180deg,#b5e79d,#74bd57 55%,#4c8a36);}
+      .kw.pierce{background:linear-gradient(180deg,#f3cd4e,#c9930f 55%,#96690a);}
+      .kw.penetrate{background:linear-gradient(180deg,#cdb2f5,#9470d4 55%,#6743a3);}
+      .kw.shoot{background:linear-gradient(180deg,#ffb08a,#e07b4a 55%,#a8542a);}
+      .kw.egg{background:linear-gradient(180deg,#a99ae0,#6f5fb8 55%,#4a3d85);}
+      .kw.bran{background:linear-gradient(180deg,#a9cdf5,#5f96d4 55%,#38619c);}
+      .kw.token{background:linear-gradient(180deg,#cfd6de,#8d99a6 55%,#5d6874);}
+      .hcard .spell-tag,.hcard .mythic-tag,.gcard .mythic-tag{
+        border:1px solid rgba(15,12,4,.8); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.65);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -4px 7px rgba(0,0,0,.32), 0 2px 4px rgba(0,0,0,.5);
+      }
+      .hcard .spell-tag{background:linear-gradient(180deg,#b9a5ec,#7d5fc0 55%,#573f96);}
+      .hcard .mythic-tag,.gcard .mythic-tag{background:linear-gradient(180deg,#f3cd4e,#c9930f 55%,#96690a);}
+      /* フィニッシュ専用空間の魔法陣：ラスター画像表示用 */
+      .fx-fin3-circle img.fx-fin3-circle-img{width:100%; height:100%; display:block;}
+      .fx-fin3-cshard img{width:100%; height:100%; display:block;}
+      /* SDオーラ：SDに追随する1つの箱の中に子レイヤーとして収める。
+         子レイヤーの動き（脈動・上昇・周回）は CSS アニメーションが担い、
+         JS は箱の transform を書き換えるだけ（毎フレームの個別追随を廃止） */
+      .fx-sd-aura-box{position:fixed; left:0; top:0; z-index:92; pointer-events:none; will-change:transform;}
+      .fx-sd-aura-box .aura-clone{position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:bottom center; animation:auraRimPulse 1.6s ease-in-out infinite alternate;}
+      .fx-sd-aura-box .aura-wisp2{position:absolute; border-radius:50%; filter:blur(5px); animation:auraWispRise 2.3s linear infinite;}
+      .fx-sd-aura-box .aura-orbit{position:absolute; inset:0; animation:auraOrbitSpin linear infinite;}
+      .fx-sd-aura-box .aura-orbit.rev{animation-direction:reverse;}
+      .fx-sd-aura-box .aura-spark2{position:absolute; left:50%; top:50%; border-radius:1px;}
+      .fx-sd-aura-box .aura-ring2{position:absolute; left:50%; bottom:-2px; border:2px solid #fff; border-radius:50%;
+        background:radial-gradient(ellipse at center, rgba(255,255,255,.20) 0%, transparent 68%);}
+      .fx-sd-aura-box .aura-ring2.pulse{animation:auraRingPulse 1.6s ease-in-out infinite alternate;}
+      .fx-sd-aura-box .aura-ring2.expand{animation:auraRingExpand 1.15s linear infinite;}
+      .fx-sd-aura-box .aura-shadow2{position:absolute; left:50%; bottom:-4px; border-radius:50%;
+        background:radial-gradient(ellipse at center, rgba(0,0,0,.55) 0%, transparent 70%); transform:translateX(-50%); opacity:.5;}
+      @keyframes auraRimPulse{from{transform:scale(1.05); opacity:.55;} to{transform:scale(1.15); opacity:.85;}}
+      @keyframes auraWispRise{0%{transform:translate(-50%,0) scale(.75); opacity:0;} 25%{opacity:.55;} 100%{transform:translate(-50%,-190%) scale(1.25); opacity:0;}}
+      @keyframes auraOrbitSpin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
+      @keyframes auraRingPulse{from{transform:translateX(-50%) scale(1); opacity:.55;} to{transform:translateX(-50%) scale(1.07); opacity:.9;}}
+      @keyframes auraRingExpand{from{transform:translateX(-50%) scale(.55); opacity:.75;} to{transform:translateX(-50%) scale(1.5); opacity:0;}}
+      @media (prefers-reduced-motion: reduce){
+        .fx-sd-aura-box{display:none;}
+        .fx-fin3-circle{animation:none;}
+      }
     </style>
   </head>
   <body>
@@ -3166,18 +3381,13 @@
            場のカードとは帯（マージン）で分離する -->
       <div class="field-wrap" id="fieldWrap">
       <div class="field-art" aria-hidden="true"><img class="board-art-img" alt="" /><div class="circle-glow halo"></div><div class="circle-glow core"></div></div>
-      <div class="leader enemy" id="cpuLeader"></div>
-      <div class="board-zone enemy-zone">
-        <div class="zone-main">
-          <p class="board-label"><span>相手の場（CPU）</span><span id="cpuBoardCount"></span></p>
-          <div class="board" id="cpuBoard"></div>
-        </div>
+      <div class="leader-row enemy-row">
+        <div class="leader enemy" id="cpuLeader"></div>
         <div class="deck-pile">
           <div class="pile-stack"><span class="pile-card c1"></span><span class="pile-card c2"></span><span class="pile-card c3"></span><span class="pile-count" id="cpuDeckCount"></span></div>
           <span class="pile-hand" id="cpuHandCount"></span>
         </div>
       </div>
-      <div class="banner" id="banner"><span class="grow" id="bannerText"></span><button id="bannerCancel" type="button">やめる</button></div>
       <div class="log-wrap" id="logWrap">
         <div class="log" id="log" aria-live="polite"></div>
         <button class="log-hint" id="logHint" type="button">タップで拡大</button>
@@ -3185,16 +3395,24 @@
         <button class="log-close" id="logCloseBtn" type="button" style="display:none;">✕ 閉じる</button>
       </div>
       <div class="log-backdrop" id="logBackdrop" style="display:none;"></div>
+      <div class="board-zone enemy-zone">
+        <div class="zone-main">
+          <p class="board-label"><span>相手の場（CPU）</span><span id="cpuBoardCount"></span></p>
+          <div class="board" id="cpuBoard"></div>
+        </div>
+      </div>
+      <div class="banner" id="banner"><span class="grow" id="bannerText"></span><button id="bannerCancel" type="button">やめる</button></div>
       <div class="board-zone mine-zone">
         <div class="zone-main">
           <p class="board-label"><span>あなたの場<span class="mine-pill">自分</span></span><span id="myBoardCount"></span></p>
           <div class="board" id="myBoard"></div>
         </div>
+      </div>
+      <div class="leader-row me-row">
+        <div class="leader me" id="myLeader"></div>
         <div class="deck-pile">
           <div class="pile-stack"><span class="pile-card c1"></span><span class="pile-card c2"></span><span class="pile-card c3"></span><span class="pile-count" id="myDeckCount"></span></div>
         </div>
-      </div>
-      <div class="leader me" id="myLeader"></div>
       </div>
       <div class="hand-zone">
         <p class="hand-label"><span>手札（タップで詳細 →「出す」）</span><span id="handCount"></span></p>
@@ -3210,6 +3428,7 @@
         <button class="btn-sub" id="galleryBtnBattle" type="button">カード一覧</button>
         <button class="btn-sub" id="rulesBtnBattle" type="button">ルール</button>
         <button class="btn-sub" id="titleBtn" type="button">タイトル</button>
+      </div>
       </div>
       <div class="section">
         <h2>ルール</h2>
@@ -4238,6 +4457,10 @@
         if (typeof S !== 'undefined' && S && !HEADLESS && typeof render === 'function') render();
       } catch (e) {}
     }
+    /* 立ち絵（対戦画面の立ち絵プレート用）：顔アイコンと同じ方式で先読みし、
+       読めた場合だけプレートに使う。読めない環境では顔アイコン／記号へ
+       フォールバックする（refreshSummonerIcons が再描画を担う） */
+    var SUMMONER_FULL_STATE = {}; /* id -> 1:読めた / 2:読めなかった */
     function summonerBadge(id, lg){
       var d = SUMMONER_BY_ID[id] || SUMMONERS[0];
       var face = SUMMONER_ICON_STATE[d.id] === 1
@@ -4249,6 +4472,12 @@
     function summonerFullSrc(id){ return 'summoners/full-' + id + '.webp'; }
     /* 負け顔の表情差分（プレイヤー勝利後の敗北セリフ表示時だけ使う） */
     function summonerFullLoseSrc(id){ return 'summoners/full-' + id + '-lose.webp'; }
+    SUMMONERS.forEach(function(x){
+      var fim = new Image();
+      fim.onload = function(){ SUMMONER_FULL_STATE[x.id] = 1; refreshSummonerIcons(); };
+      fim.onerror = function(){ SUMMONER_FULL_STATE[x.id] = 2; };
+      fim.src = summonerFullSrc(x.id);
+    });
     var SUMMONER_KEY = 'cardbattle.summoner.v1';
     var playerSummonerId = 'chloe';
     try {
@@ -5618,6 +5847,45 @@
     function fin3CircleSvg(color, lite){
       return '<svg viewBox="0 0 200 200" aria-hidden="true">' + fin3CircleInner(color, lite) + '</svg>';
     }
+    /* 専用空間の魔法陣のラスター化（軽量化）：同じ意匠のSVGを一度だけ
+       Canvasへ描いて WebP データURLにし、以後は <img> で表示する。
+       ベクターの毎フレーム再描画（回転アニメーション含む）を避け、
+       回転はラスター画像を載せた要素の transform で行う（合成のみ）。
+       変換できない環境では従来のインラインSVG表示へフォールバックする */
+    var FIN3_RASTER = {}; /* color -> dataURL（'' は変換中／null は失敗） */
+    function fin3RasterCircle(color, done){
+      if (FIN3_RASTER[color]){ if (done) done(FIN3_RASTER[color] || null); return; }
+      FIN3_RASTER[color] = '';
+      try {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="600" height="600">' + fin3CircleInner(color) + '</svg>';
+        var url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        var im = new Image();
+        im.onload = function(){
+          try {
+            var cv = document.createElement('canvas'); cv.width = 600; cv.height = 600;
+            cv.getContext('2d').drawImage(im, 0, 0, 600, 600);
+            URL.revokeObjectURL(url);
+            var data = '';
+            try { data = cv.toDataURL('image/webp', 0.92); } catch (e) {}
+            if (!data || data.indexOf('data:image/webp') !== 0) data = cv.toDataURL('image/png');
+            FIN3_RASTER[color] = data;
+            if (done) done(data);
+          } catch (e) { FIN3_RASTER[color] = null; if (done) done(null); }
+        };
+        im.onerror = function(){ try { URL.revokeObjectURL(url); } catch (e) {} FIN3_RASTER[color] = null; if (done) done(null); };
+        im.src = url;
+      } catch (e) { FIN3_RASTER[color] = null; if (done) done(null); }
+    }
+    /* テーマ色ぶんを対戦開始前に温めておく（初回フィニッシュで間に
+       合わない場合は SVG 表示からラスターへ自動で差し替わる） */
+    if (!HEADLESS){
+      setTimeout(function(){
+        try {
+          var seenC = {};
+          Object.keys(SD_FIN || {}).forEach(function(k){ var c = SD_FIN[k] && SD_FIN[k].color; if (c && !seenC[c]){ seenC[c] = 1; fin3RasterCircle(c); } });
+        } catch (e) {}
+      }, 1200);
+    }
     /* 場面転換先の専用空間＋浮遊する受け側召喚士SDを作る。
        召喚士SDの表示高さは、神話SDの頭基準（ミラージュの頭の表示px）と
        頭の大きさが揃うよう SUMMONER_SD_HEAD で正規化する（第2世代と同一）。
@@ -5666,7 +5934,7 @@
         '<div class="fx-fin3-void">' +
           '<div class="fx-fin3-tint" style="background:radial-gradient(ellipse 75% 55% at 50% 42%, ' + conf.color + ' 0%, transparent 70%)"></div>' +
           '<div class="fx-fin3-pool" style="background:radial-gradient(circle, ' + conf.color + ' 0%, transparent 68%)"></div>' +
-          '<div class="fx-fin3-circle">' + fin3CircleSvg(conf.color) + '</div>' +
+          '<div class="fx-fin3-circle">' + (FIN3_RASTER[conf.color] ? '<img class="fx-fin3-circle-img" src="' + FIN3_RASTER[conf.color] + '" alt="">' : fin3CircleSvg(conf.color)) + '</div>' +
           dotsHtml + heatHtml +
         '</div>';
       document.body.appendChild(bg);
@@ -5705,6 +5973,13 @@
         ], { duration: 2750, iterations: 4, easing: 'ease-in-out' });
       }
       var scene = { bg: bg, whiteEl: bg.querySelector('.fx-fin3-white'), voidEl: bg.querySelector('.fx-fin3-void'), circleEl: bg.querySelector('.fx-fin3-circle'), target: target, cx: tx + Math.round(sumW / 2), cy: ty + Math.round(sumH / 2) };
+      if (!FIN3_RASTER[conf.color]){
+        fin3RasterCircle(conf.color, function(data){
+          if (data && scene.circleEl && scene.circleEl.isConnected && !scene.circleEl.querySelector('img')){
+            scene.circleEl.innerHTML = '<img class="fx-fin3-circle-img" src="' + data + '" alt="">';
+          }
+        });
+      }
       target._fin3Scene = scene; /* ロンギヌス専用構成が背景スクロール等で参照する */
       var sumDef = (typeof SUMMONER_BY_ID !== 'undefined') ? SUMMONER_BY_ID[vicId] : null;
       scene.vicName = sumDef ? sumDef.name : '';
@@ -5750,7 +6025,33 @@
         try { cRect = scene.circleEl.getBoundingClientRect(); } catch (e) {}
         if (cRect && cRect.width > 40){
           scene.circleEl.style.opacity = '0';
-          try {
+          if (FIN3_RASTER[themeCol]){
+            /* ラスター破片：同じ扇形に clip-path で切り取った画像片を飛ばす
+               （ベクターの再描画なし。transform／opacity のみ） */
+            try {
+              var RSHARDS = 10;
+              for (var ri = 0; ri < RSHARDS; ri++){
+                var ra0 = (ri / RSHARDS) * Math.PI * 2, ra1 = ((ri + 1) / RSHARDS) * Math.PI * 2;
+                var rp1 = (50 + 56 * Math.cos(ra0)).toFixed(1) + '% ' + (50 + 56 * Math.sin(ra0)).toFixed(1) + '%';
+                var rp2 = (50 + 56 * Math.cos(ra1)).toFixed(1) + '% ' + (50 + 56 * Math.sin(ra1)).toFixed(1) + '%';
+                var rsh = document.createElement('div');
+                rsh.className = 'fx-fin3-cshard';
+                rsh.style.left = Math.round(cRect.left) + 'px'; rsh.style.top = Math.round(cRect.top) + 'px';
+                rsh.style.width = Math.round(cRect.width) + 'px'; rsh.style.height = Math.round(cRect.height) + 'px';
+                rsh.style.clipPath = 'polygon(50% 50%, ' + rp1 + ', ' + rp2 + ')';
+                rsh.innerHTML = '<img src="' + FIN3_RASTER[themeCol] + '" alt="">';
+                scene.bg.appendChild(rsh);
+                var rmid = ((ri + 0.5) / RSHARDS) * Math.PI * 2;
+                var rdist = 90 + fxFinRand(ri * 3.9 + 7) * 190;
+                var rdx = Math.round(Math.cos(rmid) * rdist), rdy = Math.round(Math.sin(rmid) * rdist);
+                var rrot = Math.round((fxFinRand(ri * 7.3 + 8) - 0.5) * 300);
+                fxFinAnimate(rsh, [
+                  { transform: 'translate(0px,0px) rotate(0deg)', opacity: 0.95 },
+                  { transform: 'translate(' + rdx + 'px,' + rdy + 'px) rotate(' + rrot + 'deg)', opacity: 0 }
+                ], { duration: 680 + Math.round(fxFinRand(ri * 11.1 + 9) * 260), delay: 150 + ri * 16, easing: 'cubic-bezier(.16,.7,.3,1)', fill: 'both' });
+              }
+            } catch (e) { /* 破片化に失敗しても吹き飛び自体は続行する */ }
+          } else try {
             var shardHtml = '<defs><symbol id="fin3circSym" viewBox="0 0 200 200">' + fin3CircleInner(themeCol, true) + '</symbol>';
             var SHARDS = 10;
             for (var ci = 0; ci < SHARDS; ci++){
@@ -6375,123 +6676,89 @@
       function sdAuraStart(){
         var cols = conf.aura || [conf.color];
         function colAt(i){ return cols[i % cols.length]; }
-        var clones = [];
+        /* オーラは SD 要素自身を包む箱（.fx-sd-aura-box）の子レイヤーにする。
+           箱が SD 本体とオーラを一体にし、以後この関数の外側の振り付け
+           （fxFinAnimate(sd, …)）は箱ごと動かすため、オーラは自動的に
+           一緒に動く。追随用の rAF ループと矩形の読み取りは置かない。
+           箱の寸法は素材アスペクト（sdAsp）と表示高さ sdH から決める */
+        var sdImg = sd;
+        var box = sdFinNode('div', 'fx-sd-aura-box');
+        box.style.left = sdImg.style.left; box.style.top = sdImg.style.top;
+        box.style.width = Math.round(sdH / (sdAsp || 1)) + 'px';
+        box.style.height = sdH + 'px';
+        sdImg.style.position = 'absolute'; sdImg.style.left = '0'; sdImg.style.top = '0';
+        sdImg.style.width = '100%'; sdImg.style.height = '100%'; sdImg.style.zIndex = '2';
+        box.appendChild(sdImg);
+        sd = box; /* 以後の振り付けは箱（＝SD＋オーラ一体）を対象にする */
         for (var ci = 0; ci < 2; ci++){
-          var cl = sdFinNode('img', 'fx-sd-fximg');
-          cl.src = conf.sd; cl.alt = '';
-          cl.style.zIndex = 91;
-          cl.style.left = ax + 'px'; cl.style.top = feetY + 'px'; cl.style.height = sdH + 'px';
+          var cl = document.createElement('img');
+          cl.className = 'aura-clone'; cl.src = conf.sd; cl.alt = '';
+          cl.style.zIndex = '1';
+          cl.style.opacity = ci ? '0.5' : '0.75';
           cl.style.filter = 'drop-shadow(0 0 ' + (ci ? 17 : 7) + 'px ' + colAt(ci) + ') drop-shadow(0 0 ' + (ci ? 32 : 15) + 'px ' + colAt(ci + 1) + ')';
-          clones.push(cl);
+          cl.style.animationDelay = (ci ? '-0.8s' : '0s');
+          box.appendChild(cl);
         }
-        function mkDiv(cls, z){
-          var el = sdFinNode('div', cls);
-          el.style.zIndex = z;
-          return el;
-        }
-        /* 第3世代は浮遊表現のため、足元の接地影と発光リング（地面の土台に
-           見える要素）は出さない。rim光・ゆらめき・粒子は従来どおり纏う */
-        var shadow = null, ring1 = null, ring2 = null;
+        /* 第3世代は浮遊表現のため、足元の接地影と発光リングは出さない */
         if (!isFin3){
-          shadow = mkDiv('fx-sd-aura-shadow', 91);
-          ring1 = mkDiv('fx-sd-aura-ring', 91);
-          ring2 = mkDiv('fx-sd-aura-ring', 91);
-          [ring1, ring2].forEach(function(rg, ri){
-            rg.style.borderColor = colAt(ri);
-            rg.style.boxShadow = '0 0 16px ' + colAt(ri) + ', inset 0 0 12px ' + colAt(ri);
-          });
+          var shadow = document.createElement('div');
+          shadow.className = 'aura-shadow2'; shadow.style.width = '85%'; shadow.style.height = '20%';
+          box.appendChild(shadow);
+          for (var rgi = 0; rgi < 2; rgi++){
+            var rg = document.createElement('div');
+            rg.className = 'aura-ring2 ' + (rgi ? 'expand' : 'pulse');
+            rg.style.width = '130%'; rg.style.height = '28%'; rg.style.left = '50%';
+            rg.style.borderColor = colAt(rgi);
+            rg.style.boxShadow = '0 0 16px ' + colAt(rgi) + ', inset 0 0 12px ' + colAt(rgi);
+            box.appendChild(rg);
+          }
         }
-        var wisps = [];
         for (var wi = 0; wi < 5; wi++){
-          var wp = mkDiv('fx-sd-aura-wisp', 93);
+          var wp = document.createElement('div');
+          wp.className = 'aura-wisp2';
+          var wsPct = 26 + Math.round(fxFinRand(wi * 7.7 + 2) * 14);
+          wp.style.width = wsPct + '%'; wp.style.height = '46%';
+          wp.style.left = (18 + wi * 16) + '%'; wp.style.bottom = '0';
           wp.style.background = 'radial-gradient(ellipse at 50% 72%, ' + colAt(wi) + ' 0%, transparent 68%)';
-          wisps.push(wp);
+          wp.style.animationDelay = (-wi * 0.46) + 's';
+          wp.style.zIndex = '3';
+          box.appendChild(wp);
         }
-        var sparks = [];
         for (var si2 = 0; si2 < 12; si2++){
-          var sp2 = mkDiv('fx-sd-aura-spark', 93);
+          var orb = document.createElement('div');
+          orb.className = 'aura-orbit' + (si2 % 2 ? ' rev' : '');
+          var grow = 4 + (si2 % 4) * 3;
+          orb.style.inset = (-grow) + '% ' + (-grow * 1.6) + '%';
+          orb.style.animationDuration = (3.2 + (si2 % 5) * 0.7) + 's';
+          orb.style.animationDelay = (-si2 * 0.37) + 's';
+          orb.style.zIndex = '3';
+          var sp2 = document.createElement('div');
+          sp2.className = 'aura-spark2';
+          var ss = (2.6 + 2.2 * fxFinRand(si2 * 5.13 + 3)).toFixed(1);
+          sp2.style.width = ss + 'px'; sp2.style.height = ss + 'px';
+          sp2.style.marginLeft = (-ss / 2) + 'px';
           sp2.style.background = colAt(si2);
           sp2.style.boxShadow = '0 0 7px 2px ' + colAt(si2);
-          sparks.push(sp2);
+          sp2.style.transform = 'rotate(45deg)';
+          orb.appendChild(sp2); box.appendChild(orb);
         }
         /* 待機中のふわりとした浮遊（キャラ別の transform 振り付けとは独立） */
         fxFinAnimate(sd, [
           { translate: '0px 0px' }, { translate: '0px -6px' }, { translate: '0px 0px' }
         ], { duration: 2300, iterations: Math.max(1, Math.ceil(FIN_MS / 2300)), easing: 'ease-in-out' });
-        var startT = performance.now();
-        var lastBurst = 0;
-        var lastUpd = 0, lastOpRead = 0, cachedOp = 1;
-        function frame(now){
-          if (gen !== fxMythicGen) return;
-          var t = now - startT;
-          if (t > FIN_MS + 60) return;
-          /* 軽量化：追随は約30fpsへ間引く。SDの矩形読み取りは更新
-             フレームだけに絞り、不透明度（getComputedStyle）は約150ms
-             ごとにキャッシュを更新する（毎フレームのレイアウト読みを
-             やめた分、ワープ等の動きへの追随はフレーム間引きぶんだけ
-             粗くなるが、見た目の差は出ない範囲） */
-          if (now - lastUpd < 33){ requestAnimationFrame(frame); return; }
-          lastUpd = now;
-          var rect = sd.getBoundingClientRect();
-          if (rect && rect.width > 0){
-            var sop = cachedOp;
-            if (now - lastOpRead > 150){
-              lastOpRead = now;
-              try { var csop = parseFloat(window.getComputedStyle(sd).opacity); if (!isNaN(csop)) sop = csop; } catch (e) {}
-              cachedOp = sop;
+        /* 定期バーストだけは従来どおり（約0.8秒間隔のタイマー。オーラの
+           追随ではなく、箱の現在位置へ Pixi の粒を出すためだけに使う） */
+        var burstIv = setInterval(function(){
+          if (gen !== fxMythicGen){ clearInterval(burstIv); return; }
+          try {
+            var br = box.getBoundingClientRect();
+            var bop = parseFloat(window.getComputedStyle(box).opacity);
+            if (br.width > 0 && (isNaN(bop) || bop > 0.4)){
+              pixiBurst(br.left + br.width / 2, br.bottom - br.height * 0.45, { count: 5, rise: true, colors: conf.auraN || [0xffffff], power: 0.65 });
             }
-            var cxp = rect.left + rect.width / 2, fyp = rect.bottom, bw = rect.width, bh = rect.height;
-            var pulse = 0.5 + 0.5 * Math.sin(t * 0.007);
-            clones.forEach(function(cEl, i2){
-              cEl.style.left = rect.left + 'px'; cEl.style.top = rect.top + 'px';
-              cEl.style.height = rect.height + 'px'; cEl.style.width = 'auto';
-              cEl.style.transformOrigin = '50% 50%';
-              cEl.style.transform = 'scale(' + (i2 ? 1.14 + pulse * 0.035 : 1.055 + pulse * 0.02) + ')';
-              cEl.style.opacity = sop * (i2 ? 0.34 + pulse * 0.18 : 0.62 + pulse * 0.26);
-              if (conf.rainbow) cEl.style.filter = 'drop-shadow(0 0 ' + (i2 ? 17 : 7) + 'px ' + colAt(i2) + ') drop-shadow(0 0 ' + (i2 ? 32 : 15) + 'px ' + colAt(i2 + 1) + ') hue-rotate(' + Math.round((t * 0.14) % 360) + 'deg)';
-            });
-            if (ring1 && ring2 && shadow){
-              var rw = bw * 1.3;
-              ring1.style.width = rw + 'px'; ring1.style.height = (rw * 0.30) + 'px';
-              ring1.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (1 + pulse * 0.07) + ')';
-              ring1.style.opacity = sop * (0.55 + pulse * 0.35);
-              var ph2 = (t % 1150) / 1150;
-              ring2.style.width = rw + 'px'; ring2.style.height = (rw * 0.30) + 'px';
-              ring2.style.transform = 'translate(' + cxp + 'px,' + (fyp - 2) + 'px) translate(-50%,-50%) scale(' + (0.55 + ph2 * 0.95) + ')';
-              ring2.style.opacity = sop * (1 - ph2) * 0.75;
-              shadow.style.width = (bw * 0.85) + 'px'; shadow.style.height = (bw * 0.22) + 'px';
-              shadow.style.transform = 'translate(' + cxp + 'px,' + (fyp + 2) + 'px) translate(-50%,-50%)';
-              shadow.style.opacity = sop * 0.5;
-            }
-            wisps.forEach(function(wEl, i2){
-              var ph = ((t * 0.00042) + i2 / wisps.length) % 1;
-              var side = (i2 % 2 ? 1 : -1);
-              var wx = cxp + side * bw * (0.26 + 0.2 * fxFinRand(i2 * 3.3 + 1)) + Math.sin(t * 0.004 + i2 * 2.1) * 5;
-              var wy = fyp - ph * bh * 1.02;
-              var ws = bh * (0.30 + 0.16 * fxFinRand(i2 * 7.7 + 2));
-              wEl.style.width = ws + 'px'; wEl.style.height = (ws * 1.5) + 'px';
-              wEl.style.transform = 'translate(' + wx + 'px,' + wy + 'px) translate(-50%,-100%) scale(' + (0.75 + ph * 0.5) + ')';
-              wEl.style.opacity = sop * Math.sin(Math.PI * ph) * 0.55;
-            });
-            sparks.forEach(function(sEl, i2){
-              var ang = t * 0.0011 * (i2 % 2 ? -1 : 1) + i2 * (Math.PI * 2 / sparks.length);
-              var radX = bw * (0.52 + 0.16 * Math.sin(t * 0.0016 + i2 * 1.93));
-              var radY = bh * (0.42 + 0.14 * Math.cos(t * 0.0013 + i2 * 2.71));
-              var sxp = cxp + Math.cos(ang) * radX;
-              var syp = (fyp - bh * 0.48) + Math.sin(ang) * radY + Math.sin(t * 0.003 + i2 * 1.31) * 4;
-              var ss = 2.6 + 2.2 * fxFinRand(i2 * 5.13 + 3);
-              sEl.style.width = ss + 'px'; sEl.style.height = ss + 'px';
-              sEl.style.transform = 'translate(' + sxp + 'px,' + syp + 'px) translate(-50%,-50%) rotate(45deg)';
-              sEl.style.opacity = sop * (0.35 + 0.65 * Math.abs(Math.sin(t * 0.006 + i2 * 2.39)));
-            });
-            if (t - lastBurst > 820 && sop > 0.4){
-              lastBurst = t;
-              pixiBurst(cxp, fyp - bh * 0.45, { count: 5, rise: true, colors: conf.auraN || [0xffffff], power: 0.65 });
-            }
-          }
-          requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
+          } catch (e) {}
+        }, 820);
+        setTimeout(function(){ clearInterval(burstIv); }, FIN_MS + 120);
       }
       sdAuraStart();
 
@@ -13371,24 +13638,31 @@
       var isMe = sideKey === 'me';
       var sumDef = SUMMONER_BY_ID[side.summonerId] || SUMMONERS[0];
       var hpPct = Math.max(0, side.hp) / side.maxHp * 100;
-      /* 魔力の宝石ドットは相手側も出す（プレート脇の宝石列として表示する） */
+      /* 魔力の宝石ドットは相手側も出す */
       var ppDots = '';
       for (var i=0;i<side.maxPp;i++) ppDots += '<span class="pp-dot' + (i < side.pp ? ' on' : '') + '"></span>';
       if (!side.maxPp) ppDots = '<span style="font-size:11px;">-</span>';
+      /* 立ち絵プレート：立ち絵が読めたら上半身の絵プレート、読めなければ
+         顔アイコン、それも無ければ記号バッジで代替する */
+      var plateFace;
+      if (SUMMONER_FULL_STATE[side.summonerId] === 1){
+        plateFace = '<img class="plate-img" src="' + summonerFullSrc(side.summonerId) + '" alt="" onerror="this.style.display=\'none\'">';
+      } else if (SUMMONER_ICON_STATE[side.summonerId] === 1){
+        plateFace = '<img class="plate-icon" src="' + summonerIconSrc(side.summonerId) + '" alt="" onerror="this.style.display=\'none\'">';
+      } else {
+        plateFace = '<span class="plate-badge" aria-hidden="true">' + sumDef.mark + '</span>';
+      }
       return '' +
-        /* アイコンはボタン化し、タップで召喚士詳細シートを開く。
-           顔アイコンへの差し替えは .summoner-face の中身を img に変えるだけ。
-           構成は予約帯方式：肖像（ライフ宝石とライフバーは肖像の内側）／
-           名前リボン／情報ピル行（デッキ名・魔力・ターン）の縦積みで、
-           プレートの外へはみ出す要素は置かない */
-        '<div class="leader-portrait">' +
-          '<button type="button" class="leader-avatar summoner-avatar" data-summoner-avatar="' + sideKey + '" aria-label="召喚士の能力を見る"><span class="summoner-face">' + summonerBadge(side.summonerId, true) + '</span></button>' +
+        /* 立ち絵プレート（アーチ型）＋下端の金属リボン（名前のみ＋ライフ
+           宝石を一体化）。情報ピル行（デッキ名・魔力・ターン）はリボンの
+           下に置き、プレートの外へはみ出す要素は置かない */
+        '<div class="plate-frame">' +
+          '<button type="button" class="plate-art" data-summoner-avatar="' + sideKey + '" aria-label="召喚士の能力を見る"><span class="plate-face">' + plateFace + '</span><span class="side-tag">' + (isMe ? 'PLAYER' : 'CPU') + '</span></button>' +
           '<div class="hpbar"><i style="width:' + hpPct + '%"></i></div>' +
+          '<div class="plate-ribbon"><span class="leader-name-text">' + escapeHtml(sumDef.short) + '</span>' +
+          '<span class="hp-num' + (side.hp <= 5 ? ' crit' : (side.hp <= 10 ? ' warn' : '')) + '">' + Math.max(0, side.hp) + '</span></div>' +
           '<span class="hp-label">召喚士ライフ</span>' +
-          '<span class="hp-num' + (side.hp <= 5 ? ' crit' : (side.hp <= 10 ? ' warn' : '')) + '">' + Math.max(0, side.hp) + '</span>' +
-          '<span class="side-tag">' + (isMe ? 'PLAYER' : 'CPU') + '</span>' +
         '</div>' +
-        '<div class="leader-name"><span class="leader-name-text">' + escapeHtml(sumDef.name) + '</span></div>' +
         '<div class="leader-info">' +
           (!isMe && S.cpuDeckName ? '<span class="leader-deck">相手デッキ：' + escapeHtml(S.cpuDeckName.replace(/デッキ$/, '')) + '</span>' : '') +
           '<span class="pp-wrap">' + ppDots + '<span class="pp-text">魔力 ' + side.pp + '/' + side.maxPp + '</span></span>' +
