@@ -1250,8 +1250,13 @@
       .fx-fin-clone,.fx-fin-piece{position:absolute; inset:0; margin:0; pointer-events:none; will-change:transform,opacity,filter;}
       .fx-fin-vortex{
         position:absolute; border-radius:50%; pointer-events:none; opacity:0;
-        background:conic-gradient(from 0deg, rgba(18,3,36,.97), rgba(96,48,196,.78), rgba(6,1,16,.97), rgba(158,96,255,.62), rgba(18,3,36,.97));
-        box-shadow:0 0 36px 12px rgba(96,44,210,.5), inset 0 0 36px rgba(0,0,0,.92);
+        /* ブラックホールとしての重さ：中心45%はほぼ真っ黒な芯、外側も
+           淡紫ではなく深紫〜黒で保ち、白背景でも輪郭と質量が溶けない。
+           最外周だけ放射グラデーションで透明へ落として硬い縁を消す */
+        background:
+          radial-gradient(circle, rgba(2,0,8,.99) 0%, rgba(2,0,8,.99) 42%, rgba(24,9,50,.98) 54%, rgba(84,40,168,.92) 63%, rgba(38,16,84,.95) 76%, rgba(20,7,44,.88) 88%, rgba(16,4,32,0) 100%),
+          conic-gradient(from 0deg, rgba(18,3,36,.97), rgba(96,48,196,.78), rgba(6,1,16,.97), rgba(158,96,255,.62), rgba(18,3,36,.97));
+        box-shadow:0 0 36px 12px rgba(60,24,140,.5), inset 0 0 36px rgba(0,0,0,.92);
       }
       .fx-fin-flash{
         position:fixed; inset:0; z-index:94; pointer-events:none; opacity:0;
@@ -6032,10 +6037,11 @@
         mk48.wrap.appendChild(vortex);
         fxFinAnimate(vortex, [
           { transform: 'rotate(0deg) scale(.35)', opacity: 0 },
-          { transform: 'rotate(200deg) scale(1)', opacity: 1, offset: 0.35 },
-          { transform: 'rotate(660deg) scale(1.12)', opacity: 1, offset: 0.8 },
-          { transform: 'rotate(760deg) scale(.7)', opacity: 0 }
-        ], { duration: 2100, delay: 250, easing: 'ease-in-out', fill: 'forwards' });
+          { transform: 'rotate(200deg) scale(1)', opacity: 1, offset: 0.24 },
+          { transform: 'rotate(660deg) scale(1.12)', opacity: 1, offset: 0.55 },
+          { transform: 'rotate(880deg) scale(1.12)', opacity: 1, offset: 0.78 },
+          { transform: 'rotate(980deg) scale(.55)', opacity: 0 }
+        ], { duration: 2950, delay: 250, easing: 'ease-in-out', fill: 'forwards' });
         fxFinAnimate(cl48, [
           { transform: 'translateY(0px) rotate(0deg) scale(1)', opacity: 1, filter: 'brightness(1)' },
           { transform: 'translateY(6px) rotate(-2deg) scale(.97)', opacity: 1, filter: 'brightness(.85)', offset: 0.3 },
@@ -7424,6 +7430,12 @@
       /* chainsC の addChild は受け側SDの後（鎖がSDに被さるよう、そちらで行う） */
       N.vortexG = new PIXI.Graphics(); N.vortexG.visible = false;
       space.addChild(N.vortexG);
+      /* 渦の面本体（流れテクスチャのシェーダメッシュ）。作れない環境では
+         null になり、呼び出し側が Graphics 版（finPDrawVortex）へ落ちる */
+      var vtx = finPVortexMesh();
+      N.vortexMesh = vtx ? vtx.mesh : null;
+      N.vortexMat = vtx ? vtx.mat : null;
+      if (N.vortexMesh) space.addChild(N.vortexMesh);
       N.crackG = new PIXI.Graphics(); N.crackG.visible = false;
       space.addChild(N.crackG);
       /* 受け側SD＋破片 */
@@ -7846,6 +7858,7 @@
       hide(N.pillarG); N.pillarG.alpha = 1;
       hide(N.chainsC); N.chainsC.alpha = 1; N.chainsC.rotation = 0; N.chainsC.scale.set(1);
       hide(N.vortexG); N.vortexG.alpha = 1; N.vortexG.rotation = 0; N.vortexG.scale.set(1);
+      hide(N.vortexMesh); if (N.vortexMesh){ N.vortexMesh.alpha = 1; N.vortexMesh.rotation = 0; N.vortexMesh.scale.set(1); }
       hide(N.crackG); N.crackG.alpha = 1; N.crackG.scale.set(1);
       hide(N.trailG); N.trailG.alpha = 1; if (N.trailG.clear) N.trailG.clear();
       N.vicC.visible = true; N.vicC.alpha = 1; N.vicC.rotation = 0; N.vicC.scale.set(1);
@@ -8272,7 +8285,9 @@
     }
     /* ===== 粒子（新方式プール内だけ。pixiBurst／pixiFinDustFx の読みを移植） ===== */
     function finPFreePart(R){
-      for (var i = 0; i < R.N.parts.length; i++){ if (!R.N.parts[i].on) return R.N.parts[i]; }
+      for (var i = 0; i < R.N.parts.length; i++){
+        if (!R.N.parts[i].on){ var fp = R.N.parts[i]; fp.stretch = 1; fp.rotAng = null; return fp; }
+      }
       return null;
     }
     function finPSpawnBurst(R, x, y, opt){
@@ -8411,7 +8426,9 @@
           p.sp.alpha = p.aMax * Math.sin(Math.PI * k);
         } else {
           var sc = p.s0 + (p.s1 - p.s0) * k;
-          p.sp.width = 14 * sc; p.sp.height = 14 * sc;
+          var stc = p.stretch || 1;
+          p.sp.width = 14 * sc * stc; p.sp.height = 14 * sc;
+          if (p.rotAng != null) p.sp.rotation = p.rotAng;
           p.sp.alpha = p.aMax * (1 - k);
         }
       }
@@ -9021,6 +9038,71 @@
         tm.mesh.visible = fade > 0.003;
       });
     }
+    /* --- 闇の渦（ダーククイーン）：流れテクスチャ方式の面 ---
+       同心円の平色重ね（旧 finPDrawVortex）では円盤が静止した絵に見え、
+       外周の淡紫が白背景に溶けて質量が消えた。こちらはミラージュ斬撃と
+       同じ型で面を作り替える：
+       ・色ランプは半径 r で固定（芯＝真っ黒／降着リング＝紫〜淡紫／
+         外側＝深紫のまま透明へフェード）。白背景でも暗い輪郭が残る
+       ・流れるのはノイズだけ：極座標の螺旋座標でサンプルし、質感が
+         渦の回転方向へ回りながら中心へ流れ込む。色の段は面に留まる
+       ・黒芯は半径の45%。降着リングは非対称（片側が太く明るく、
+         反対側は影）で、ブラックホールの光子リングの立体感を出す
+       ・合成は通常ブレンド（暗い円盤が背景を遮る必要があるため加算にしない） */
+    var FINP_VORTEX_VS = [
+      'attribute vec2 aVertexPosition;',
+      'attribute vec2 aUvs;',
+      'uniform mat3 translationMatrix;',
+      'uniform mat3 projectionMatrix;',
+      'varying vec2 vUvs;',
+      'void main(){ vUvs = aUvs; gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0); }'
+    ].join('\n');
+    var FINP_VORTEX_FS = [
+      'varying vec2 vUvs;',
+      'uniform sampler2D uTex;',
+      'uniform float uFlow;',
+      'uniform float uSpin;',
+      'uniform float uAlpha;',
+      'uniform float uSuck;',
+      'void main(){',
+      '  vec2 c = vUvs * 2.0 - 1.0;',
+      '  float r = length(c);',
+      '  if (r > 1.0){ gl_FragColor = vec4(0.0); return; }',
+      '  float ang = atan(c.y, c.x) - uSpin;',
+      '  float spiral = ang / 6.28318 + r * 1.65 - uFlow;',
+      '  float n1 = texture2D(uTex, vec2(spiral * 2.0, r * 0.85 - uFlow * 0.55)).a;',
+      '  float n2 = texture2D(uTex, vec2(spiral * 4.6 + 0.37, r * 1.7 - uFlow * 1.05)).a;',
+      '  float noise = clamp(n1 * 0.72 + n2 * 0.58, 0.0, 1.0);',
+      '  float asym = 0.5 + 0.5 * cos(ang - 0.7);',
+      '  vec3 col = vec3(0.006, 0.003, 0.016);',
+      '  col = mix(col, vec3(0.085, 0.038, 0.20), smoothstep(0.40, 0.53, r));',
+      '  col = mix(col, vec3(0.27, 0.12, 0.58), smoothstep(0.52, 0.63, r));',
+      '  float ring = smoothstep(0.575, 0.655, r) * smoothstep(0.79, 0.665, r);',
+      '  vec3 ringCol = mix(vec3(0.40, 0.22, 0.88), vec3(0.88, 0.76, 1.0), asym);',
+      '  col += ringCol * ring * (0.30 + 0.95 * asym) * (0.68 + 0.62 * noise);',
+      '  col = mix(col, vec3(0.13, 0.06, 0.30), smoothstep(0.68, 0.90, r));',
+      '  col += vec3(0.52, 0.36, 1.0) * max(0.0, noise - 0.45) * 0.38 * smoothstep(0.45, 0.62, r) * smoothstep(0.96, 0.70, r);',
+      '  col *= mix(1.0, 0.62 + 0.62 * asym, smoothstep(0.45, 0.66, r));',
+      '  float edge = smoothstep(1.0, 0.875, r);',
+      '  float a = uAlpha * edge * mix(0.99, 0.86 + 0.24 * noise, smoothstep(0.44, 0.70, r));',
+      '  a *= 1.0 - 0.10 * uSuck * smoothstep(0.5, 1.0, r);',
+      '  gl_FragColor = vec4(col * a, a);',
+      '}'
+    ].join('\n');
+    function finPVortexMesh(){
+      try {
+        var geo = new PIXI.Geometry();
+        geo.addAttribute('aVertexPosition', new PIXI.Buffer(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), false), 2);
+        geo.addAttribute('aUvs', new PIXI.Buffer(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), false), 2);
+        geo.addIndex([0, 1, 2, 2, 1, 3]);
+        var mat = PIXI.Shader.from(FINP_VORTEX_VS, FINP_VORTEX_FS, {
+          uTex: finPMirageFlowTexture(), uFlow: 0, uSpin: 0, uAlpha: 0, uSuck: 0
+        });
+        var mesh = new PIXI.Mesh(geo, mat);
+        mesh.visible = false;
+        return { mesh: mesh, mat: mat };
+      } catch (e) { return null; }
+    }
     /* --- 光波（セレスティア。旧方式 pixiFinCelestiaWaveFx の幾何学と
        スケールをそのまま移植：起点→着弾を結ぶ帯に2周波のうねりを重ねた
        3層リボン。半幅は外 2.5+sdH*0.30／中 1.8+sdH*0.17／芯 1.2+sdH*0.075
@@ -9419,11 +9501,22 @@
         p.on = true; p.kind = 'dot'; p.fx0 = R.tF; p.dur = dur;
         p.x = x; p.y = y;
         p.vx = (tx - x) / (dur / 1000); p.vy = (ty - y) / (dur / 1000);
+        /* 渦用（swirl）：内向き速度へ接線成分を足し、直線落下ではなく
+           渦の回転に巻かれながら落ちる軌道にする。粒自体も接線方向へ
+           引き伸ばす（stretch／rotAng を finPStepParts が反映する） */
+        p.rotAng = null; p.stretch = 1;
+        if (opt.swirl){
+          var sw = opt.swirl * (0.7 + Math.random() * 0.6);
+          p.vx += -Math.sin(a) * sw; p.vy += Math.cos(a) * sw;
+          p.rotAng = a + Math.PI / 2;
+          p.stretch = opt.stretch || 2.6;
+        }
         p.grav = 0; p.damp = 1;
         p.s0 = opt.size || 0.5; p.s1 = 0.08; p.aMax = 0.9;
         p.sp.texture = finProtoState.bake.dot;
         p.sp.tint = cols[Math.floor(Math.random() * cols.length)];
         p.sp.position.set(x, y);
+        p.sp.rotation = p.rotAng || 0;
         p.sp.visible = true;
       }
     }
@@ -9526,22 +9619,34 @@
         g.lineStyle(Math.max(1.5, W * 0.0038), 0xd6bcff, 0.85 * rgA); g.drawCircle(rgX, rgY, rgR);
       }
     }
-    /* --- 闇の渦（ダーククイーン。3腕の螺旋＋吸い込み筋） --- */
+    /* --- 闇の渦（ダーククイーン。3腕の螺旋＋吸い込み筋） ---
+       シェーダ面（finPVortexMesh）が作れない環境向けの Graphics 版。
+       設計はシェーダ版と揃える：黒芯は半径の45%、外側は淡紫でなく
+       深紫〜近黒のまま保ち（白背景で溶けない）、最外周だけ不透明度を
+       落として硬い縁を消す。降着リングは非対称（片側だけ太く明るい） */
     function finPDrawVortex(g, R, rot, suck){
       g.clear();
-      /* 面のグラデーション：平色2枚の円では面がベタッとして他と比べ
-         弱く見えたため、同心円を紫ランプで細かく刻み、外周の淡い闇
-         から中心の深紫まで滑らかにつないだ放射グラデーションにする。
-         芯には闇の底（近黒）を置き、その中心にだけ淡紫の輝きを残す */
-      var vSteps = 12, vi, vf, vr;
+      var vSteps = 24, vi, vf, vr;
       for (vi = 0; vi < vSteps; vi++){
         vf = vi / (vSteps - 1);
         vr = R * (1.06 - 1.00 * vf) * (1 - 0.10 * suck * vf);
-        g.beginFill(finPRampColor(FINP_PURPLE_RAMP, 0.08 + 0.55 * vf), 0.13 + 0.30 * vf);
+        /* vf=0 が最外周：色は近黒紫のまま、αだけ 0→0.9 へ立ち上げる */
+        var vCol = vf < 0.45 ? finPRampColor(FINP_PURPLE_RAMP, 0.03 + 0.10 * (vf / 0.45))
+          : finPRampColor(FINP_PURPLE_RAMP, 0.13 + 0.30 * ((vf - 0.45) / 0.55));
+        var vAl = vf < 0.10 ? 0.55 * (vf / 0.10) : 0.55 + 0.38 * ((vf - 0.10) / 0.90);
+        g.beginFill(vCol, vAl);
         g.drawCircle(0, 0, vr); g.endFill();
       }
-      g.beginFill(0x0d0618, 0.92); g.drawCircle(0, 0, R * 0.30); g.endFill();
-      g.beginFill(finPRampColor(FINP_PURPLE_RAMP, 0.94), 0.32); g.drawCircle(0, 0, R * 0.10); g.endFill();
+      /* 黒芯（半径45%）。中心の淡紫の点は置かない：底なしの黒にする */
+      g.beginFill(0x030108, 0.99); g.drawCircle(0, 0, R * 0.45); g.endFill();
+      g.beginFill(0x120826, 0.95); g.drawCircle(0, 0, R * 0.36); g.endFill();
+      /* 降着リングの非対称：明るい側は太い淡紫の弧、反対側は細く暗い弧 */
+      g.lineStyle(Math.max(2, R * 0.075), 0xd9c6ff, 0.85);
+      g.arc(0, 0, R * 0.52, rot - 0.5, rot + 1.5);
+      g.lineStyle(Math.max(1.4, R * 0.045), 0x8a5cff, 0.55);
+      g.arc(0, 0, R * 0.52, rot + 1.5, rot + 2.6);
+      g.lineStyle(Math.max(1.2, R * 0.030), 0x2a1650, 0.8);
+      g.arc(0, 0, R * 0.52, rot + 2.6, rot + 5.8);
       [[0.085, 0x3d1a78, 0.14], [0.055, 0x7a3cff, 0.22], [0.030, 0xa678ff, 0.48], [0.013, 0xe6d5ff, 0.9]].forEach(function(L){
         g.lineStyle(Math.max(1.2, R * L[0]), L[1], L[2]);
         for (var arm = 0; arm < 3; arm++){
@@ -10678,19 +10783,43 @@
           N.vicC.scale.set(1 - 0.74 * ve2);
           N.vicC.position.y = G.cy + G.sumH * 0.95 * ve2;
           N.vicShadow.alpha = 0.45 + 0.4 * ve2;
-          if (vo > 0 && vo < 1){
-            /* 闇の渦（描画）：螺旋が回転しながら受け側を吸い込む。
-               包絡・位置・縦圧縮は代用グロー版と同一 */
-            N.vortexG.visible = true;
-            N.vortexG.position.set(G.cx, G.cy + G.sumH * 0.22);
-            finPDrawVortex(N.vortexG, G.fxW * 0.60, bl * 0.005, ve2);
-            N.vortexG.scale.set(1, 0.62);
-            N.vortexG.alpha = vo < 0.35 ? vo / 0.35 : (vo > 0.8 ? 1 - (vo - 0.8) / 0.2 : 1);
-          } else N.vortexG.visible = false;
-          /* 吸い込みの塵：渦が回っている間、周囲の紫の塵が中心へ吸われる */
-          if (vo > 0 && vo < 1 && (R.vxMoteFx == null || tFs - R.vxMoteFx > 95)){
+          /* 渦の山場は受け側の吸い込み（〜1470ms）で終わらせない：
+             ピークの濃さを決めセリフの表示中（破壊+2000ms）まで保ち、
+             その後 約500ms かけて絞って閉じる。以前は吸い込み完了と
+             同時に渦が消え、白背景にセリフと攻撃側だけが残って
+             アッサリ見えた。絞りは半径の縮小＋α減衰で「呑み終えた
+             渦が閉じる」読みにする（振付の拍・総尺は不変） */
+          var vIn = finPProg(bl, 120, 380);
+          var vHold = bl <= 2120 ? 1 : Math.max(0, 1 - finPProg(bl, 2120, 520));
+          var vEnv = vIn * vHold;
+          if (vEnv > 0.003){
+            var vRad = G.fxW * 0.60 * (0.90 + 0.14 * Math.min(1, bl / 700)) * (0.62 + 0.38 * vHold);
+            var vY = G.cy + G.sumH * 0.22;
+            if (N.vortexMesh && N.vortexMat){
+              N.vortexG.visible = false;
+              N.vortexMesh.visible = true;
+              N.vortexMesh.position.set(G.cx, vY);
+              N.vortexMesh.scale.set(vRad, vRad * 0.62);
+              N.vortexMat.uniforms.uFlow = (R.tF * 0.00042) % 64;
+              N.vortexMat.uniforms.uSpin = bl * 0.0035;
+              N.vortexMat.uniforms.uSuck = ve2;
+              N.vortexMat.uniforms.uAlpha = vEnv;
+              N.vortexMesh.alpha = 1;
+            } else {
+              N.vortexG.visible = true;
+              N.vortexG.position.set(G.cx, vY);
+              finPDrawVortex(N.vortexG, vRad, bl * 0.005, ve2);
+              N.vortexG.scale.set(1, 0.62);
+              N.vortexG.alpha = vEnv;
+            }
+          } else { N.vortexG.visible = false; if (N.vortexMesh) N.vortexMesh.visible = false; }
+          /* 吸い込みの残滓：鎖が消えた後も、渦が開いている間は金属の
+             細片と紫の塵が接線方向へ伸びながら渦へ落ち続ける。
+             量は従来の約2.5倍（間隔95→55ms／個数7→12＋細片4） */
+          if (bl > 120 && vEnv > 0.05 && (R.vxMoteFx == null || tFs - R.vxMoteFx > 55)){
             R.vxMoteFx = tFs;
-            finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 7, radius: G.fxW * 0.5, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff], speed: 340, size: 0.45 });
+            finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 12, radius: G.fxW * 0.55, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff], speed: 430, size: 0.5, swirl: 200, stretch: 2.8 });
+            if (bl > 1400) finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 4, radius: G.fxW * 0.42, colors: [0xe6d5ff, 0xa678ff, 0xffffff], speed: 520, size: 0.4, swirl: 240, stretch: 3.2 });
           }
         } else if (R.breakStyle === 'explode'){
           /* 消滅（実機指定）：受け側は破壊の拍で光の粒へ崩れて消える。
