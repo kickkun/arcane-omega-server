@@ -155,15 +155,18 @@
       .drow.mythic{border-color:#6d5a26; box-shadow:inset 0 0 0 1px rgba(201,162,75,.55);}
       .drow .mythic-tag{position:static; display:inline-block; margin-left:6px; vertical-align:1px; box-shadow:none;}
       .deck-status.err{color:#f0937f; font-weight:700;}
-      .follower.can-attack{border-color:var(--gold-bright); box-shadow:0 0 0 1.5px var(--gold-bright),0 0 12px rgba(236,205,126,.55); cursor:pointer; animation:pulseGold 1.4s ease-in-out infinite;}
+      .follower.can-attack{border-color:#4db2ff; box-shadow:0 0 0 1.5px #4db2ff,0 0 12px rgba(77,178,255,.55); cursor:pointer; animation:pulseBlue 1.4s ease-in-out infinite;}
       .follower.selected-attacker{border-color:#fff; box-shadow:0 0 0 2.5px #fff,0 0 16px rgba(255,255,255,.8); transform:translateY(-4px);}
       .follower.targetable{border-color:var(--red); box-shadow:0 0 0 2px var(--red),0 0 14px rgba(224,87,75,.75); cursor:pointer; animation:pulseRed 0.9s ease-in-out infinite;}
       .follower.buffable{border-color:var(--teal); box-shadow:0 0 0 2px var(--teal),0 0 14px rgba(57,194,165,.7); cursor:pointer; animation:pulseTeal 0.9s ease-in-out infinite;}
-      .follower.exhausted{filter:saturate(.45) brightness(.75);}
-      .follower.sick{filter:saturate(.7) brightness(.85);}
+      /* 行動済み／召喚酔いでも場のカードは透けさせない（絵の判読性優先）。
+         行動可否は can-attack の青枠だけで示す */
+      .follower.exhausted{filter:none;}
+      .follower.sick{filter:none;}
       .follower.shake{animation:shake .35s ease;}
       .follower.flash-hit{animation:flashHit .35s ease;}
       @keyframes pulseGold{0%,100%{box-shadow:0 0 0 1.5px var(--gold-bright),0 0 8px rgba(236,205,126,.35);}50%{box-shadow:0 0 0 1.5px var(--gold-bright),0 0 16px rgba(236,205,126,.75);}}
+      @keyframes pulseBlue{0%,100%{box-shadow:0 0 0 1.5px #4db2ff,0 0 8px rgba(77,178,255,.35);}50%{box-shadow:0 0 0 1.5px #4db2ff,0 0 16px rgba(77,178,255,.75);}}
       @keyframes pulseRed{0%,100%{box-shadow:0 0 0 2px var(--red),0 0 8px rgba(224,87,75,.4);}50%{box-shadow:0 0 0 2px var(--red),0 0 18px rgba(224,87,75,.9);}}
       @keyframes pulseTeal{0%,100%{box-shadow:0 0 0 2px var(--teal),0 0 8px rgba(57,194,165,.4);}50%{box-shadow:0 0 0 2px var(--teal),0 0 18px rgba(57,194,165,.9);}}
       @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-5px);}40%{transform:translateX(5px);}60%{transform:translateX(-4px);}80%{transform:translateX(3px);}}
@@ -495,7 +498,7 @@
       .sum-list .sum-txt{flex:1;}
       .kw.bran{background:#9fd0ff;}
       .follower.bran-guarded{box-shadow:inset 0 0 0 2px #9fd0ff, inset 0 0 14px rgba(120,180,255,.55);}
-      .follower.bran-guarded.can-attack{box-shadow:inset 0 0 0 2px #9fd0ff, 0 0 0 1.5px var(--gold-bright), 0 0 12px rgba(236,205,126,.55);}
+      .follower.bran-guarded.can-attack{box-shadow:inset 0 0 0 2px #9fd0ff, 0 0 0 1.5px #4db2ff, 0 0 12px rgba(77,178,255,.55);}
       #galleryOverlay{flex-direction:column; align-items:center; justify-content:flex-start; padding:14px; z-index:82; overflow-y:auto; touch-action:pan-y;}
       #detailOverlay{z-index:90;}
       .controls{flex-wrap:wrap;}
@@ -891,7 +894,7 @@
       .ov-unit img{width:100%; height:56px; object-fit:cover; display:block;}
       .ov-unit .ov-ustats{display:flex; justify-content:space-between; padding:1px 5px; font-size:12.5px; font-weight:900; background:var(--panel2);}
       .ov-unit .ov-uname{display:block; font-size:9px; line-height:1.25; padding:1px 4px 3px; color:var(--ink-dim); overflow-wrap:anywhere;}
-      .ov-unit.can-attack{border-color:var(--gold-bright); box-shadow:0 0 8px rgba(236,205,126,.55);}
+      .ov-unit.can-attack{border-color:#4db2ff; box-shadow:0 0 0 1.5px #4db2ff, 0 0 8px rgba(77,178,255,.55);}
       .ov-unit.selected{border-color:#7fbf6a; box-shadow:0 0 0 2px #7fbf6a;}
       .ov-unit.targetable{border-color:#e07856; cursor:pointer;}
       .ov-unit.mythic{border-color:var(--gold-bright);}
@@ -905,7 +908,8 @@
       .ov-hcard .ov-uname{display:block; font-size:9px; line-height:1.25; padding:1px 4px 3px; color:var(--ink-dim); overflow-wrap:anywhere;}
       .ov-hcard.playable{border-color:#4db2ff; box-shadow:0 0 7px rgba(77,178,255,.6);}
       .ov-hcard.selected{border-color:#7fbf6a; box-shadow:0 0 0 2px #7fbf6a;}
-      .ov-hcard:disabled{opacity:.68; cursor:default;}
+      /* 出せない手札は透明度でなく明るさだけで示す（CPU戦の .hcard.unplayable と同じ役割分担） */
+      .ov-hcard:disabled{filter:grayscale(.35) brightness(.86); cursor:default;}
       .ov-cardback{
         width:40px; height:56px; border-radius:7px; border:1px solid var(--gold);
         background:repeating-linear-gradient(45deg,#2c2440,#2c2440 6px,#3a2f55 6px,#3a2f55 12px);
@@ -6004,7 +6008,7 @@
         /* ダーククイーン：紫の鎖がパネルを縛り上げ、闇の渦へ引きずり込んで沈める */
         var mk48 = fxFinMakeWrap(panelEl); if (!mk48) return;
         var cl48 = fxFinClone(panelEl, mk48.wrap); fxFinHidePanel(panelEl);
-        pixiChainsFx(cx, cy, Math.max(w, h) * 1.0, 1350);
+        if (!pixiFinQueenChainsFx(cx, cy, Math.max(w, h) * 1.0, 1350)) pixiChainsFx(cx, cy, Math.max(w, h) * 1.0, 1350); /* 鎖はリボンメッシュ優先 */
         var vsize = w * 0.95;
         var vortex = document.createElement('div');
         vortex.className = 'fx-fin-vortex';
@@ -11782,17 +11786,10 @@
         }, 2620);
       } else if (id === '48'){
         /* ダーククイーン：鎖がパネル全体へ拡大して被さり、パネルは闇の渦へ引きずり込まれる
-           （演出自体は好評のため基本維持。登場位置を攻撃側寄りへ変更し、
-             鎖の着弾に発光・揺れ・紫の粒子を足して貼り付け感を誤魔化す） */
+           （振付は基本維持。鎖は画像素材（fx-chains）の重ねを廃し、
+             リボンメッシュだけで描く：素材絵のペタ張り感を断つため） */
         later(function(){
-          var ch = sdOverlay(conf.fx, { w: Math.round(fxW * 1.5) });
-          fxFinAnimate(ch, [
-            { transform: 'translate(-50%,-50%) scale(.45) rotate(-4deg)', opacity: 0 },
-            { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.35 },
-            { transform: 'translate(-50%,-50%) scale(1.05) rotate(2deg)', opacity: 1, offset: 0.8 },
-            { transform: 'translate(-50%,-50%) scale(1.02)', opacity: 0 }
-          ], { duration: 1900, easing: 'ease-out', fill: 'forwards' });
-          if (!pixiFinQueenChainsFx(pcx, pcy, Math.max(fxW, h) * 0.85, 1500)) pixiChainsFx(pcx, pcy, Math.max(fxW, h) * 0.85, 1500); /* 第4弾：鎖のリボン化 */
+          if (!pixiFinQueenChainsFx(pcx, pcy, Math.max(fxW, h) * 0.85, 1500)) pixiChainsFx(pcx, pcy, Math.max(fxW, h) * 0.85, 1500); /* 鎖はリボンメッシュ（9本×2層） */
         }, 550);
         later(function(){
           fxFinFlash(0.32, 480);
@@ -13983,8 +13980,8 @@
          3層（金／金／白芯）＋シェーダの流れに格上げ。起点（手元）と着弾点に
          シェーダ発光を置き、従の光柱が立つ着弾点で光がつながって見える形に。
        ・ダーククイーン（048）：紫の鎖をリボン化（渦巻きながらパネル中心へ
-         締まる5本の帯）。闇の渦への引き込みには歪みリング
-         （fx3DistortRing：屈折＋色収差フリンジ）を重ねる。
+         締まる9本×2層の帯。画像素材の重ねは廃止）。闇の渦への引き込みには
+         歪みリング（fx3DistortRing：屈折＋色収差フリンジ）と螺旋リボンを重ねる。
        ・ティアマト（051）：右下・左下から交差する紅と蒼の双ビームを
          リボン化（色別の流れテクスチャ＋白熱コア帯）。帯に流れのノイズ
          （2周波のうねり）を加え、着弾点はシェーダ発光でまとめる。
@@ -14266,9 +14263,11 @@
       return true;
     }
     /* --- ダーククイーン：リボンの鎖 ---
-       パネルの周囲5方向から、渦を巻くベジェ軌道の紫の帯が中心へ締まる。
-       鎖の輪の連なりは帯の太さのうねりで表現し、中心には紫のシェーダ
-       発光を置く。尺・出現の拍は従来の pixiChainsFx と同じ */
+       パネルの周囲9方向から、渦を巻くベジェ軌道の紫の帯が中心へ締まる。
+       1本の鎖は流れテクスチャの外帯＋淡紫の芯帯の2層メッシュで描き、
+       帯の太さのうねりで鎖の輪の連なりを表現する（画像素材の重ねは
+       使わない）。中心には紫のシェーダ発光を置く。尺・出現の拍は
+       従来の pixiChainsFx と同じ */
     function pixiFinQueenChainsFx(cx, cy, R, dur){
       if (!FxKit.available()) return false;
       var scope = fx2Scope();
@@ -14278,10 +14277,11 @@
       scope.add(cont);
       var purpTex = fx3FlowTexture('fin-queen', '110,50,230', '168,120,255');
       var chains = [];
-      var NCH = 5;
+      var NCH = 9;
       for (var ci = 0; ci < NCH; ci++){
         chains.push({
-          rb: fx3Ribbon(scope, cont, 20, { tex: purpTex, alpha: 0.85, core: 0.4, dir: 0 }),
+          rbO: fx3Ribbon(scope, cont, 20, { tex: purpTex, alpha: 0.8, core: 0.35, dir: 0 }),
+          rbC: fx3Ribbon(scope, cont, 20, { tex: purpTex, alpha: 0.95, core: 1.25, dir: 0 }),
           ang: (ci / NCH) * Math.PI * 2 + 0.5,
           swirl: (ci % 2 ? -1 : 1) * (0.9 + (ci % 3) * 0.22)
         });
@@ -14297,11 +14297,17 @@
           var sx = cx + Math.cos(a0) * R * 1.18 * shrink, sy = cy + Math.sin(a0) * R * 1.18 * 0.92 * shrink;
           var tang = a0 + ch.swirl;
           var cpx = cx + Math.cos(tang) * R * 0.55 * shrink, cpy = cy + Math.sin(tang) * R * 0.55 * 0.92 * shrink;
-          FxKit.fillStrip(ch.rb.strip, FxKit.bezierSamples({ x: sx, y: sy }, { x: cpx, y: cpy }, { x: cx, y: cy }, 21, function(u){
-            return Math.max(0.4, (8.5 - 5.2 * u) * (0.85 + 0.15 * Math.sin(u * 36 + life * 0.01))) * env;
+          function hwOuter(u){
+            return Math.max(0.4, (9.5 - 5.5 * u) * (0.84 + 0.16 * Math.sin(u * 36 + life * 0.01))) * env;
+          }
+          FxKit.fillStrip(ch.rbO.strip, FxKit.bezierSamples({ x: sx, y: sy }, { x: cpx, y: cpy }, { x: cx, y: cy }, 21, hwOuter));
+          FxKit.fillStrip(ch.rbC.strip, FxKit.bezierSamples({ x: sx, y: sy }, { x: cpx, y: cpy }, { x: cx, y: cy }, 21, function(u){
+            return hwOuter(u) * 0.42;
           }));
-          ch.rb.mat.uniforms.uFlow = life * 0.006 + ch.ang;
-          ch.rb.mat.uniforms.uAlpha = 0.85 * env;
+          ch.rbO.mat.uniforms.uFlow = life * 0.006 + ch.ang;
+          ch.rbO.mat.uniforms.uAlpha = 0.8 * env;
+          ch.rbC.mat.uniforms.uFlow = life * 0.009 + ch.ang;
+          ch.rbC.mat.uniforms.uAlpha = 0.95 * env;
         });
         var gu = glow.material.uniforms;
         gu.uTime = life / 1000;
@@ -14312,8 +14318,9 @@
     }
     /* --- ダーククイーン：闇の渦の歪み ---
        パネル下部の渦の位置に、屈折の歪みリング（うねる輪郭＋色収差
-       フリンジ）を重ね、紫の塵が外周から中心へ吸い込まれる粒子を添える。
-       DOM の渦・引き込みアニメ（従来どおり）の上に質感だけを足す */
+       フリンジ）と、中心へ巻き込む螺旋リボン3本を重ね、紫の塵が
+       外周から中心へ吸い込まれる粒子を添える。DOM の渦・引き込み
+       アニメ（従来どおり）の上に、面の流れをメッシュで足す */
     function pixiFinQueenVortexFx(cx, vy, maxR, dur){
       if (!FxKit.available()) return false;
       var scope = fx2Scope();
@@ -14322,6 +14329,15 @@
       cont.blendMode = PIXI.BLEND_MODES.ADD;
       scope.add(cont);
       var ring = fx3DistortRing(scope, cont, cx, vy, { maxR: maxR, squish: 0.62, color: 0xa678ff, width: 4.5, alpha: 0.8, wobble: 0.09, distort: 22, fringe: 0x5a2bd6, fringeDx: 2.5 });
+      var purpTex = fx3FlowTexture('fin-queen', '110,50,230', '168,120,255');
+      var arms = [];
+      var NARM = 3, ASEG = 24;
+      for (var ai = 0; ai < NARM; ai++){
+        arms.push({
+          rb: fx3Ribbon(scope, cont, ASEG, { tex: purpTex, alpha: 0.55, core: 0.5, dir: 0 }),
+          a0: (ai / NARM) * Math.PI * 2 + 0.7
+        });
+      }
       var em = scope.emitter(cont, { max: 60 });
       var seed = 733.1 + cx * 0.11;
       var lastLife = 0;
@@ -14329,6 +14345,28 @@
         var dt = Math.max(0, Math.min(50, life - lastLife)); lastLife = life;
         var env = Math.min(1, t / 0.10 + 0.1) * (t > 0.8 ? Math.max(0, 1 - (t - 0.8) / 0.2) : 1);
         ring.draw(Math.min(1, t * 1.25), env);
+        /* 螺旋リボン：外周から中心へ巻き込みながら回る3本の腕。
+           渦の開き（t*1.25 で満開）に連動して半径が育つ */
+        var grow = 0.35 + 0.65 * Math.min(1, t * 1.25);
+        var rotV = life * 0.0035;
+        arms.forEach(function(arm){
+          var pts = [];
+          for (var i = 0; i <= ASEG; i++){
+            var u = i / ASEG;
+            var ang = arm.a0 + rotV + u * 2.7;
+            var rad = maxR * (1.08 - 0.9 * u) * grow;
+            pts.push({ x: cx + Math.cos(ang) * rad, y: vy + Math.sin(ang) * rad * 0.5, hw: Math.max(0.3, (7.5 * (1 - u) + 1.2)) * env });
+          }
+          for (var j = 0; j <= ASEG; j++){
+            var pPrev = pts[Math.max(0, j - 1)], pNext = pts[Math.min(ASEG, j + 1)];
+            var tdx = pNext.x - pPrev.x, tdy = pNext.y - pPrev.y;
+            var tl = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+            pts[j].ax = -tdy / tl; pts[j].ay = tdx / tl;
+          }
+          FxKit.fillStrip(arm.rb.strip, pts);
+          arm.rb.mat.uniforms.uFlow = life * 0.008 + arm.a0;
+          arm.rb.mat.uniforms.uAlpha = 0.55 * env;
+        });
         if (t < 0.8){
           em.burst(2, function(bi){
             var ba = fxFinRand(seed + life * 0.27 + bi * 8.9) * Math.PI * 2;
