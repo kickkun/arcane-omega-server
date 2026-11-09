@@ -247,7 +247,7 @@
       }
       .detail-art .coin-face i{width:104px; height:104px; font-size:27px; border-width:3px;}
       .hcard.playable{border-color:var(--gold-bright); box-shadow:0 0 9px rgba(236,205,126,.45);}
-      .hcard.unplayable{filter:grayscale(.75) brightness(.55);}
+      .hcard.unplayable{filter:grayscale(.35) brightness(.86);}
       .hcard:active{transform:scale(.96);}
       .overlay{
         position:fixed; inset:0; z-index:60; background:rgba(4,6,10,.78);
@@ -904,7 +904,7 @@
       .ov-hcard .ov-uname{display:block; font-size:9px; line-height:1.25; padding:1px 4px 3px; color:var(--ink-dim); overflow-wrap:anywhere;}
       .ov-hcard.playable{border-color:var(--gold-bright);}
       .ov-hcard.selected{border-color:#7fbf6a; box-shadow:0 0 0 2px #7fbf6a;}
-      .ov-hcard:disabled{opacity:.45; cursor:default;}
+      .ov-hcard:disabled{opacity:.68; cursor:default;}
       .ov-cardback{
         width:40px; height:56px; border-radius:7px; border:1px solid var(--gold);
         background:repeating-linear-gradient(45deg,#2c2440,#2c2440 6px,#3a2f55 6px,#3a2f55 12px);
@@ -4169,7 +4169,7 @@
         </div>
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
-        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。EX-キャリバー／セレスティア／ティアマトはスクロール構成（決め技を飛ばすと発射側SDは退場し、カメラが飛翔体を中央に捉えて背景とスピード線が下へ強く流れる→名前帯の予告→受け側が画面中央へ運ばれてきて着弾。セレスティアの光波は太い丸弾頭（幅広ドーム型、画面幅の半分ほどまで拡大）を持ち、弾単体の彗星として飛び続けてから弾頭の位置を引き継いで受け側をそのまま通り抜けて上端まで同じ形で通り、ティアマトは紅蒼のツイスト弾（先端は太い丸弾頭）が受け側の真下から絡み合ったまま昇って通り抜け、EXの斬撃は逆三日月型で弧を描いて跳び腹側の縁がチラチラ溶けながら二段加速で飛び、着弾では受け側で止まらず上へ通り抜ける。着弾はいずれも途中スクロールと同じ速度感のまま減速させず、通り抜ける瞬間に貫通点で爆風（衝撃波リング＋光の破片）が弾ける。スクロール中は画面が軽く揺れる）で再生されます。SD素材が読み込めない場合は従来の演出で再生されます。</p>
+        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。EX-キャリバー／セレスティア／ティアマトはスクロール構成（決め技を飛ばすと発射側SDは退場し、カメラが飛翔体を中央に捉えて背景とスピード線が下へ強く流れる→名前帯の予告→受け側が画面中央へ運ばれてきて着弾。セレスティアの光波は傘型の弾頭（画面幅の半分ほどまで拡大）と太いビーム状の尾を持ち、弾単体の彗星として飛び続けてから弾頭の位置を引き継いで受け側をそのまま通り抜けて上端まで同じ形で通り、ティアマトは紅蒼のツイスト弾（先端は太い丸弾頭）が受け側の真下から絡み合ったまま昇って通り抜け、受け側は爆発で光の粒に消滅し、EXの斬撃は逆三日月型で弧を描いて跳び腹側の縁がチラチラ溶けながら二段加速で飛び、着弾では受け側で止まらず上へ通り抜ける。着弾はいずれも途中スクロールと同じ速度感のまま減速させず、通り抜ける瞬間に貫通点で爆風（衝撃波リング＋光の破片）が弾ける。スクロール中は画面が軽く揺れる）で再生されます。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
@@ -6173,7 +6173,7 @@
        （顎のサイズ・動き・タイミングは従来どおり不変）。
        SD_FIN_MS：キャラ別の演出総尺（ms）。リッチ化で 4〜5.5 秒まで伸ばした。
        アギトは現行の 2500 のまま（対象外）。 */
-    var SD_FIN_MS = { '39': 6400, '46': 4600, '48': 4000, '51': 6850, '52ex': 5800, '53ag': 2500, '54': 4100 };
+    var SD_FIN_MS = { '39': 6400, '46': 4600, '48': 4800, '51': 6850, '52ex': 5800, '53ag': 2500, '54': 4100 };
     /* 決めセリフ（第3世代セット：「決まった後」の余韻・感想・相手への言葉で
        統一。白背景フェーズで表示するため、未来形・予告形は使わない）。
        SD方式の開始時表示（フォールバック時）と第3世代の白背景表示で共用する */
@@ -7241,7 +7241,7 @@
     var FINP_CUES = {
       '39':   { stop: [4150, 130], destroy: 4150, se: [[1420, 'finBeam'], [3350, 'finBeam'], [4150, 'finPurify']] },
       '46':   { slow: [2000, 2230], stop: [2230, 120], destroy: 2480, se: [[620, 'finSlash'], [910, 'finSlash'], [1200, 'finSlash'], [1490, 'finSlash'], [2230, 'finSlash']] },
-      '48':   { slow: [820, 1000],  stop: [1000, 120], destroy: 1000, se: [[550, 'finChains']] },
+      '48':   { slow: [820, 1000],  stop: [1000, 120], destroy: 1000, se: [[400, 'finChains'], [950, 'finChains']] },
       '51':   { stop: [5400, 150], destroy: 5400, se: [[1750, 'finBeam'], [3900, 'finBeamLong']] },
       '52ex': { slow: [4100, 4250], stop: [4250, 150], destroy: 4250, se: [[2400, 'finSlash'], [3880, 'finSlash']] },
       '53ag': { stop: [1700, 150], destroy: 1700, se: [[1120, 'finRoar'], [1700, 'finCrunch']] },
@@ -9019,16 +9019,23 @@
          持続中は穏やかな揺らぎだけを残して形を落ち着かせる */
       var ampMul = 1 - 0.74 * (settle || 0);
       var uni = !!u.uni;
+      /* ビーム状の尾（beamTail）：尾を細く蛇行させず、太さを保ったまま
+         まっすぐ引く。うねりの振幅も大きく絞り、細い尾がゆらゆらする
+         読み（丸い頭＋細い尾）を避ける */
+      var beamTail = !!u.beamTail;
       function waveOff(s){
         if (uni) return 0; /* 貫通ビーム：うねりを持たせず、同じ形のまま上まで通す */
         var wv = Math.sin(s * Math.PI * 2.3 - ph) + 0.45 * Math.sin(s * Math.PI * 5.1 - ph * 1.7);
-        return wv * sdH * 0.085 * ampMul * Math.sin(Math.PI * s);
+        return wv * sdH * 0.085 * ampMul * (beamTail ? 0.28 : 1) * Math.sin(Math.PI * s);
       }
       function ribbon(halfBase, halfAmp, pw){
         var n = 20, top = [], bot = [], i, s, hw, yo;
         for (i = 0; i <= n; i++){
           s = i / n;
           hw = uni ? Math.max(0.5, halfBase + halfAmp) : Math.max(0.5, halfBase + halfAmp * Math.pow(Math.sin(Math.PI * s), pw));
+          /* ビーム状の尾では根元〜中ほどでも太さを落とさない（最低でも
+             最大幅の約6割を保ち、先端側だけ弾頭へ収束させる） */
+          if (beamTail && !uni) hw = Math.max(hw, (halfBase + halfAmp) * 0.62 * (0.72 + 0.28 * s));
           yo = waveOff(s);
           top.push([len * s, yo - hw]); bot.push([len * s, yo + hw]);
         }
@@ -9050,18 +9057,35 @@
           c.beginFill(L[1], L[2]); c.drawCircle(len, 0, sdH * L[0]); c.endFill();
         });
       }
-      /* 先頭の丸い弾頭（波動拳のような丸み）：帯の先端に金のランプで
-         層を重ねた丸い頭を置き、先端が常に「丸い弾」として読めるように
-         する。発射・単体飛行・着弾（貫通）の全区間で同じ頭を保つため、
-         弾の形は最初から最後まで変わらない。太さは実機指定のスケッチ
-         （幅広のドーム型）に合わせ、帯の太さではなく弾頭そのものが
-         主役になる寸法にする。標準の半径は sdH*0.46、セレスティアは
-         実機指定でさらに大きく（画面幅の半分程度まで。u.headR を
-         ジオメトリ側で決める）、横に少し潰れたドームにする */
+      /* 先頭の弾頭は「傘タイプ」（実機指定）：まん丸の玉ではなく、
+         進行方向へ開いた笠のような形にする。前縁は幅広の弧で膨らみ、
+         裾は後方へなだらかに広がって太いビーム状の尾へつながる。
+         丸い頭＋細くゆれる尾のシルエットを避けるための形で、発射・
+         単体飛行・着弾（貫通）の全区間で同じ傘を保つため、弾の形は
+         最初から最後まで変わらない。大きさは実機指定で画面幅の
+         半分程度まで（u.headR をジオメトリ側で決める。標準は
+         sdH*0.46）。ローカル座標は +X が進行方向、弾頭は帯の先端
+         (len, 0) を中心に置く */
       var headR = u.headR || sdH * 0.46;
+      function canopyPts(sc){
+        var R = headR * sc, cxp = len - R * 0.30, rx = R * 0.55, pts = [], ci, ca;
+        pts.push([len - R * 1.06, -(sdH * 0.30 * sc + 1.5)]);
+        pts.push([len - R * 0.90, -R * 0.64]);
+        pts.push([len - R * 0.62, -R * 0.90]);
+        for (ci = 0; ci <= 8; ci++){ ca = -Math.PI / 2 + Math.PI * (ci / 8); pts.push([cxp + Math.cos(ca) * rx, Math.sin(ca) * R]); }
+        pts.push([len - R * 0.62, R * 0.90]);
+        pts.push([len - R * 0.90, R * 0.64]);
+        pts.push([len - R * 1.06, sdH * 0.30 * sc + 1.5]);
+        return pts;
+      }
       [[1.00, 0.30, 0.13], [0.84, 0.72, 0.30], [0.64, 0.95, 0.58], [0.44, 1.00, 0.95]].forEach(function(HL){
-        c.beginFill(finPRampColor(FINP_GOLD_RAMP, HL[1]), HL[2]); c.drawEllipse(len, 0, headR * HL[0] * 0.88, headR * HL[0]); c.endFill();
+        finPDrawPoly(c, canopyPts(HL[0]), finPRampColor(FINP_GOLD_RAMP, HL[1]), HL[2]);
       });
+      /* 傘の前縁のハイライト：笠の縁のラインを白く立て、傘の形を
+         輪郭でも読めるようにする */
+      var rimPts = [], ri, ra, rcx = len - headR * 0.30;
+      for (ri = 0; ri <= 10; ri++){ ra = -Math.PI / 2 + Math.PI * (ri / 10); rimPts.push([rcx + Math.cos(ra) * headR * 0.55, Math.sin(ra) * headR]); }
+      finPStrokePts(c, rimPts, Math.max(1.4, sdH * 0.022), 0xffffff, 0.55);
       /* 流れの筋：帯の中を光が手元→着弾へ流れ続ける読みを作る細線。
          うねりに追随させた3本を速い位相で明滅させ、「奔流」の質感を足す
          （旧方式のリボンの流れテクスチャに相当する要素） */
@@ -9381,14 +9405,17 @@
         [-0.50, 0.32, 0.02, 0.66, 0.50, -0.26],
         [0.16, -0.52, -0.34, 0.02, -0.10, 0.52],
         [-0.12, -0.52, 0.30, -0.04, 0.14, 0.52],
-        [-0.52, 0.02, 0.0, -0.18, 0.52, -0.04]
+        [-0.52, 0.02, 0.0, -0.18, 0.52, -0.04],
+        [0.02, -0.55, 0.42, 0.10, -0.30, 0.50],
+        [-0.34, -0.50, -0.02, 0.30, 0.36, 0.46],
+        [0.50, 0.10, -0.10, -0.30, -0.48, -0.12]
       ];
       function qpt(s, t){ var mt = 1 - t; return [(mt * mt * s[0] + 2 * mt * t * s[2] + t * t * s[4]) * W, (mt * mt * s[1] + 2 * mt * t * s[3] + t * t * s[5]) * H]; }
       /* 鎖の下に敷く紫のグロー帯 */
       strands.forEach(function(s){
         var pts = [], i, p;
         for (i = 0; i <= 12; i++){ p = qpt(s, i / 12); pts.push(p); }
-        finPStrokePts(g, pts, Math.max(5, W * 0.012), 0x7a3cff, 0.16);
+        finPStrokePts(g, pts, Math.max(5, W * 0.02), 0x7a3cff, 0.22);
       });
       /* リンク：楕円の環を進行方向と交互に90°回して並べる */
       function link(x, y, rx, ry, ang, wMul, col, alpha){
@@ -9409,19 +9436,19 @@
           var brc = 1 + 0.016 * Math.sin(tF * 0.009 + si * 1.3);
           var p = [p0[0] * brc, p0[1] * brc], pn = [pn0[0] * brc, pn0[1] * brc];
           var ang = Math.atan2(pn[1] - p[1], pn[0] - p[0]) + (((i + si) % 2) ? Math.PI / 2 : 0);
-          link(p[0], p[1], W * 0.017, W * 0.0105, ang, 1, 0x241239, 0.95);
-          link(p[0], p[1], W * 0.0102, W * 0.0063, ang, 0.5, 0xc39bff, 0.42 + 0.26 * (0.5 + 0.5 * Math.sin(tF * 0.012 + si * 2.0 - i * 0.55)));
+          link(p[0], p[1], W * 0.021, W * 0.013, ang, 1, 0x241239, 0.95);
+          link(p[0], p[1], W * 0.0126, W * 0.0078, ang, 0.5, 0xc39bff, 0.42 + 0.26 * (0.5 + 0.5 * Math.sin(tF * 0.012 + si * 2.0 - i * 0.55)));
         }
       });
       /* 中心の締め環 */
-      g.lineStyle(Math.max(3, W * 0.006), 0x2a1650, 0.9); g.drawCircle(0, 0, W * 0.055);
-      g.lineStyle(Math.max(1.5, W * 0.003), 0xd6bcff, 0.85); g.drawCircle(0, 0, W * 0.055);
+      g.lineStyle(Math.max(3, W * 0.0075), 0x2a1650, 0.9); g.drawCircle(0, 0, W * 0.07);
+      g.lineStyle(Math.max(1.5, W * 0.0038), 0xd6bcff, 0.85); g.drawCircle(0, 0, W * 0.07);
     }
     /* --- 闇の渦（ダーククイーン。3腕の螺旋＋吸い込み筋） --- */
     function finPDrawVortex(g, R, rot, suck){
       g.clear();
-      g.beginFill(0x0d0618, 0.88); g.drawCircle(0, 0, R * 0.34); g.endFill();
-      g.beginFill(0x2a1650, 0.55); g.drawCircle(0, 0, R * 0.20); g.endFill();
+      g.beginFill(0x0d0618, 0.92); g.drawCircle(0, 0, R * 0.44); g.endFill();
+      g.beginFill(0x2a1650, 0.55); g.drawCircle(0, 0, R * 0.26); g.endFill();
       [[0.055, 0x7a3cff, 0.20], [0.030, 0xa678ff, 0.45], [0.013, 0xe6d5ff, 0.85]].forEach(function(L){
         g.lineStyle(Math.max(1.2, R * L[0]), L[1], L[2]);
         for (var arm = 0; arm < 3; arm++){
@@ -9434,12 +9461,36 @@
           }
         }
       });
+      /* 逆回転の細い腕：主腕と逆向きに流れる層を重ね、渦の面に
+         テクスチャのような流れと厚みを持たせる */
+      g.lineStyle(Math.max(1, R * 0.016), 0x8a5cff, 0.32);
+      for (var arm2 = 0; arm2 < 3; arm2++){
+        var base2 = -rot * 0.7 + arm2 * Math.PI * 2 / 3 + 0.6, steps2 = 22;
+        for (var j = 0; j <= steps2; j++){
+          var s2 = j / steps2, ang2 = base2 - s2 * 3.2;
+          var r2 = R * (0.16 + 0.80 * s2) * (1 - 0.18 * suck * s2);
+          var x2 = Math.cos(ang2) * r2, y2 = Math.sin(ang2) * r2;
+          if (j === 0) g.moveTo(x2, y2); else g.lineTo(x2, y2);
+        }
+      }
+      /* 螺旋に沿って中心へ流れる光のダッシュ：rot で位相が進み、
+         闇が内側へ流れ込み続ける読みを作る */
+      g.lineStyle(Math.max(1, R * 0.014), 0xe6d5ff, 0.5);
+      for (var d = 0; d < 18; d++){
+        var fr = ((d * 0.618 + rot * 0.11) % 1 + 1) % 1;
+        var da = rot + (d % 3) * Math.PI * 2 / 3 + fr * 4.4;
+        var dr = R * (0.10 + 0.90 * fr) * (1 - 0.22 * suck * fr);
+        var dx = Math.cos(da) * dr, dy = Math.sin(da) * dr;
+        var da2 = da + 0.22, dr2 = dr * 0.94;
+        g.moveTo(dx, dy);
+        g.lineTo(Math.cos(da2) * dr2, Math.sin(da2) * dr2);
+      }
       /* 外周から中心へ吸い込まれる筋 */
-      g.lineStyle(Math.max(1, R * 0.008), 0xc39bff, 0.5);
-      for (var k = 0; k < 7; k++){
-        var a0 = rot * 1.7 + k * 0.93;
+      g.lineStyle(Math.max(1, R * 0.008), 0xc39bff, 0.6);
+      for (var k = 0; k < 13; k++){
+        var a0 = rot * 1.7 + k * 0.485;
         g.moveTo(Math.cos(a0) * R * 1.02, Math.sin(a0) * R * 1.02);
-        g.lineTo(Math.cos(a0 + 0.5) * R * 0.72, Math.sin(a0 + 0.5) * R * 0.72);
+        g.lineTo(Math.cos(a0 + 0.5) * R * 0.62, Math.sin(a0 + 0.5) * R * 0.62);
       }
     }
     /* --- 光の裂け目（EX。横へ走るギザギザの亀裂＋枝） --- */
@@ -9697,6 +9748,7 @@
           bu0.cont.rotation = -Math.PI / 2;
           bu0.len = Math.round(vh * 0.92);
           bu0.uni = false;
+          bu0.beamTail = true; /* 尾は太いビーム状（細く蛇行させない）。傘型弾頭と対で使う */
           bu0.headSlow = false; bu0.noSettle = false; bu0.head0 = 0;
           if (bu0.hit) bu0.hit.position.set(bu0.len, 0);
           if (bu0.src) bu0.src.position.set(0, 0);
@@ -9704,8 +9756,8 @@
           finPSpawnBurst(R, G.handX, G.handY, { count: 18, colors: [0xffffff, 0xffeeb0], power: 1.0 });
         });
         if (R.beamFx0 != null) finPCelestiaWaveUpdate(R, N.beams[0], R.beamFx0, 640);
-        /* 単体飛行（スクロール区間）：発射した光波は消えず、丸い弾頭＋
-           流れる尾の彗星として画面中央に留まり続ける。カメラが弾を
+        /* 単体飛行（スクロール区間）：発射した光波は消えず、傘型の弾頭＋
+           太いビーム状の尾の彗星として画面中央に留まり続ける。カメラが弾を
            中央に捉えて追い、背景とスピード線だけが下へ流れる区間で、
            「弾単体の場面」を着弾まで途切れさせない */
         if (R.beamFx0 != null && R.beam2Fx0 == null && tS >= 2080 && tS < 3350){
@@ -9736,8 +9788,8 @@
         finPTargetBand(R, tS, 2180, 3260);
         finPVicArrive(R, tS, 2900);
         /* 着弾：画面下から昇る光波が、画面中央で静止した受け側を
-           そのまま通り抜けて画面上端まで届く。発射時と同じうねる
-           光波＋太い丸弾頭のまま（真っ直ぐな別帯へ差し替えない）、
+           そのまま通り抜けて画面上端まで届く。発射時と同じ傘型弾頭＋
+           太いビーム状の尾のまま（真っ直ぐな別帯へ差し替えない）、
            弾頭の前進は減速させず、スクロールと同じ速度感のまま
            一気に通り抜ける（貫通の瞬間には爆風で手応えを足す）。
            形を変える要素（届いた後のうねり抑制＝settle、光柱の
@@ -9781,14 +9833,33 @@
           finPSpawnBurst(R, G.cx, G.cy, { count: 20, colors: R.burstCols, power: 1.4 });
         });
       } else if (id === '48'){
-        /* ダーククイーン：鎖が被さる → 闇の渦へ引きずり込む */
-        finPOnce(R, 'chains', tS, 550, function(){
+        /* ダーククイーン：鎖が幾重にも被さる → 闇が寄せてくる →
+           闇の渦へ引きずり込む → 内向きに潰れて爆ぜる（演出強化：
+           他の神話に合わせて密度と山場を増やした構成） */
+        finPOnce(R, 'chains', tS, 400, function(){
           R.chFx0 = tFs;
           finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
           N.chainsC.position.set(G.cx, G.cy);
         });
+        /* 締め付けの追い打ち：破壊の直前に鎖が一段強く締まり、紫の粒が散る */
+        finPOnce(R, 'chTighten', tS, 760, function(){
+          finPFlash(R, 0.18, 300);
+          finPSpawnBurst(R, G.cx, G.cy, { count: 14, colors: [0xc39bff, 0x8a5cff, 0xffffff], power: 1.0 });
+        });
+        /* 闇の引き込み：破壊までの間、周囲の紫の塵が受け側へ吸い寄せられ、
+           渦が開く前から「引きずり込まれる」圧を作る */
+        if (tS >= 560 && tS < R.destroyMs && (R.dqMoteFx == null || tFs - R.dqMoteFx > 120)){
+          R.dqMoteFx = tFs;
+          finPSpawnMotes(R, G.cx, G.cy, { count: 3, radius: G.fxW * 0.52, colors: [0xc39bff, 0x8a5cff, 0x2a1650], speed: 340, size: 0.5 });
+        }
+        /* 締めの内爆：渦が受け側を飲み切りきった頃、中心で紫の光が
+           一度だけ強く爆ぜて余韻を作る */
+        finPOnce(R, 'dqEnd', tS, R.destroyMs + 1520, function(){
+          finPFlash(R, 0.45, 420);
+          finPSpawnBurst(R, G.cx, G.cy + G.sumH * 0.22, { count: 30, colors: R.burstCols, power: 1.6 });
+        });
         if (R.chFx0 != null){
-          var chp = finPProg(tFs, R.chFx0, 1900);
+          var chp = finPProg(tFs, R.chFx0, 2100);
           if (chp >= 1) N.chainsC.visible = false;
           else {
             N.chainsC.visible = true;
@@ -10382,6 +10453,9 @@
         R.blowFx = tFs;
         finPFlash(R, 0.9, 430);
         finPSpawnBurst(R, G.cx, G.cy, { count: 28, colors: [0xffffff, conf.auraN[0]], power: 2.1, size: 1.2 });
+        /* 爆発スタイル（ティアマト）は受け側の消滅を粒でも見せる：
+           破壊の拍に追加のバーストを重ね、姿が粒へ崩れる読みを足す */
+        if (R.breakStyle === 'explode') finPSpawnBurst(R, G.cx, G.cy, { count: 22, colors: R.burstCols, power: 1.9, size: 1.15 });
         /* 斬撃の封印（試作の二重保証）：斬撃の区間は段取りの上で破壊拍
            より前に閉じるよう dur を換算してあるが、万一残っていた場合も
            ここで dead を立てて封印する。従来は on を落とすだけで、
@@ -10478,6 +10552,11 @@
           N.vicWhite.alpha = Math.min(1, pu * 2.2);
           N.vicC.position.y = G.cy - 34 * FINP_EZ.easeIn(pu);
           N.vicC.alpha = 1 - pu;
+          /* 浄化の消散も粒で見せる：昇りながら光の粒へ崩れていく */
+          if (pu > 0 && pu < 1 && (R.puMoteFx == null || tFs - R.puMoteFx > 120)){
+            R.puMoteFx = tFs;
+            finPSpawnBurst(R, G.cx, N.vicC.position.y, { count: 3, rise: true, colors: R.burstCols, power: 0.7 });
+          }
         } else if (R.breakStyle === 'vortex'){
           var vo = finPProg(bl, 120, 1350);
           var ve2 = FINP_EZ.easeIn(vo);
@@ -10490,22 +10569,29 @@
                包絡・位置・縦圧縮は代用グロー版と同一 */
             N.vortexG.visible = true;
             N.vortexG.position.set(G.cx, G.cy + G.sumH * 0.22);
-            finPDrawVortex(N.vortexG, G.fxW * 0.475, bl * 0.005, ve2);
+            finPDrawVortex(N.vortexG, G.fxW * 0.60, bl * 0.005, ve2);
             N.vortexG.scale.set(1, 0.62);
             N.vortexG.alpha = vo < 0.35 ? vo / 0.35 : (vo > 0.8 ? 1 - (vo - 0.8) / 0.2 : 1);
           } else N.vortexG.visible = false;
           /* 吸い込みの塵：渦が回っている間、周囲の紫の塵が中心へ吸われる */
-          if (vo > 0 && vo < 1 && (R.vxMoteFx == null || tFs - R.vxMoteFx > 130)){
+          if (vo > 0 && vo < 1 && (R.vxMoteFx == null || tFs - R.vxMoteFx > 95)){
             R.vxMoteFx = tFs;
-            finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 4, radius: G.fxW * 0.42, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff], speed: 300, size: 0.45 });
+            finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 7, radius: G.fxW * 0.5, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff], speed: 340, size: 0.45 });
           }
         } else if (R.breakStyle === 'explode'){
-          var ex = finPProg(bl, 0, 1100);
-          N.vicWhite.alpha = ex < 0.16 ? ex / 0.16 : Math.max(0, 1 - (ex - 0.16) / 0.5);
-          var exs = ex < 0.16 ? 1 + 0.05 * (ex / 0.16) : 1.05 - 0.07 * ((ex - 0.16) / 0.84);
-          N.vicC.scale.set(exs);
-          N.vicC.position.y = G.cy + 20 * ex;
-          N.vicC.alpha = ex <= 0.45 ? 1 : 1 - (ex - 0.45) / 0.55;
+          /* 消滅（実機指定）：受け側は破壊の拍で光の粒へ崩れて消える。
+             以前は約1.1秒かけて沈みながら薄れる形で、画面が割れて
+             白む間も受け側が元の姿で残り続けていたため、短く鋭く
+             消し去る形へ変えた */
+          var ex = finPProg(bl, 0, 420);
+          N.vicWhite.alpha = ex < 0.3 ? ex / 0.3 : Math.max(0, 1 - (ex - 0.3) / 0.7);
+          N.vicC.scale.set(1 + 0.04 * ex);
+          N.vicC.alpha = 1 - FINP_EZ.easeIn(ex);
+          if (ex > 0 && ex < 1 && (R.exMoteFx == null || tFs - R.exMoteFx > 70)){
+            R.exMoteFx = tFs;
+            finPSpawnBurst(R, G.cx, G.cy, { count: 4, colors: R.burstCols, power: 1.15, size: 1.1 });
+          }
+          if (ex >= 1) N.vicC.visible = false;
         } else if (R.breakStyle === 'suck'){
           var su = FINP_EZ.easeIn(finPProg(bl, 0, 520));
           N.vicC.scale.set(1 - 0.9 * su);
@@ -20161,13 +20247,13 @@
        そのまま再生して確認できる。
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
-      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'【スクロール構成】SDセレスティアが両手に集めた光を真上へ放つと、発射したSDは下へ流れながら退場する。太い丸弾頭（波動拳のような幅広ドーム型。画面幅の半分ほどまで拡大）を持つ光波は消えず、弾単体の彗星として画面中央を飛び続ける。スクロール中は画面が軽く揺れる。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、弾頭の位置を彗星から引き継いだ（瞬間移動しない）同じ光波＋太い丸弾頭が、スクロールと同じ速度感のまま減速せずに相手を通り抜けて画面上端まで通って、光の粒に浄化する（貫通の瞬間に爆風。着弾は画面中央。金のオーラ付き）' },
-      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【テクスチャ方式】斬撃を、流れノイズのテクスチャを流す帯メッシュ（シェーダで色ランプ＋幅方向の減衰＋白熱コアを合成し、帯の中心ほど色が濃くハッキリ立つよう密度を底上げして、3層を加算で重ねる）で描く。斬撃はワープの着地に同期して速く出る。斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
-      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に被さり、闇の渦へ引きずり込む' },
-      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】SDティアマトが紅と蒼のビームをツイスト（螺旋）させながら真上へ放つと、発射したSDは下へ流れながら退場する。スクロール中は画面が軽く揺れる。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、相手の真下からツイスト弾（先端は太い丸弾頭＝幅広ドーム型）が絡み合ったまま昇り、相手で止まらず、スクロールと同じ速度感のまま減速せずに通り抜けて画面上端まで抜けてから爆発させる（貫通の瞬間に爆風。着弾は画面中央）' },
-      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振り、逆三日月斬撃（中央が厚く両端が下向きに尖る。端は画面から見切れてよい）が弧を描いて跳ぶ。腹側の反った縁はチラチラと溶ける（縁が不規則に明滅・崩れ、光の欠片と滴が縁に沿って零れ落ちる）。発射直後はゆっくり大きく育ち、カメラが斬撃を中央に捉えて背景が下へ強く流れ、スクロール中は画面が軽く揺れる中で急加速して画面を抜け、発射したSDは退場する。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、画面下から超巨大な逆三日月斬撃（画面をはみ出す全長へ拡大＋残像＋光屑＋腹側の溶解）が昇り、相手で止まらずにそのまま上へ通り抜けて画面上端まで抜け、光の裂け目を走らせて真っ二つに崩す（通り抜ける瞬間に爆風）' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が口を下に向けて真上の画面外から降ってきて相手SDを上から飲み込む' },
-      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは最初は映らず、溜めで背景の光が流れ始め、加速区間（スピード線＋本人が画面下へ飛び去る＋名前帯の予告）を経て相手SDが上方から登場して静止した瞬間、下から突き上げて着弾し、背景ごと吹っ飛んで白背景で締める（着弾位置は画面中央寄りへ変更。着弾した槍は金のグローと光の粒で覆い、素材感を消す）' }
+      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'【スクロール構成】傘型の弾頭＋太いビーム状の尾の光波が飛び、相手SDを減速せず通り抜けて光の粒に浄化する' },
+      { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像を残して高速ワープを繰り返し、最後に相手SDを斬って消える' },
+      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に幾重にも被さり、闇の渦へ引きずり込んで消し去る' },
+      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】紅蒼のツイスト弾が真下から昇って相手SDを通り抜け、爆発とともに受け側を消し去る' },
+      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】逆三日月斬撃（腹の縁がチラチラ溶ける）が弧を描いて飛び、相手SDを上へ通り抜けて真っ二つに崩す' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、巨大な顎が画面外から降ってきて相手SDを上から飲み込む' },
+      { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは名前帯の予告の後に登場し、静止した瞬間に下から突き上げて着弾、背景ごと吹っ飛ぶ' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
     /* フレーム計測・位置実測は内部（window.__finDiagLast 等）だけで行い、
