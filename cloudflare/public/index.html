@@ -7436,6 +7436,18 @@
       N.vortexMesh = vtx ? vtx.mesh : null;
       N.vortexMat = vtx ? vtx.mat : null;
       if (N.vortexMesh) space.addChild(N.vortexMesh);
+      /* 鎖の面本体（鎖目テクスチャ＋流れシェーダの帯メッシュ×9束）。
+         作れない環境では null になり、呼び出し側が Graphics 版
+         （finPDrawChains）へ落ちる。締め環だけはどちらの経路でも
+         chainsG に描くため、chainsG を鎖メッシュの前面へ置き直す */
+      N.chainTex = finPChainMeshes();
+      if (N.chainTex){
+        N.chainTex.forEach(function(cm){
+          N.chainsC.addChild(cm.glow.mesh);
+          N.chainsC.addChild(cm.body.mesh);
+        });
+        N.chainsC.addChild(N.chainsG);
+      }
       N.crackG = new PIXI.Graphics(); N.crackG.visible = false;
       space.addChild(N.crackG);
       /* 受け側SD＋破片 */
@@ -7859,6 +7871,7 @@
       hide(N.chainsC); N.chainsC.alpha = 1; N.chainsC.rotation = 0; N.chainsC.scale.set(1);
       hide(N.vortexG); N.vortexG.alpha = 1; N.vortexG.rotation = 0; N.vortexG.scale.set(1);
       hide(N.vortexMesh); if (N.vortexMesh){ N.vortexMesh.alpha = 1; N.vortexMesh.rotation = 0; N.vortexMesh.scale.set(1); }
+      if (N.chainTex) N.chainTex.forEach(function(cm){ cm.glow.mesh.visible = false; cm.body.mesh.visible = false; });
       hide(N.crackG); N.crackG.alpha = 1; N.crackG.scale.set(1);
       hide(N.trailG); N.trailG.alpha = 1; if (N.trailG.clear) N.trailG.clear();
       N.vicC.visible = true; N.vicC.alpha = 1; N.vicC.rotation = 0; N.vicC.scale.set(1);
@@ -9520,6 +9533,288 @@
         p.sp.visible = true;
       }
     }
+    /* --- 鎖（ダーククイーン）：鎖目テクスチャ＋流れシェーダの帯メッシュ ---
+       Graphics の環リンク描画（finPDrawChains）は、環を楕円ストロークの
+       3層重ねで描くため面がベタ塗りになり、流れテクスチャ方式へ作り替えた
+       渦と並ぶと相対的にペタ張りに見えた。こちらは渦・斬撃と同じ型で
+       鎖の「面」から作り替える：
+       ・鎖目の陰影（暗い胴→紫→淡紫の芯→紫→暗）は生成テクスチャ側に
+         焼き、環の向きは1目ごとに交互（進行方向／直交）にして本物の
+         鎖の連なりを読む。環を1つずつ描くのはやめ、質感はテクスチャが担う
+       ・帯は束ごとのストリップメッシュ（下地グロー＝加算の紫ランプ帯／
+         本体＝鎖目テクスチャ帯の通常合成）。u は実長ベースで割り当て、
+         束の長さによらず鎖目の大きさが揃う
+       ・流れと動きの連動：締め付け中は鎖目の流れ（uFlow）をほぼ止めて
+         「張った鎖」にし、吸い込み（suck）が進むほど流速を上げて
+         鎖目ごと渦へ流れ出す。艶（uSheen）だけは締め付け中も緩く進み、
+         環のハイライトの流れとして残す（旧 Graphics 版の位相シマー相当）
+       ・吸い込みの幾何学（環ごとの位相ずれ・螺旋・震え・縮小）は
+         finPDrawChains と同じ suckPt を頂点へ適用して揃える
+       作れない環境では finPChainMeshes が null を返し、呼び出し側が
+       Graphics 版（finPDrawChains）へ落ちる */
+    var FINP_CHAIN_SEG = 26;
+    var FINP_CHAIN_VS = [
+      'attribute vec2 aVertexPosition;',
+      'attribute vec2 aUvs;',
+      'attribute float aFade;',
+      'uniform mat3 translationMatrix;',
+      'uniform mat3 projectionMatrix;',
+      'varying vec2 vUvs;',
+      'varying float vFade;',
+      'void main(){ vUvs = aUvs; vFade = aFade; gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0); }'
+    ].join('\n');
+    var FINP_CHAIN_BODY_FS = [
+      'varying vec2 vUvs;',
+      'varying float vFade;',
+      'uniform sampler2D uTex;',
+      'uniform sampler2D uNoise;',
+      'uniform float uFlow;',
+      'uniform float uSheen;',
+      'uniform float uAlpha;',
+      'void main(){',
+      '  vec4 tx = texture2D(uTex, vec2(vUvs.x - uFlow, vUvs.y));',
+      '  float n = texture2D(uNoise, vec2(vUvs.x * 1.5 - uSheen + 0.37, vUvs.y * 1.3 + 0.11)).a;',
+      '  vec3 col = tx.rgb * (0.84 + 0.42 * n);',
+      '  col += vec3(0.86, 0.78, 1.0) * max(0.0, n - 0.58) * 0.8 * tx.a;',
+      '  float across = sin(3.14159 * clamp(vUvs.y, 0.0, 1.0));',
+      '  float a = tx.a * uAlpha * vFade * (0.62 + 0.38 * across);',
+      '  gl_FragColor = vec4(col, a);',
+      '}'
+    ].join('\n');
+    var FINP_CHAIN_GLOW_FS = [
+      'varying vec2 vUvs;',
+      'varying float vFade;',
+      'uniform sampler2D uTex;',
+      'uniform float uFlow;',
+      'uniform float uAlpha;',
+      'vec3 chainGlowRamp(float t){',
+      '  vec3 c = vec3(0.102, 0.043, 0.188);',
+      '  c = mix(c, vec3(0.239, 0.102, 0.471), smoothstep(0.05, 0.32, t));',
+      '  c = mix(c, vec3(0.478, 0.235, 1.000), smoothstep(0.32, 0.55, t));',
+      '  c = mix(c, vec3(0.651, 0.471, 1.000), smoothstep(0.55, 0.75, t));',
+      '  c = mix(c, vec3(0.765, 0.608, 1.000), smoothstep(0.75, 0.92, t));',
+      '  return c;',
+      '}',
+      'void main(){',
+      '  float n1 = texture2D(uTex, vec2(vUvs.x * 2.0 - uFlow, vUvs.y)).a;',
+      '  float n2 = texture2D(uTex, vec2(vUvs.x * 5.0 - uFlow * 2.35 + 0.41, vUvs.y * 1.7 + 0.13)).a;',
+      '  float noise = clamp(n1 * 0.75 + n2 * 0.55, 0.0, 1.0);',
+      '  float across = sin(3.14159 * clamp(vUvs.y, 0.0, 1.0));',
+      '  float prof = pow(across, 1.5);',
+      '  vec3 col = chainGlowRamp(0.16 + 0.58 * across) * (0.55 + 0.85 * noise);',
+      '  float ends = smoothstep(0.0, 0.04, vUvs.x);',
+      '  float a = uAlpha * prof * (0.40 + 0.60 * noise) * vFade * ends;',
+      '  gl_FragColor = vec4(col * a, a);',
+      '}'
+    ].join('\n');
+    /* 鎖目テクスチャ（Canvas生成・共有キャッシュなので破棄しない）。
+       1タイル＝鎖8目（32px／目）。陰影は上下対称の円筒グラデーションで
+       焼くため、テクスチャの上下反転にも左右されない。帯中央には
+       下地の紫のハゼを薄く敷き、グロー帯と合わせて面の厚みを作る */
+    var finPChainTex = null;
+    function finPChainTexture(){
+      if (finPChainTex) return finPChainTex;
+      var cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+      var g = cv.getContext('2d');
+      var hg = g.createLinearGradient(0, 0, 0, 64);
+      hg.addColorStop(0, 'rgba(96,44,210,0)');
+      hg.addColorStop(0.30, 'rgba(110,52,235,0.13)');
+      hg.addColorStop(0.5, 'rgba(140,80,255,0.22)');
+      hg.addColorStop(0.70, 'rgba(110,52,235,0.13)');
+      hg.addColorStop(1, 'rgba(96,44,210,0)');
+      g.fillStyle = hg; g.fillRect(0, 0, 256, 64);
+      function link(cx, tall){
+        var rx = tall ? 9.5 : 14.5, ry = tall ? 14.5 : 9.5;
+        var gr = g.createLinearGradient(0, 32 - ry - 5, 0, 32 + ry + 5);
+        gr.addColorStop(0, '#120826');
+        gr.addColorStop(0.22, '#3d1a78');
+        gr.addColorStop(0.42, '#8a5cff');
+        gr.addColorStop(0.5, '#d9c6ff');
+        gr.addColorStop(0.58, '#8a5cff');
+        gr.addColorStop(0.78, '#3d1a78');
+        gr.addColorStop(1, '#120826');
+        g.beginPath(); g.ellipse(cx, 32, rx, ry, 0, 0, Math.PI * 2);
+        g.lineWidth = 10; g.strokeStyle = 'rgba(8,3,18,0.92)'; g.stroke();
+        g.beginPath(); g.ellipse(cx, 32, rx, ry, 0, 0, Math.PI * 2);
+        g.lineWidth = 6.8; g.strokeStyle = gr; g.stroke();
+        /* 環の縁のハイライト弧：金属の稜線を1本立てる */
+        g.beginPath(); g.ellipse(cx, 32, rx - 1.2, ry - 1.2, 0, Math.PI * 1.18, Math.PI * 1.72);
+        g.lineWidth = 2.1; g.strokeStyle = 'rgba(238,226,255,0.9)'; g.stroke();
+      }
+      for (var k = -1; k <= 8; k++) link(k * 32 + 16, (k % 2) === 0);
+      finPChainTex = PIXI.Texture.from(cv);
+      finPChainTex.wrapMode = PIXI.WRAP_MODES.REPEAT;
+      return finPChainTex;
+    }
+    /* 帯メッシュのストリップ（頂点ごとのフェード aFade 付き。
+       吸い込みで先行する環から消すために使う） */
+    function finPChainStrip(seg){
+      var nv = (seg + 1) * 2;
+      var pos = new Float32Array(nv * 2);
+      var uv = new Float32Array(nv * 2);
+      var fd = new Float32Array(nv);
+      var idx = [];
+      for (var i = 0; i < seg; i++){
+        var a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+        idx.push(a, b, c, b, d, c);
+      }
+      var geo = new PIXI.Geometry();
+      var posBuf = new PIXI.Buffer(pos, false);
+      var uvBuf = new PIXI.Buffer(uv, false);
+      var fdBuf = new PIXI.Buffer(fd, false);
+      geo.addAttribute('aVertexPosition', posBuf, 2);
+      geo.addAttribute('aUvs', uvBuf, 2);
+      geo.addAttribute('aFade', fdBuf, 1);
+      geo.addIndex(idx);
+      return { geo: geo, pos: pos, uv: uv, fd: fd, posBuf: posBuf, uvBuf: uvBuf, fdBuf: fdBuf, seg: seg };
+    }
+    function finPChainStripWrite(st, pts){
+      for (var i = 0; i < pts.length; i++){
+        var p = pts[i], j = i * 4;
+        st.pos[j] = p.x + p.ax * p.hw; st.pos[j + 1] = p.y + p.ay * p.hw;
+        st.pos[j + 2] = p.x - p.ax * p.hw; st.pos[j + 3] = p.y - p.ay * p.hw;
+        st.uv[j] = p.u; st.uv[j + 1] = 0;
+        st.uv[j + 2] = p.u; st.uv[j + 3] = 1;
+        st.fd[i * 2] = p.fade; st.fd[i * 2 + 1] = p.fade;
+      }
+      st.posBuf.update(); st.uvBuf.update(); st.fdBuf.update();
+    }
+    /* 鎖メッシュ一式（9束×グロー／本体）の生成（プール構築時にのみ呼ぶ） */
+    function finPChainMeshes(){
+      try {
+        var set = [];
+        for (var si = 0; si < 9; si++){
+          var gst = finPChainStrip(FINP_CHAIN_SEG);
+          var gmat = PIXI.Shader.from(FINP_CHAIN_VS, FINP_CHAIN_GLOW_FS, {
+            uTex: finPMirageFlowTexture(), uFlow: 0, uAlpha: 0
+          });
+          var gmesh = new PIXI.Mesh(gst.geo, gmat);
+          gmesh.blendMode = PIXI.BLEND_MODES.ADD; gmesh.visible = false;
+          var bst = finPChainStrip(FINP_CHAIN_SEG);
+          var bmat = PIXI.Shader.from(FINP_CHAIN_VS, FINP_CHAIN_BODY_FS, {
+            uTex: finPChainTexture(), uNoise: finPMirageFlowTexture(), uFlow: 0, uSheen: 0, uAlpha: 0
+          });
+          var bmesh = new PIXI.Mesh(bst.geo, bmat);
+          bmesh.visible = false;
+          set.push({ glow: { mesh: gmesh, mat: gmat, st: gst }, body: { mesh: bmesh, mat: bmat, st: bst } });
+        }
+        return set;
+      } catch (e) { return null; }
+    }
+    /* 鎖メッシュの毎フレーム描画。幾何学（束のベジェ・呼吸・吸い込み
+       変換）は finPDrawChains と同一にし、見た目だけが差し替わる */
+    function finPDrawChainsTex(N, W, H, tF, suck, tx, ty){
+      var set = N.chainTex;
+      if (!set) return false;
+      tF = tF || 0;
+      suck = suck || 0; tx = tx || 0; ty = ty || 0;
+      function suckPt(x, y, stag){
+        if (!suck) return [x, y, 0];
+        var lp = suck * 1.75 - stag;
+        if (lp <= 0) return [x, y, 0];
+        if (lp > 1) lp = 1;
+        var e = lp * lp;
+        var dx = x - tx, dy = y - ty;
+        var r0 = Math.sqrt(dx * dx + dy * dy) || 0.001;
+        var a0 = Math.atan2(dy, dx);
+        var r = r0 * (1 - e);
+        var a = a0 + e * 2.7;
+        var nx = tx + Math.cos(a) * r, ny = ty + Math.sin(a) * r;
+        var jt = Math.sin(tF * 0.14 + stag * 47 + x * 0.06 + y * 0.04) * 8 * lp * (1 - lp);
+        nx += Math.cos(a + Math.PI / 2) * jt; ny += Math.sin(a + Math.PI / 2) * jt;
+        return [nx, ny, lp];
+      }
+      var strands = [
+        [-0.52, -0.28, 0.05, -0.60, 0.52, 0.24],
+        [0.52, -0.32, -0.05, -0.55, -0.52, 0.28],
+        [-0.50, 0.32, 0.02, 0.66, 0.50, -0.26],
+        [0.16, -0.52, -0.34, 0.02, -0.10, 0.52],
+        [-0.12, -0.52, 0.30, -0.04, 0.14, 0.52],
+        [-0.52, 0.02, 0.0, -0.18, 0.52, -0.04],
+        [0.02, -0.55, 0.42, 0.10, -0.30, 0.50],
+        [-0.34, -0.50, -0.02, 0.30, 0.36, 0.46],
+        [0.50, 0.10, -0.10, -0.30, -0.48, -0.12]
+      ];
+      function qpt(s, t){ var mt = 1 - t; return [(mt * mt * s[0] + 2 * mt * t * s[2] + t * t * s[4]) * W, (mt * mt * s[1] + 2 * mt * t * s[3] + t * t * s[5]) * H]; }
+      var SEG = FINP_CHAIN_SEG;
+      var linkTile = W * 0.042 * 8; /* テクスチャ1タイル（鎖8目）ぶんの世界長 */
+      /* 流れの連動：締め付け中はほぼ静止（0.05タイル／秒の微速）、
+         吸い込みの進みに比例して鎖目が流れ出す */
+      var flow = tF * 0.00005 + suck * 2.8;
+      var sheen = tF * 0.00035;
+      var gMul = 1 - suck * 0.5;
+      for (var si = 0; si < strands.length; si++){
+        var cm = set[si]; if (!cm) continue;
+        var s = strands[si];
+        var brc = 1 + 0.016 * Math.sin(tF * 0.009 + si * 1.3);
+        var base = [], cum = [0], pts = [], i, t, p0;
+        for (i = 0; i <= SEG; i++){
+          t = i / SEG; p0 = qpt(s, t);
+          base.push([p0[0] * brc, p0[1] * brc]);
+          if (i > 0){
+            var cdx = base[i][0] - base[i - 1][0], cdy = base[i][1] - base[i - 1][1];
+            cum.push(cum[i - 1] + Math.sqrt(cdx * cdx + cdy * cdy));
+          }
+        }
+        for (i = 0; i <= SEG; i++){
+          var lp = 0, pp = base[i];
+          if (suck){
+            var sp = suckPt(pp[0], pp[1], ((si * 5 + i) % 9) / 9 * 0.5);
+            pp = [sp[0], sp[1]]; lp = sp[2];
+          }
+          var shrinkL = 1 - 0.8 * lp * lp;
+          pts.push({ x: pp[0], y: pp[1],
+            hw: (lp >= 0.985 ? 0 : W * 0.037 * shrinkL),
+            u: cum[i] / linkTile,
+            fade: 1 - Math.pow(lp, 3) * 0.95, ax: 0, ay: 1 });
+        }
+        for (i = 0; i <= SEG; i++){
+          var pPrev = pts[Math.max(0, i - 1)], pNext = pts[Math.min(SEG, i + 1)];
+          var tdx = pNext.x - pPrev.x, tdy = pNext.y - pPrev.y;
+          var tl = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+          pts[i].ax = -tdy / tl; pts[i].ay = tdx / tl;
+        }
+        finPChainStripWrite(cm.body.st, pts);
+        cm.body.mat.uniforms.uFlow = flow + si * 0.37;
+        cm.body.mat.uniforms.uSheen = sheen + si * 0.61;
+        cm.body.mat.uniforms.uAlpha = 1.0;
+        cm.body.mesh.visible = true;
+        var gpts = [];
+        for (i = 0; i <= SEG; i++){
+          var gp = pts[i];
+          gpts.push({ x: gp.x, y: gp.y, ax: gp.ax, ay: gp.ay, hw: gp.hw * 1.85, u: gp.u, fade: gp.fade });
+        }
+        finPChainStripWrite(cm.glow.st, gpts);
+        cm.glow.mat.uniforms.uFlow = flow * 0.8 + si * 0.53;
+        cm.glow.mat.uniforms.uAlpha = 0.42 * gMul;
+        cm.glow.mesh.visible = true;
+      }
+      return true;
+    }
+    /* 中心の締め環：紫ランプの層を重ねて金属の艶を持たせる。
+       吸い込み中は締め環も一緒に引きずられ、中心が渦へ寄って
+       輪が縮みながら消えていく（鎖メッシュ経路と Graphics 経路で共用） */
+    function finPDrawChainRing(g, W, suck, tx, ty){
+      var rgE = suck * suck, rgX = tx * rgE, rgY = ty * rgE, rgR = W * 0.07 * (1 - 0.8 * rgE), rgA = 1 - rgE;
+      if (rgA > 0.03){
+        g.lineStyle(Math.max(4, W * 0.011), finPRampColor(FINP_PURPLE_RAMP, 0.22), 0.45 * rgA); g.drawCircle(rgX, rgY, rgR);
+        g.lineStyle(Math.max(3, W * 0.0075), 0x2a1650, 0.9 * rgA); g.drawCircle(rgX, rgY, rgR);
+        g.lineStyle(Math.max(2, W * 0.005), finPRampColor(FINP_PURPLE_RAMP, 0.78), 0.75 * rgA); g.drawCircle(rgX, rgY, rgR * 0.83);
+        g.lineStyle(Math.max(1.5, W * 0.0038), 0xd6bcff, 0.85 * rgA); g.drawCircle(rgX, rgY, rgR);
+      }
+    }
+    /* 鎖の描き分け：メッシュが使える環境ではテクスチャ方式で描き、
+       chainsG には締め環だけを残す。使えない環境では従来の
+       Graphics 版（finPDrawChains）へそのまま落とす */
+    function finPDrawChainsAuto(N, W, H, tF, suck, tx, ty){
+      if (N.chainTex && finPDrawChainsTex(N, W, H, tF, suck, tx, ty)){
+        var g = N.chainsG;
+        g.clear();
+        finPDrawChainRing(g, W, suck || 0, tx || 0, ty || 0);
+        return;
+      }
+      finPDrawChains(N.chainsG, W, H, tF, suck, tx, ty);
+    }
     /* --- 鎖（ダーククイーン。ベジェの束＋環リンクを描く） ---
        suck（0..1）を渡すと吸い込み形態になる：各環が渦の中心
        （tx, ty）へ向けて螺旋を描きながら1つずつ吸い込まれていく。
@@ -9608,16 +9903,8 @@
           link(p[0], p[1], W * 0.0126 * rMulL, W * 0.0078 * rMulL, ang, 0.5, 0xe6d5ff, (0.42 + 0.26 * (0.5 + 0.5 * Math.sin(tF * 0.012 + si * 2.0 - i * 0.55))) * aMulL);
         }
       });
-      /* 中心の締め環：紫ランプの層を重ねて金属の艶を持たせる。
-         吸い込み中は締め環も一緒に引きずられ、中心が渦へ寄って
-         輪が縮みながら消えていく */
-      var rgE = suck * suck, rgX = tx * rgE, rgY = ty * rgE, rgR = W * 0.07 * (1 - 0.8 * rgE), rgA = 1 - rgE;
-      if (rgA > 0.03){
-        g.lineStyle(Math.max(4, W * 0.011), finPRampColor(FINP_PURPLE_RAMP, 0.22), 0.45 * rgA); g.drawCircle(rgX, rgY, rgR);
-        g.lineStyle(Math.max(3, W * 0.0075), 0x2a1650, 0.9 * rgA); g.drawCircle(rgX, rgY, rgR);
-        g.lineStyle(Math.max(2, W * 0.005), finPRampColor(FINP_PURPLE_RAMP, 0.78), 0.75 * rgA); g.drawCircle(rgX, rgY, rgR * 0.83);
-        g.lineStyle(Math.max(1.5, W * 0.0038), 0xd6bcff, 0.85 * rgA); g.drawCircle(rgX, rgY, rgR);
-      }
+      /* 中心の締め環（鎖メッシュ経路と共用の finPDrawChainRing で描く） */
+      finPDrawChainRing(g, W, suck, tx, ty);
     }
     /* --- 闇の渦（ダーククイーン。3腕の螺旋＋吸い込み筋） ---
        シェーダ面（finPVortexMesh）が作れない環境向けの Graphics 版。
@@ -10036,7 +10323,7 @@
            他の神話に合わせて密度と山場を増やした構成） */
         finPOnce(R, 'chains', tS, 400, function(){
           R.chFx0 = tFs;
-          finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
+          finPDrawChainsAuto(N, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
           N.chainsC.position.set(G.cx, G.cy);
         });
         /* 締め付けの追い打ち：破壊の直前に鎖が一段強く締まり、紫の粒が散る */
@@ -10067,7 +10354,7 @@
                やや下：渦の描画位置と同一）へ向けて描き直す */
             N.chainsC.scale.set(1.03);
             N.chainsC.rotation = 2 * Math.PI / 180;
-            finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs, suckP, 0, G.sumH * 0.22);
+            finPDrawChainsAuto(N, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs, suckP, 0, G.sumH * 0.22);
             N.chainsC.alpha = suckP > 0.9 ? Math.max(0, 1 - (suckP - 0.9) / 0.1) : 1;
           }
           else {
@@ -10077,7 +10364,7 @@
               N.chainsC.visible = true;
               /* 鎖は毎フレーム描き直す：締め付けの呼吸と環のハイライトの
                  流れを持たせ、静止した絵にしない */
-              finPDrawChains(N.chainsG, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
+              finPDrawChainsAuto(N, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
               var chs = chp < 0.35 ? 0.45 + 0.55 * FINP_EZ.easeOut(chp / 0.35) : (chp < 0.8 ? 1 + 0.05 * ((chp - 0.35) / 0.45) : 1.05 - 0.03 * ((chp - 0.8) / 0.2));
               N.chainsC.scale.set(chs);
               N.chainsC.rotation = (chp < 0.35 ? -4 + 4 * (chp / 0.35) : (chp < 0.8 ? 2 * ((chp - 0.35) / 0.45) : 2)) * Math.PI / 180;
