@@ -20006,6 +20006,19 @@
       var c = document.getElementById('fxStageCaption');
       if (c) c.textContent = txt;
     }
+    var FXCHECK_CAPTION_INIT = 'ボタンを押すと、ここで演出が再生されます';
+    /* 演出チェック専用の終了時リセット（集約先はここだけ）：どの再生経路
+       （召喚／孵化／フィニッシュ）でも、再生が終わったらキャプションを
+       初期文言へ戻し、召喚リストとフィニッシュリスト両方の .playing
+       （金枠）を外す。各経路の終了処理は必ずここを通すこと */
+    function fxCheckClearPlaying(){
+      if (typeof fxListEl !== 'undefined' && fxListEl) fxListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+      if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+    }
+    function fxCheckEndReset(){
+      fxCheckCaption(FXCHECK_CAPTION_INIT);
+      fxCheckClearPlaying();
+    }
     function fxCheckClearStageCard(){
       if (fxStageCard && fxStageCard.parentNode) fxStageCard.parentNode.removeChild(fxStageCard);
       fxStageCard = null;
@@ -20051,17 +20064,17 @@
       slot.appendChild(fxAgitoEl);
     }
     var fxSummonCheckToken = 0; /* 登場／孵化エフェクト再生の世代：終了表示の後片付け用 */
-    /* 登場／孵化エフェクトの再生が終わったら「再生中」表示とボタンの
-       再生中ハイライトを必ず戻す（フィニッシュ側の fxFinCheckDone と対。
-       以前は登場側にこの後片付けが無く、セレスティアの登場エフェクト等で
-       終了後も「再生中」が残ることがあった） */
+    /* 登場／孵化エフェクトの再生が終わったら、終了時リセット
+       （fxCheckEndReset：キャプションを初期文言へ戻し、両リストの
+       .playing を外す）を必ず呼ぶ。以前は登場側にこの後片付けが無く、
+       セレスティアの登場エフェクト等で終了後も「再生中」が残ることがあった。
+       label 引数は呼び出し側の互換のため残す（表示文言は初期文言に統一） */
     function fxCheckSummonDone(ms, label){
       var myToken = ++fxSummonCheckToken;
       setTimeout(function(){
         if (myToken !== fxSummonCheckToken) return;
         if (!fxOverlay.classList.contains('show')) return;
-        fxCheckCaption(label + ' 再生終了');
-        if (typeof fxListEl !== 'undefined' && fxListEl) fxListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+        fxCheckEndReset();
       }, ms);
     }
     function fxCheckPlaySummon(item){
@@ -20178,24 +20191,29 @@
           if (myToken !== fxFinCheckToken) return;
           if (!fxOverlay.classList.contains('show')) return;
           /* 終了後の残存チェック：全方式ぶんの残量を数え、残っていたら
-             共通の後片付け（finFxSweepAll）で掃除してから結果を表示する。
+             共通の後片付け（finFxSweepAll）で掃除する。
              「再生が終わったのにエフェクトが残る」をここで必ず検出する */
           var res = null;
           try { res = window.__finResidueAudit ? window.__finResidueAudit() : null; } catch (e) {}
           if (res && res.total > 0){
             try { finFxSweepAll(); } catch (e) {}
-            fxCheckCaption(item.label + ' 再生終了（残っていた演出 ' + res.total + ' 件を掃除しました）');
-          } else {
-            fxCheckCaption(item.label + ' 再生終了（残存チェック：異常なし）');
           }
-          finDiagResetActiveMode(); /* 再生終了：診断モードの適用を通常へ戻す（Pixi再開・DOM OFF解除）。計測結果は内部に保持される */
-          if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+          /* 表示の後片付けは集約先（fxCheckEndReset）で：キャプションを
+             初期文言へ戻し、両リストの .playing（金枠）を外す */
+          fxCheckEndReset();
+          try { finDiagResetActiveMode(); } catch (e) {} /* 再生終了：診断モードの適用を通常へ戻す（Pixi再開・DOM OFF解除）。計測結果は内部に保持される */
         }, ms);
       }
       function fxFinCheckScheduleDone(){
-        var total = sdFxReady(item.cardId)
-          ? ((SD_FIN_MS[String(item.cardId)] || 2500) + (fin2WillRun(item.cardId, panel) ? FIN2_TOTAL_MS : 0))
-          : 2550;
+        /* 終了リセットの予約はキャラ別の総尺に紐づける（固定タイマー1本で
+           済ませない）：新方式／第3世代は「間」FIN2_TOTAL_MS ＋ 本編
+           SD_FIN_MS（キャラ別：4〜5.5秒級まで、アギトのみ約2.5秒）、
+           従来SD方式は本編のみ。振り分け直後に確定している finProtoActive で
+           実際に走った方式に合わせ、最後に余裕（+600ms）を足して呼ぶ */
+        var total;
+        if (!sdFxReady(item.cardId)) total = 2550;
+        else if (finProtoActive || fin2WillRun(item.cardId, panel)) total = FIN2_TOTAL_MS + (SD_FIN_MS[String(item.cardId)] || 2500);
+        else total = SD_FIN_MS[String(item.cardId)] || 2500;
         fxFinCheckDone(total + 600);
       }
       mythicFxCleanup(); /* 前回の複製が残っていたら実パネルへ戻してから再生する */
@@ -20209,7 +20227,7 @@
         setTimeout(function(){ panel.classList.remove('fx-hit'); }, 500);
         setTimeout(function(){
           if (myToken !== fxFinCheckToken) return;
-          if (typeof fxFinishListEl !== 'undefined' && fxFinishListEl) fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
+          fxCheckClearPlaying(); /* 両リストの .playing（金枠）を外す */
         }, 600);
         return;
       }
@@ -20275,9 +20293,7 @@
       mythicFxCleanup(); /* フィニッシュ演出の複製が残っていたら実パネルへ戻す */
       fxHatchBusy = false;
       fxCheckBuildField();
-      fxListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
-      fxFinishListEl.querySelectorAll('.fx-item').forEach(function(b){ b.classList.remove('playing'); });
-      fxCheckCaption('ボタンを押すと、ここで演出が再生されます');
+      fxCheckEndReset(); /* 開いた時点でも終了時リセットと同じ初期状態にそろえる */
       fxOverlay.classList.add('show');
       fxOverlay.scrollTop = 0;
     }
