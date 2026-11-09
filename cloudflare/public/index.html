@@ -6154,7 +6154,8 @@
     }
 
     /* ===== 神話フィニッシュ SDキャラ方式（見た目のみ） =====
-       素材（SDキャラ透過WebP／アギトの巨大な顎／透過エフェクトWebP）は
+       素材（SDキャラ透過WebP／透過エフェクトWebP。アギトの大顎は
+       素材ではなく流れテクスチャ方式の手続き描画）は
        同一オリジンの fx/ 以下に置く外部ファイル前提で、相対パスで参照する
        （HTMLへは埋め込まない）。読み込みは非同期プリロードのみで行い、
        ゲーム進行は一切ブロックしない。対象キャラの必須素材が揃っていない
@@ -7110,8 +7111,10 @@
          魔法陣の幾何学／ロンギヌスの光跡と亀裂／EXの飛翔斬撃と裂け目／
          吹き飛びの破片。発光は「芯（白熱）→内光→外光」の多層描画で作り、
          熱っぽさは輪郭を時間でうねらせる疑似ゆらぎで表す。素材のまま
-         残すのは造形物だけ：EXの剣／ロンギヌスの槍／アギトの顎（と
-         SD・カード絵そのもの）。rim光や接地影は従来どおり焼き込み
+         残すのは造形物だけ：EXの剣／ロンギヌスの槍（と
+         SD・カード絵そのもの）。アギトの顎は素材を廃止し、流れ
+         テクスチャ方式の不定形の大顎（シェーダ面）へ作り替えた。
+         rim光や接地影は従来どおり焼き込み
          テクスチャで担う
        ・テクスチャ方式（ミラージュの斬撃のみ。頂点色グラデのリボン試作が
          実機で合格したあと、厚みの頭打ちを破るために採用）：斬撃の帯を
@@ -7566,6 +7569,15 @@
       jawC.visible = false;
       space.addChild(jawC);
       N.jawC = jawC;
+      /* アギトの大顎（新方式）：不定形の闇＋牙のシェーダ面。顎素材の
+         スプライト（jawC）はもう使わない。シェーダが作れない環境では
+         Graphics 版（finPDrawMawG）へ落ちる */
+      var maw = finPMawMesh();
+      N.mawMesh = maw ? maw.mesh : null;
+      N.mawMat = maw ? maw.mat : null;
+      if (N.mawMesh) space.addChild(N.mawMesh);
+      N.mawG = new PIXI.Graphics(); N.mawG.visible = false;
+      space.addChild(N.mawG);
       /* ロンギヌス：加速区間のスピード線プールと標的の名前帯 */
       N.rush = [];
       for (var rui = 0; rui < 36; rui++){ var rus = PS(bake.white); rus.visible = false; space.addChild(rus); N.rush.push(rus); }
@@ -7912,6 +7924,8 @@
       hide(N.convG); if (N.convG.clear) N.convG.clear(); N.convG.alpha = 1;
       hide(N.convGlow); N.convGlow.alpha = 0;
       N.jawC.visible = false; N.jawC.alpha = 1; N.jawC.rotation = Math.PI / 2;
+      hide(N.mawMesh); if (N.mawMesh){ N.mawMesh.alpha = 1; N.mawMesh.rotation = 0; N.mawMesh.scale.set(1); }
+      hide(N.mawG); N.mawG.alpha = 1; N.mawG.rotation = 0; N.mawG.scale.set(1); if (N.mawG.clear) N.mawG.clear();
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.bandC.visible = false; N.bandC.alpha = 1;
       N.parts.forEach(function(p){ p.on = false; p.sp.visible = false; p.sp.alpha = 1; p.sp.rotation = 0; });
@@ -8218,16 +8232,18 @@
         finPDrawCrackH(N.fissure, G.fxW * 1.9, 7.7);
         N.fissure.rotation = 0; /* 縦飛行の接線は水平 */
       }
-      /* アギト：顎の寸法と口の位置（回転中心＝口） */
+      /* アギト：大顎の寸法と口の位置（中心＝口。顎素材は使わない）。
+         退場は「真上」：X は受け側中心のまま固定し、中心が画面上端の
+         少し上（小さく溶けた残りが上端へ消える位置）までだけ上げる */
       if (G.id === '53ag'){
-        var jawW = Math.round(Math.max(G.fxW * 2.35, 330));
-        var jawAsp = (T.fx.height || 1) / (T.fx.width || 1);
-        N.jaw.width = jawW; N.jaw.height = jawW * jawAsp;
-        N.jaw.position.set(-jawW * 0.70, -jawW * 0.60);
-        R.jawW = jawW;
-        R.jawStartOff = -(G.cy + jawW * 0.4 + 40);
-        N.jawC.position.set(G.cx, G.cy + R.jawStartOff);
-        N.jawC.rotation = Math.PI / 2;
+        var mawW = Math.round(Math.min(G.vw * 1.06, Math.max(G.fxW * 1.45, 340)));
+        var mawH = Math.round(mawW * 0.80);
+        R.mawW = mawW;
+        R.mawH = mawH;
+        R.mawStartOff = -(G.cy + mawH * 0.62 + 40);
+        R.mawTopY = Math.round(-mawH * 0.10);
+        if (N.mawMesh) N.mawMesh.position.set(G.cx, G.cy + R.mawStartOff);
+        if (N.mawG) N.mawG.position.set(G.cx, G.cy + R.mawStartOff);
       }
       /* ロンギヌス＋スクロール構成の3体：スピード線プールの初期化と名前帯の配置 */
       if (G.id === '54' || G.id === '39' || G.id === '51' || G.id === '52ex'){
@@ -8702,7 +8718,7 @@
          N.bshards, N.embers, N.aimgs, N.swordGhosts, N.rush].forEach(function(arr){
           arr.forEach(function(sp){ if (sp.visible) vis++; });
         });
-        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont, N.convG, N.convGlow, N.blastRing].forEach(function(sp){ if (sp && sp.visible) vis++; });
+        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.mawMesh, N.mawG, N.bandC, N.flyUnit.cont, N.convG, N.convGlow, N.blastRing].forEach(function(sp){ if (sp && sp.visible) vis++; });
         N.beams.forEach(function(b){ if (b.cont.visible) vis++; });
         N.parts.forEach(function(p){ if (p.on) partsOn++; if (p.sp.visible) vis++; });
         if (N.space.visible) vis++;
@@ -9134,6 +9150,132 @@
         mesh.visible = false;
         return { mesh: mesh, mat: mat };
       } catch (e) { return null; }
+    }
+    /* --- 大顎（黒のアギト）：流れテクスチャ方式の不定形の闇 ---
+       リアルな竜の顔・顎の素材絵は廃止し、「闇そのものに歯が生えた」
+       不定形の大顎へ作り替えた（ユーの手書き指示：左上＝上から開く
+       大顎／下＝ガブッと閉じる／右上＝画面上部で小さく溶けていく途中）。
+       ・面は黒紫（黒基調に紫を含む色味）：色ランプは極座標で固定し、
+         流れるのはノイズだけ。縁は流れノイズで常時蠢く不定形の輪郭
+       ・口は楕円の空洞（真っ黒な喉）。内周には白く硬い牙をギザギザに
+         生やし、闇の柔らかさとの対比で牙の鋭さを立てる
+       ・uOpen で開閉（閉じると牙の噛み合う裂け目になる）、uMelt で
+         縁から泥のように崩れるディゾルブ。退場の縮小・真上への上昇は
+         呼び出し側（メッシュの位置・スケール）が担う
+       ・合成は通常ブレンド（暗い面が背景を遮る必要があるため） */
+    var FINP_MAW_VS = [
+      'attribute vec2 aVertexPosition;',
+      'attribute vec2 aUvs;',
+      'uniform mat3 translationMatrix;',
+      'uniform mat3 projectionMatrix;',
+      'varying vec2 vUvs;',
+      'void main(){ vUvs = aUvs; gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0); }'
+    ].join('\n');
+    var FINP_MAW_FS = [
+      'varying vec2 vUvs;',
+      'uniform sampler2D uTex;',
+      'uniform float uFlow;',
+      'uniform float uOpen;',
+      'uniform float uMelt;',
+      'uniform float uAlpha;',
+      'float mawHash(float n){ return fract(sin(n) * 43758.5453); }',
+      'void main(){',
+      '  vec2 c = vUvs * 2.0 - 1.0;',
+      '  float r = length(c);',
+      '  float ang = atan(c.y, c.x);',
+      /* 流れノイズ：面の質感は中心へ流れ込みつつ下へ垂れる（泥の質感） */
+      '  float n1 = texture2D(uTex, vec2(ang / 6.28318 * 3.0 + uFlow * 0.045, r * 0.85 - uFlow * 0.20)).a;',
+      '  float n2 = texture2D(uTex, vec2(c.x * 0.42 + 0.5 + uFlow * 0.03, c.y * 0.42 + 0.5 - uFlow * 0.13)).a;',
+      '  float noise = clamp(n1 * 0.66 + n2 * 0.56, 0.0, 1.0);',
+      /* 不定形の輪郭：角度方向のうねり＋流れノイズ。溶けるほど荒れる */
+      '  float wob = sin(ang * 3.0 + uFlow * 0.7) * 0.050 + sin(ang * 5.0 - uFlow * 0.9) * 0.040 + sin(ang * 9.0 + uFlow * 1.6) * 0.024;',
+      '  wob += (noise - 0.5) * 0.17 * (0.7 + uMelt * 1.5);',
+      '  float blobR = 0.88 + wob - uMelt * 0.10;',
+      '  if (r > blobR + 0.30){ gl_FragColor = vec4(0.0); return; }',
+      '  float body = smoothstep(blobR + 0.03, blobR - 0.06, r);',
+      /* 口の空洞：中心やや下の楕円。uOpen で縦に開く（0＝牙の裂け目） */
+      '  vec2 mc0 = vec2(0.0, 0.08);',
+      '  vec2 mp = c - mc0;',
+      '  float mry = 0.055 + uOpen * 0.335;',
+      '  float md = length(vec2(mp.x / 0.80, mp.y / mry));',
+      '  float mouth = smoothstep(1.0, 0.90, md);',
+      /* 牙：空洞の内周から中心へ向けて生える白い三角形。1本ごとに
+         長さをばらつかせ、ギザギザの不揃いさを作る */
+      '  float mang = atan(mp.y, mp.x);',
+      '  float segF = mang / 6.28318 * 30.0;',
+      '  float tri = 1.0 - abs(fract(segF) * 2.0 - 1.0);',
+      '  float lenMul = 0.55 + 0.65 * mawHash(floor(segF) * 1.71);',
+      '  float band = (0.10 + 0.36 * uOpen) * lenMul;',
+      '  float dIn = 1.0 - md;',
+      '  float tooth = mouth * smoothstep(0.0, 0.05, dIn) * smoothstep(0.0, 0.07, band * tri - dIn);',
+      /* 面の色：黒紫。芯はほぼ真っ黒、外へ向けて深紫、流れノイズの
+         高い所だけ紫の艶が走り、輪郭際には紫の縁光を残す */
+      '  vec3 col = mix(vec3(0.012, 0.006, 0.028), vec3(0.075, 0.032, 0.155), smoothstep(0.15, 0.95, r));',
+      '  col += vec3(0.30, 0.13, 0.62) * pow(noise, 2.0) * 0.55 * smoothstep(0.25, 0.75, r);',
+      '  float rim = smoothstep(0.20, 0.0, blobR - r) * smoothstep(0.55, 1.0, r);',
+      '  col += vec3(0.44, 0.25, 0.98) * rim * (0.35 + 0.55 * noise);',
+      /* 喉：真っ黒。縁だけ深紫がにじむ */
+      '  vec3 throat = mix(vec3(0.05, 0.015, 0.10), vec3(0.0, 0.0, 0.0), smoothstep(1.0, 0.35, md));',
+      '  col = mix(col, throat, mouth);',
+      /* 牙：白く硬い芯。付け根だけ淡紫の影で面へつなぐ */
+      '  vec3 toothCol = mix(vec3(0.78, 0.72, 0.92), vec3(0.97, 0.96, 1.0), clamp(dIn / max(band, 0.001), 0.0, 1.0));',
+      '  col = mix(col, toothCol, tooth);',
+      /* 溶け：縁とノイズの低い所から崩れる。牙は少し遅れて崩れる */
+      '  float keep = noise * 0.52 + (1.0 - clamp(r / max(blobR, 0.001), 0.0, 1.0)) * 0.62 + tooth * 0.07;',
+      '  float dis = mix(1.0, smoothstep(uMelt * 1.12, uMelt * 1.12 + 0.22, keep + 0.10), step(0.001, uMelt));',
+      '  float a = uAlpha * body * dis;',
+      '  gl_FragColor = vec4(col * a, a);',
+      '}'
+    ].join('\n');
+    function finPMawMesh(){
+      try {
+        var geo = new PIXI.Geometry();
+        geo.addAttribute('aVertexPosition', new PIXI.Buffer(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), false), 2);
+        geo.addAttribute('aUvs', new PIXI.Buffer(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), false), 2);
+        geo.addIndex([0, 1, 2, 2, 1, 3]);
+        var mat = PIXI.Shader.from(FINP_MAW_VS, FINP_MAW_FS, {
+          uTex: finPMirageFlowTexture(), uFlow: 0, uOpen: 0, uMelt: 0, uAlpha: 0
+        });
+        var mesh = new PIXI.Mesh(geo, mat);
+        mesh.visible = false;
+        return { mesh: mesh, mat: mat };
+      } catch (e) { return null; }
+    }
+    /* 大顎の Graphics フォールバック（シェーダが作れない環境用）。
+       ローカル座標：中心が原点、W×H が顎全体の寸法。シェーダ版と
+       同じ読み（黒紫の不定形の面＋真っ黒な口＋白い牙）で描く */
+    function finPDrawMawG(g, W, H, open, melt, tF, alpha){
+      g.clear();
+      var rx = W * 0.46, ry = H * 0.46, t = tF * 0.001;
+      function outline(scale){
+        var pts = [], n = 40;
+        for (var i = 0; i < n; i++){
+          var a = i / n * Math.PI * 2;
+          var rr = 1 + 0.05 * Math.sin(a * 3 + t * 0.7) + 0.04 * Math.sin(a * 5 - t * 0.9) + 0.026 * Math.sin(a * 9 + t * 1.6)
+            + melt * 0.06 * Math.sin(a * 13 - t * 3.0);
+          pts.push([Math.cos(a) * rx * rr * scale, Math.sin(a) * ry * rr * scale]);
+        }
+        return pts;
+      }
+      finPDrawPoly(g, outline(1.045), 0x3d1a78, 0.30 * alpha);            /* 紫の縁光 */
+      finPDrawPoly(g, outline(1.0), 0x0a0516, 0.98 * alpha);              /* 黒紫の面 */
+      finPDrawPoly(g, outline(0.80), 0x05030a, 0.55 * alpha);             /* 芯の黒 */
+      /* 口の空洞（真っ黒な喉） */
+      var mRx = rx * 0.74, mRy = H * (0.018 + open * 0.145), mCy = H * 0.045;
+      g.beginFill(0x000000, 0.98 * alpha);
+      g.drawEllipse(0, mCy, Math.max(1, mRx), Math.max(1.2, mRy));
+      g.endFill();
+      /* 牙：空洞の内周から中心へ向けて生える白い三角形（不揃い） */
+      var seg = 26;
+      for (var k = 0; k < seg; k++){
+        var th = k / seg * Math.PI * 2;
+        var bx = Math.cos(th) * mRx, by = mCy + Math.sin(th) * mRy;
+        var lf = (0.35 + 0.45 * fxFinRand(k * 3.31 + 7)) * (0.35 + 0.65 * open);
+        var txp = bx * (1 - lf), typ = mCy + (by - mCy) * (1 - lf);
+        var px = -Math.sin(th), py = Math.cos(th);
+        var bw = W * 0.013;
+        finPDrawPoly(g, [[bx + px * bw, by + py * bw], [bx - px * bw, by - py * bw], [txp, typ]], 0xf4f2ff, 0.92 * alpha);
+      }
     }
     /* --- 光波（セレスティア。旧方式 pixiFinCelestiaWaveFx の幾何学と
        スケールをそのまま移植：起点→着弾を結ぶ帯に2周波のうねりを重ねた
@@ -10747,7 +10889,9 @@
           R.dirAlpha = 1 - exXp;
         }
       } else if (id === '53ag'){
-        /* 黒のアギト：真上へ飛ぶ → 巨大な顎が真上から降って飲み込む（スローなし） */
+        /* 黒のアギト：真上へ飛ぶ → 不定形の大顎（闇に歯が生えた口）が
+           真上から降りて開き、ガブッと飲み込み、真上へ小さく溶けて
+           消える（スローなし。顎素材は使わない流れテクスチャ方式） */
         finPOnce(R, 'agUp', tS, 470, function(){
           R.agFx0 = tFs;
           finPSpawnDust(R, G.ax, G.feetY, true, 0xbfb0d4);
@@ -10763,35 +10907,60 @@
         }
         finPOnce(R, 'agWind', tS, 720, function(){ finPSpawnWind(R, G.ax + 6, G.feetY - G.sdH * 1.5, -90, G.sdH * 0.95, 0xffffff); });
         finPOnce(R, 'jawDust', tS, R.destroyMs, function(){ finPSpawnDust(R, G.cx, G.cy + G.sumH * 0.42, true, 0xbfb0d4); });
-        finPOnce(R, 'jawIn', tS, 1120, function(){ R.jawFx0 = tFs; });
-        if (R.jawFx0 != null){
-          N.jawC.visible = true;
-          var jp = finPProg(tFs, R.jawFx0, 540);
-          var je = FINP_EZ.jaw(jp);
-          /* 落下の風切り：顎が降りている間、その位置に風の筋を流し続ける */
-          if (jp > 0.05 && jp < 0.95 && (R.jawWindFx == null || tFs - R.jawWindFx > 120)){
-            R.jawWindFx = tFs;
-            finPSpawnWind(R, G.cx, N.jawC.position.y + G.sumH * 0.2, 90, G.sdH * 1.1, 0xd6bcff);
+        finPOnce(R, 'mawIn', tS, 1120, function(){ R.mawFx0 = tFs; });
+        if (R.mawFx0 != null){
+          /* 大顎の振付（手書き指示の読み順：左上→下→右上）：
+             1120〜1660 真上の画面外から降りながら不定形の口が開く
+             1700（破壊拍） ガブッと閉じる（約130ms）＋縦の震え
+             〜2140 閉じたまま保持（受け側は口の中へ吸い込まれて消える）
+             2140〜2470 真上へだけ上昇し、小さくなりながら泥のように
+             溶けて消える（斜め移動はしない。X は受け側中心で固定） */
+          var mp = finPProg(tFs, R.mawFx0, 540);
+          var me = FINP_EZ.jaw(mp);
+          var mawY = G.cy + R.mawStartOff * (1 - me);
+          var mawScale = 0.55 + 0.45 * me; /* 形になりながら大きくなる */
+          var mawOpen = mp;
+          var mawMelt = 0;
+          var mawJitY = 0;
+          if (tS >= R.destroyMs){
+            var bp = Math.min(1, (tS - R.destroyMs) / 130);
+            mawOpen = 1 - bp;
+            if (tS < R.destroyMs + 460){
+              var bpp = (tS - R.destroyMs) / 460;
+              mawJitY = Math.sin(bpp * Math.PI * 5) * (1 - bpp) * 6;
+            }
           }
-          N.jawC.position.y = G.cy + R.jawStartOff * (1 - je);
-          /* 噛み砕きの震え（破壊拍から460ms） */
-          if (tS >= R.destroyMs && tS < R.destroyMs + 460){
-            var bp = (tS - R.destroyMs) / 460;
-            var jit = Math.sin(bp * Math.PI * 5) * (1 - bp);
-            N.jawC.position.x = G.cx + jit * 5;
-            N.jawC.position.y = G.cy + jit * 6;
-            N.jawC.rotation = Math.PI / 2 + jit * 0.012;
-          } else if (tS >= R.destroyMs + 460 && tS < 2180){
-            N.jawC.position.x = G.cx; N.jawC.rotation = Math.PI / 2;
-            if (jp >= 1) N.jawC.position.y = G.cy;
+          var mawDone = false;
+          if (tS >= 2140){
+            var jo = finPProg(tS, 2140, 330);
+            var je2 = FINP_EZ.easeIn(jo);
+            mawY = mawY + (R.mawTopY - mawY) * je2; /* 真上へ（X は不変） */
+            mawScale = 1 - 0.78 * je2;              /* 小さく（右上のコマの山） */
+            mawMelt = je2;                          /* 泥のように溶ける */
+            mawOpen = 0.05 * (1 - je2);
+            if (jo >= 1) mawDone = true;
           }
-          /* 退場：真上へ */
-          if (tS >= 2180){
-            if (R.jawOutFx0 == null) R.jawOutFx0 = tFs;
-            var jo = finPProg(tFs, R.jawOutFx0, 270);
-            N.jawC.position.y = G.cy + R.jawStartOff * 0.55 * FINP_EZ.easeIn(jo);
-            N.jawC.alpha = 1 - jo;
-            if (jo >= 1) N.jawC.visible = false;
+          /* 落下の風切り：大顎が降りている間、その位置に風の筋を流し続ける */
+          if (mp > 0.05 && mp < 0.95 && (R.mawWindFx == null || tFs - R.mawWindFx > 120)){
+            R.mawWindFx = tFs;
+            finPSpawnWind(R, G.cx, mawY + G.sumH * 0.2, 90, G.sdH * 1.1, 0xd6bcff);
+          }
+          var mawAlpha = Math.min(1, mp / 0.12);
+          if (N.mawMesh && N.mawMat){
+            N.mawMesh.visible = !mawDone;
+            N.mawG.visible = false;
+            N.mawMesh.position.set(G.cx, mawY + mawJitY);
+            N.mawMesh.scale.set(R.mawW * 0.5 * mawScale, R.mawH * 0.5 * mawScale);
+            N.mawMat.uniforms.uFlow = tFs / 1000;
+            N.mawMat.uniforms.uOpen = mawOpen;
+            N.mawMat.uniforms.uMelt = mawMelt;
+            N.mawMat.uniforms.uAlpha = mawAlpha;
+            N.mawMesh.alpha = 1;
+          } else {
+            N.mawG.visible = !mawDone;
+            N.mawG.position.set(G.cx, mawY + mawJitY);
+            N.mawG.scale.set(mawScale);
+            finPDrawMawG(N.mawG, R.mawW, R.mawH, mawOpen, mawMelt, tFs, mawAlpha * (1 - mawMelt * 0.3));
           }
         }
       } else if (id === '54'){
@@ -12527,11 +12696,10 @@
         });
         sdFadeOut(3750);
       } else if (id === '53ag'){
-        /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて巨大な顎が
-           真上の画面外から降ってきて、パネルを上からガブッと飲み込む
-           （第7弾で登場方向を横→真上へ変更。第8弾で顎の向きを頭ごと
-           時計回りに90°回転させ、吻と口が真下を向く形に変更。素材・
-           大きさ・間・総尺・SEは従来どおり） */
+        /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて不定形の
+           大顎（闇に歯が生えた口。顎素材は廃止し手続き描画へ作り替え）が
+           真上の画面外から降りて開き、パネルをガブッと飲み込み、真上へ
+           小さく溶けて消える（間・総尺・SEは従来どおり） */
         later(function(){
           var up = feetY + sdH + 90;
           fxFinAnimate(sd, [
@@ -12541,8 +12709,7 @@
           ], { duration: 600, easing: 'cubic-bezier(.5,0,.8,.4)', fill: 'forwards' });
         }, 470);
         /* 追加はこの2点だけ：飛び立つ瞬間に足元へ砂煙、上昇中に風切り
-           （顎のサイズ・タイミングと、消えてから顎が出るまでの流れは不変。
-           顎の登場方向だけ第7弾で真上へ変更した） */
+           （大顎のタイミングと、消えてから大顎が出るまでの流れは不変） */
         later(function(){
           if (!pixiFinDustFx(ax, feetY, true, 0xbfb0d4)) sdDust(ax, feetY, true); /* 第4弾：飛び立ちの砂煙を寿命カーブ粒子へ（顎まわりは不変） */
           sdWind(ax, feetY - sdH * 0.55, -90, sdH * 1.15, 0xd6bcff);
@@ -12556,51 +12723,114 @@
             { transform: 'translate(0px,0px)' }, { transform: 'translate(-2.5px,1px)' },
             { transform: 'translate(2.5px,-1px)' }, { transform: 'translate(0px,0px)' }
           ], { duration: 300, iterations: 2 });
-          /* 顎素材は右向きの横顔（吻が右向き）。第8弾：頭全体を時計回りに
-             90°回転させ、吻と口が真下を向く向きで真上から降ろし、口を
-             下に向けてパネルに噛みつく形にする。回転の中心は口の位置
-             （従来の最終位置でパネル中心に重なる点＝要素の左上から
-             (0.70×jawW, 0.60×jawW) の点）に取り、回転しても口がパネル
-             中心から動かないようにする。最終位置・大きさは従来どおり。
-             開始オフセットは回転後の見かけの高さ（＝素材の幅 jawW）基準で、
-             顎全体が画面上端の外に出切る量にする */
-          var jawW = Math.round(Math.max(fxW * 2.35, 330));
-          var jaw = sdFinNode('img', 'fx-sd-char');
-          jaw.src = conf.fx; jaw.alt = '';
-          jaw.style.width = jawW + 'px';
-          jaw.style.transformOrigin = (jawW * 0.70) + 'px ' + (jawW * 0.60) + 'px';
-          var finL = pcx - jawW * 0.70, finT = pcy - jawW * 0.60;
-          jaw.style.left = finL + 'px'; jaw.style.top = finT + 'px';
-          var startOffY = -(finT + jawW + 40);
-          fxFinAnimate(jaw, [
-            { transform: 'translateY(' + startOffY + 'px) rotate(90deg)', opacity: 1 },
-            { transform: 'translateY(0px) rotate(90deg)', opacity: 1 }
-          ], { duration: 540, easing: 'cubic-bezier(.22,.75,.3,1)', fill: 'forwards' });
-          /* 噛み砕く：顎が上下に震え、パネルは口の中へ上向きに吸い込まれて消える */
+          /* 大顎は素材絵ではなく Canvas の手続き描画（新方式のシェーダ面と
+             同じ読み：黒紫の不定形の闇＋真っ黒な口＋白く硬い牙）。
+             振付：真上の画面外から降りながら開く（540ms）→ 破壊拍で
+             ガブッと閉じる → 真上へだけ上昇し、小さくなりながら泥の
+             ように溶けて消える（斜め移動はしない） */
+          var mawW = Math.round(Math.min(window.innerWidth * 1.06, Math.max(fxW * 1.45, 340)));
+          var mawH = Math.round(mawW * 0.80);
+          var mawCv = sdFinNode('canvas', 'fx-sd-char');
+          var MDPR = Math.min(2, window.devicePixelRatio || 1);
+          mawCv.width = Math.round(mawW * MDPR); mawCv.height = Math.round(mawH * MDPR);
+          mawCv.style.width = mawW + 'px'; mawCv.style.height = mawH + 'px';
+          mawCv.style.left = pcx + 'px'; mawCv.style.top = pcy + 'px';
+          mawCv.style.pointerEvents = 'none';
+          var mctx = mawCv.getContext('2d');
+          var mawStartOff = -(pcy + mawH * 0.62 + 40);
+          var mawTopDy = -mawH * 0.10 - pcy; /* 退場の到達点（真上）の中心オフセット */
+          function drawMaw(open, melt, tMs, alpha){
+            var t = tMs * 0.001;
+            mctx.setTransform(MDPR, 0, 0, MDPR, 0, 0);
+            mctx.clearRect(0, 0, mawW, mawH);
+            mctx.globalAlpha = alpha * (1 - melt * 0.30);
+            var cx0 = mawW / 2, cy0 = mawH / 2;
+            var rx = mawW * 0.46, ry = mawH * 0.46;
+            function outline(scale){
+              mctx.beginPath();
+              for (var i = 0; i <= 40; i++){
+                var a = i / 40 * Math.PI * 2;
+                var rr = 1 + 0.05 * Math.sin(a * 3 + t * 0.7) + 0.04 * Math.sin(a * 5 - t * 0.9) + 0.026 * Math.sin(a * 9 + t * 1.6)
+                  + melt * 0.06 * Math.sin(a * 13 - t * 3.0);
+                var px = cx0 + Math.cos(a) * rx * rr * scale, py = cy0 + Math.sin(a) * ry * rr * scale;
+                if (i === 0) mctx.moveTo(px, py); else mctx.lineTo(px, py);
+              }
+              mctx.closePath();
+            }
+            var grad = mctx.createRadialGradient(cx0, cy0, rx * 0.1, cx0, cy0, rx * 1.02);
+            grad.addColorStop(0, '#150a28'); grad.addColorStop(0.55, '#0a0516'); grad.addColorStop(1, '#05030a');
+            outline(1.0); mctx.fillStyle = grad; mctx.fill();
+            outline(1.0); mctx.strokeStyle = 'rgba(140,90,255,0.50)'; mctx.lineWidth = 3; mctx.stroke();
+            /* 口の空洞（真っ黒な喉） */
+            var mRx = rx * 0.74, mRy = Math.max(1.2, mawH * (0.018 + open * 0.145)), mCy = cy0 + mawH * 0.045;
+            mctx.beginPath(); mctx.ellipse(cx0, mCy, mRx, mRy, 0, 0, Math.PI * 2);
+            mctx.fillStyle = '#000000'; mctx.fill();
+            /* 牙：内周から中心へ向けて生える白い三角形（不揃い） */
+            mctx.fillStyle = '#f4f2ff';
+            for (var k = 0; k < 26; k++){
+              var th = k / 26 * Math.PI * 2;
+              var bx = cx0 + Math.cos(th) * mRx, by = mCy + Math.sin(th) * mRy;
+              var lf = (0.35 + 0.45 * fxFinRand(k * 3.31 + 7)) * (0.35 + 0.65 * open);
+              var txp = cx0 + (bx - cx0) * (1 - lf), typ = mCy + (by - mCy) * (1 - lf);
+              var px2 = -Math.sin(th), py2 = Math.cos(th), bw = mawW * 0.013;
+              mctx.beginPath();
+              mctx.moveTo(bx + px2 * bw, by + py2 * bw);
+              mctx.lineTo(bx - px2 * bw, by - py2 * bw);
+              mctx.lineTo(txp, typ);
+              mctx.closePath(); mctx.fill();
+            }
+            /* 溶け際の垂れ：下端から泥の滴が伸びて落ちる */
+            if (melt > 0.05){
+              mctx.fillStyle = '#0a0516';
+              for (var d = 0; d < 5; d++){
+                var dxp = cx0 + (fxFinRand(d * 7.7 + 3) - 0.5) * rx * 1.2;
+                var dyp = cy0 + ry * 0.82 + melt * (14 + fxFinRand(d * 3.3 + 5) * 30);
+                mctx.beginPath();
+                mctx.ellipse(dxp, dyp, 3 + fxFinRand(d * 5.1 + 1) * 5, (5 + melt * 12) * (1 - melt * 0.4), 0, 0, Math.PI * 2);
+                mctx.fill();
+              }
+            }
+            mctx.globalAlpha = 1;
+          }
+          /* 大顎の時計：演出時間（ヒットストップ連動）で進める */
+          var mawVt = 0, mawLast = performance.now();
+          function mawFrame(now){
+            if (!mawCv.isConnected) return; /* 後片付けで外れたら止める */
+            var dt = Math.min(50, now - mawLast); mawLast = now;
+            mawVt += dt * ((typeof fxFinRateScale === 'number' && fxFinRateScale > 0) ? fxFinRateScale : 1);
+            var t = mawVt;
+            var p = Math.min(1, t / 540), e = 1 - Math.pow(1 - p, 3);
+            var dy = mawStartOff * (1 - e), scale = 0.55 + 0.45 * e, open = p, melt = 0;
+            var jitY = 0;
+            if (t >= 580){
+              open = 1 - Math.min(1, (t - 580) / 130); /* ガブッと閉じる */
+              if (t < 1040){ var bpp = (t - 580) / 460; jitY = Math.sin(bpp * Math.PI * 5) * (1 - bpp) * 6; }
+            }
+            if (t >= 1020){
+              var jo = Math.min(1, (t - 1020) / 330), je = jo * jo;
+              dy = mawTopDy * je;                 /* 真上へ（X は不変） */
+              scale = 1 - 0.78 * je;              /* 小さく */
+              melt = je;                          /* 泥のように溶ける */
+              open = 0.05 * (1 - je);
+            }
+            mawCv.style.transform = 'translate(-50%,-50%) translateY(' + Math.round(dy + jitY) + 'px) scale(' + scale.toFixed(3) + ')';
+            mawCv.style.opacity = String(Math.min(1, p / 0.12));
+            drawMaw(open, melt, t, 1);
+            if (t < 1400) requestAnimationFrame(mawFrame);
+            else mawCv.style.opacity = '0';
+          }
+          requestAnimationFrame(mawFrame);
+          /* 噛み砕く：パネルは口の中へ上向きに吸い込まれて消える */
           later(function(){
             fxQuake('fx-quake-md', 560);
             pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
-            pixiFinAgitoBiteFx(pcx, pcy, jawW); /* 第4弾：噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（拍は従来どおり） */
-            fxFinAnimate(jaw, [
-              { transform: 'translateY(0px) rotate(90deg)' },
-              { transform: 'translateY(8px) rotate(90.7deg)' },
-              { transform: 'translateY(-6px) rotate(89.2deg)' },
-              { transform: 'translateY(4px) rotate(90.4deg)' },
-              { transform: 'translateY(0px) rotate(90deg)' }
-            ], { duration: 460, easing: 'ease-in-out', fill: 'forwards' });
+            pixiFinAgitoBiteFx(pcx, pcy, mawW); /* 噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（拍は従来どおり） */
             fxFinAnimate(cl, [
               { transform: 'translate(0px,0px) scale(1)', opacity: 1 },
               { transform: 'translate(2px,-8px) scale(.55) rotate(-3deg)', opacity: 0.9, offset: 0.45 },
               { transform: 'translate(-2px,-30px) scale(.1) rotate(-6deg)', opacity: 0 }
             ], { duration: 520, easing: 'ease-in', fill: 'forwards' });
           }, 580);
-          /* 飲み込んだ顎は真上へ退場する */
-          later(function(){
-            fxFinAnimate(jaw, [
-              { transform: 'translateY(0px) rotate(90deg)', opacity: 1 },
-              { transform: 'translateY(' + Math.round(startOffY * 0.55) + 'px) rotate(90deg)', opacity: 0 }
-            ], { duration: 270, easing: 'ease-in', fill: 'forwards' });
-          }, 1060);
         }, 1120);
       }
     }
@@ -20834,7 +21064,7 @@
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンのブラックホールが画面幅を超えて開き、相手SDを引き伸ばしながら呑み込んで一点に収縮する' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】紅蒼のツイスト弾が真下から昇って相手SDを通り抜け、爆発とともに受け側を消し去る' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】逆三日月斬撃（腹の縁がチラチラ溶ける）が弧を描いて飛び、相手SDを上へ通り抜けて真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、巨大な顎が画面外から降ってきて相手SDを上から飲み込む' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、闇に歯が生えた不定形の大顎が上から開いて相手SDをガブッと飲み込み、真上へ小さく溶けて消える' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは名前帯の予告の後に登場し、静止した瞬間に下から突き上げて着弾、背景ごと吹っ飛ぶ' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
