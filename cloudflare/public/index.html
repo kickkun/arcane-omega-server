@@ -5254,6 +5254,25 @@
             seTone(150, 38, 1.25, 'sawtooth', 0.05, 0.05); /* 吸い込みの低い唸り */
             seNoise(1.1, 0.028, 0.05, 480);
             break;
+          case 'finBHOpen': /* ダーククイーン：ブラックホールが開く音。
+             深い低音がゆっくり膨らみ、空気が逆流するようなノイズを重ねる */
+            seTone(34, 88, 1.7, 'sawtooth', 0.055);
+            seTone(51, 132, 1.7, 'triangle', 0.06, 0.06);
+            seTone(24, 47, 1.9, 'sine', 0.10, 0.02);
+            seNoise(1.5, 0.030, 0.1, 300);
+            break;
+          case 'finBHPull': /* ダーククイーン：引き込みの唸り。
+             持続する低い轟音に、上から芯へ落ちていく下降音を重ねる */
+            seFinRumble(1.5);
+            seTone(320, 54, 1.35, 'sine', 0.075, 0.05);
+            seNoise(1.3, 0.026, 0.05, 420);
+            break;
+          case 'finBHSwallow': /* ダーククイーン：呑み込み〜収縮の音。
+             芯へ吸い込まれる下降音の後、一点へ絞まる上昇音で締める */
+            seTone(420, 36, 0.55, 'sine', 0.11);
+            seNoise(0.5, 0.05, 0, 500);
+            seTone(60, 340, 0.5, 'triangle', 0.045, 0.55);
+            break;
           case 'finRoar': /* アギト：咆哮風のうなり */
             seTone(72, 46, 0.72, 'sawtooth', 0.125);
             seTone(108, 58, 0.72, 'sawtooth', 0.075, 0.03);
@@ -7263,7 +7282,7 @@
     var FINP_CUES = {
       '39':   { stop: [4150, 130], destroy: 4150, se: [[1420, 'finBeam'], [3350, 'finBeam'], [4150, 'finPurify']] },
       '46':   { slow: [2000, 2230], stop: [2230, 120], destroy: 2480, se: [[620, 'finSlash'], [910, 'finSlash'], [1200, 'finSlash'], [1490, 'finSlash'], [2230, 'finSlash']] },
-      '48':   { slow: [820, 1000],  stop: [1000, 120], destroy: 1000, se: [[400, 'finChains'], [1000, 'finChainRattle']] },
+      '48':   { slow: [2250, 2600], stop: [2600, 170], destroy: 3650, se: [[300, 'finBHOpen'], [1400, 'finBHPull'], [2750, 'finBHSwallow']] },
       '51':   { stop: [5400, 150], destroy: 5400, se: [[1750, 'finBeam'], [3900, 'finBeamLong']] },
       '52ex': { slow: [4100, 4250], stop: [4250, 150], destroy: 4250, se: [[2400, 'finSlash'], [3880, 'finSlash']] },
       '53ag': { stop: [1700, 150], destroy: 1700, se: [[1120, 'finRoar'], [1700, 'finCrunch']] },
@@ -10053,7 +10072,7 @@
       finPStrokePts(g, [pts[0], pts[1], pts[2]], 1.4, 0x574a80, 0.9);
     }
     /* 攻撃側の退場（定位置でふっと消える。現行 sdFadeOut と同じ拍・尺） */
-    var FINP_FADE_AT = { '39': 5750, '48': 2500, '51': 6000, '52ex': 4950 };
+    var FINP_FADE_AT = { '39': 5750, '48': 4300, '51': 6000, '52ex': 4950 };
     /* ===== 毎フレームの見た目更新（DOMは一切触らない。座標・α・拡縮だけを書く） ===== */
     function finProtoUpdate(R, dtF){
       var N = R.N, G = R.G;
@@ -10318,72 +10337,108 @@
           finPSpawnBurst(R, G.cx, G.cy, { count: 20, colors: R.burstCols, power: 1.4 });
         });
       } else if (id === '48'){
-        /* ダーククイーン：鎖が幾重にも被さる → 闇が寄せてくる →
-           闇の渦へ引きずり込む → 内向きに潰れて爆ぜる（演出強化：
-           他の神話に合わせて密度と山場を増やした構成） */
-        finPOnce(R, 'chains', tS, 400, function(){
-          R.chFx0 = tFs;
-          finPDrawChainsAuto(N, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
-          N.chainsC.position.set(G.cx, G.cy);
+        /* ダーククイーン：ブラックホール一本化（鎖は全廃）。
+           闇の点が開く → 画面幅を超えるまで一気に膨らむ → 受け側が
+           回転しながら引き寄せられ、芯へ近づくほど縦に引き伸ばされて
+           歪む → 事象の地平線でスロー＋ストップの「間」→ 芯へ完全に
+           呑まれて消える → ホールが回転を速めながら一点へ収縮し、
+           その反動（破壊拍の共通吹き飛び＋白化）で締める。
+           面は従来の流れテクスチャ方式の渦（finPVortexMesh）を主役に
+           そのまま使う。進行は演出時間（tFs）で駆動し、FINP_CUES の
+           スロー／ストップと噛み合うよう開口（実時間300ms）からの
+           fx 時刻で拍を置く：成長 〜fx900／引き込み fx900〜2050／
+           呑み込み fx2050〜2500／収縮 fx2500〜2900。
+           破壊拍（実時間3650）は、スロー＋ストップで遅れる fx 時刻の
+           収縮完了より後ろに置いてある */
+        var dqBx = G.cx, dqBy = G.cy - G.sumH * 0.55; /* 芯の位置：受け側の上方（画面中央上寄り） */
+        var dqRMax = Math.max(vw, G.fxW) * 0.62;      /* 半径＝画面幅の62%（直径は画面幅を超える） */
+        finPOnce(R, 'dqOpen', tS, 300, function(){
+          R.dqOpenFx = tFs;
+          finPFlash(R, 0.22, 320);
+          finPSpawnBurst(R, dqBx, dqBy, { count: 16, colors: [0x8a5cff, 0x2a1650, 0xc39bff], power: 0.9 });
         });
-        /* 締め付けの追い打ち：破壊の直前に鎖が一段強く締まり、紫の粒が散る */
-        finPOnce(R, 'chTighten', tS, 760, function(){
-          finPFlash(R, 0.18, 300);
-          finPSpawnBurst(R, G.cx, G.cy, { count: 14, colors: [0xc39bff, 0x8a5cff, 0xffffff], power: 1.0 });
-        });
-        /* 闇の引き込み：破壊までの間、周囲の紫の塵が受け側へ吸い寄せられ、
-           渦が開く前から「引きずり込まれる」圧を作る */
-        if (tS >= 560 && tS < R.destroyMs && (R.dqMoteFx == null || tFs - R.dqMoteFx > 120)){
-          R.dqMoteFx = tFs;
-          finPSpawnMotes(R, G.cx, G.cy, { count: 3, radius: G.fxW * 0.52, colors: [0xc39bff, 0x8a5cff, 0x2a1650], speed: 340, size: 0.5 });
-        }
-        /* 締めの内爆：渦が受け側を飲み切りきった頃、中心で紫の光が
-           一度だけ強く爆ぜて余韻を作る */
-        finPOnce(R, 'dqEnd', tS, R.destroyMs + 1520, function(){
-          finPFlash(R, 0.45, 420);
-          finPSpawnBurst(R, G.cx, G.cy + G.sumH * 0.22, { count: 30, colors: R.burstCols, power: 1.6 });
-        });
-        if (R.chFx0 != null){
-          /* 吸い込みの進み：渦が開いた直後（破壊拍＋40ms）から約1250ms
-             かけて、縛っていた鎖が環ごとにジャラジャラと渦へ吸い込まれる */
-          var suckP = R.blown ? Math.max(0, Math.min(1, (tFs - R.blowFx - 40) / 1250)) : 0;
-          if (suckP >= 1) N.chainsC.visible = false;
-          else if (suckP > 0){
-            N.chainsC.visible = true;
-            /* 吸い込み中は締め付け側の変形を止め、渦の口（受け側中心の
-               やや下：渦の描画位置と同一）へ向けて描き直す */
-            N.chainsC.scale.set(1.03);
-            N.chainsC.rotation = 2 * Math.PI / 180;
-            finPDrawChainsAuto(N, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs, suckP, 0, G.sumH * 0.22);
-            N.chainsC.alpha = suckP > 0.9 ? Math.max(0, 1 - (suckP - 0.9) / 0.1) : 1;
-          }
-          else {
-            var chp = finPProg(tFs, R.chFx0, 2100);
-            if (chp >= 1) N.chainsC.visible = false;
-            else {
-              N.chainsC.visible = true;
-              /* 鎖は毎フレーム描き直す：締め付けの呼吸と環のハイライトの
-                 流れを持たせ、静止した絵にしない */
-              finPDrawChainsAuto(N, Math.round(G.fxW * 1.5), Math.round(G.fxW * 1.2), tFs);
-              var chs = chp < 0.35 ? 0.45 + 0.55 * FINP_EZ.easeOut(chp / 0.35) : (chp < 0.8 ? 1 + 0.05 * ((chp - 0.35) / 0.45) : 1.05 - 0.03 * ((chp - 0.8) / 0.2));
-              N.chainsC.scale.set(chs);
-              N.chainsC.rotation = (chp < 0.35 ? -4 + 4 * (chp / 0.35) : (chp < 0.8 ? 2 * ((chp - 0.35) / 0.45) : 2)) * Math.PI / 180;
-              N.chainsC.alpha = chp < 0.1 ? chp / 0.1 : (chp > 0.85 ? Math.max(0, 1 - (chp - 0.85) / 0.15) : 1);
+        if (!R.blown && R.dqOpenFx != null){
+          var dqT = tFs - R.dqOpenFx;                    /* 開口からの演出時間 */
+          var dqGrow = finPProg(dqT, 0, 900);            /* 成長 */
+          var dqPull = finPProg(dqT, 900, 1150);         /* 引き込み */
+          var dqDev = finPProg(dqT, 2050, 450);          /* 呑み込み */
+          var dqCol = finPProg(dqT, 2500, 400);          /* 収縮 */
+          var dqPullE = dqPull * dqPull * (3 - 2 * dqPull); /* 引きの滑らかな加速 */
+          /* --- ホールの半径・回転・流れ（収縮ほど速く回して呑む） --- */
+          var dqRad = dqRMax * FINP_EZ.easeOut(dqGrow);
+          dqRad *= 1 + 0.05 * dqPullE + 0.03 * Math.sin(tFs * 0.004) * dqGrow;
+          if (dqCol > 0) dqRad *= Math.max(0.012, Math.pow(1 - FINP_EZ.easeIn(dqCol), 1.7));
+          var dqSpeed = 1 + 1.4 * dqPull + 1.2 * dqDev + 3.2 * dqCol;
+          R.dqFlow = (R.dqFlow || 0) + dtF * 0.00042 * dqSpeed;
+          R.dqSpin = (R.dqSpin || 0) + dtF * (0.0016 + 0.0020 * dqPull + 0.005 * dqCol);
+          var dqEnv = Math.min(1, dqGrow * 3);
+          if (dqRad > 0.5 && dqEnv > 0.003){
+            if (N.vortexMesh && N.vortexMat){
+              N.vortexG.visible = false;
+              N.vortexMesh.visible = true;
+              N.vortexMesh.position.set(dqBx, dqBy);
+              N.vortexMesh.scale.set(dqRad, dqRad * 0.62);
+              N.vortexMat.uniforms.uFlow = R.dqFlow % 64;
+              N.vortexMat.uniforms.uSpin = R.dqSpin;
+              N.vortexMat.uniforms.uSuck = dqPull;
+              N.vortexMat.uniforms.uAlpha = dqEnv;
+              N.vortexMesh.alpha = 1;
+            } else {
+              N.vortexG.visible = true;
+              N.vortexG.position.set(dqBx, dqBy);
+              finPDrawVortex(N.vortexG, dqRad, R.dqSpin * 1.5, dqPull);
+              N.vortexG.scale.set(1, 0.62);
+              N.vortexG.alpha = dqEnv;
             }
+          } else { N.vortexG.visible = false; if (N.vortexMesh) N.vortexMesh.visible = false; }
+          /* --- 周囲の光・破片の吸い込み（開口から収縮まで絶やさない） --- */
+          if (dqCol < 1 && (R.dqMoteFx == null || tFs - R.dqMoteFx > 55)){
+            R.dqMoteFx = tFs;
+            finPSpawnMotes(R, dqBx, dqBy, { count: 9, radius: G.fxW * 0.55, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff, 0xffffff], speed: 430 + 260 * dqPull, size: 0.5, swirl: 210, stretch: 2.8 });
           }
+          /* --- 受け側：抵抗 → 引き込み（回転＋引き伸ばし）→ 呑み込み --- */
+          var dqHomeY = G.cy - 7 * Math.sin(Math.PI * (((tFs % 2750) + 2750) % 2750) / 2750);
+          if (dqDev >= 1){
+            N.vicC.visible = false; /* 芯へ完全に入って消滅 */
+          } else if (dqPull > 0 || dqDev > 0){
+            var dqPx, dqPy, dqRot, dqSx, dqSy, dqAl = 1;
+            if (dqDev > 0){
+              /* 呑み込み：芯の位置でさらに細く長く伸び切りながら消える */
+              var dqDevE = dqDev * dqDev;
+              dqPx = dqBx; dqPy = dqBy;
+              dqRot = 205 + 50 * dqDev;
+              dqSy = 2.35 + 1.25 * dqDevE;
+              dqSx = Math.max(0.08, 0.45 - 0.37 * dqDevE);
+              dqAl = 1 - dqDevE;
+            } else {
+              /* 引き込み：螺旋の横揺れを残しながら芯へ寄り、後半で
+                 重力の引き伸ばし（縦に長く・横に細く）が強まる */
+              dqPx = G.cx + Math.sin(dqPull * 4.4) * G.fxW * 0.085 * (1 - dqPull);
+              dqPy = dqHomeY + (dqBy - dqHomeY) * Math.pow(dqPullE, 1.25);
+              dqRot = dqPull * 205;
+              var dqSt = Math.pow(Math.max(0, (dqPull - 0.35) / 0.65), 1.5);
+              dqSy = 1 + 1.35 * dqSt;
+              dqSx = 1 - 0.55 * dqSt;
+            }
+            N.vicC.visible = true;
+            N.vicC.position.set(dqPx, dqPy);
+            N.vicC.rotation = dqRot * Math.PI / 180;
+            N.vicC.scale.set(dqSx, dqSy);
+            N.vicC.alpha = dqAl;
+            N.vicShadow.alpha = 0.45 * dqAl;
+          } else {
+            /* 開口〜引き込み前：浮遊のまま、開いてからは重力に引かれて
+               小刻みに震える（抵抗の読み） */
+            var dqShake = Math.min(1, dqT / 900);
+            N.vicC.position.set(G.cx + Math.sin(tFs * 0.045) * 2.5 * dqShake, dqHomeY);
+            N.vicC.rotation = Math.sin(tFs * 0.03) * 2.5 * dqShake * Math.PI / 180;
+          }
+          /* 事象の地平線：受け側が芯へ触れる拍の閃光（ストップと同期） */
+          finPOnce(R, 'dqHorizon', tS, 2600, function(){
+            finPFlash(R, 0.5, 380);
+            finPSpawnBurst(R, dqBx, dqBy, { count: 22, colors: R.burstCols, power: 1.5 });
+          });
         }
-        /* 吸い込まれる鎖のきらめき：渦が鎖を飲んでいる間、金属の細片が
-           周囲から渦の口へ速く吸い寄せられ、ジャラジャラ感を粒でも足す */
-        if (R.blown && tFs - R.blowFx > 40 && tFs - R.blowFx < 1300 && (R.dqSuckFx == null || tFs - R.dqSuckFx > 70)){
-          R.dqSuckFx = tFs;
-          finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 4, radius: G.fxW * 0.5, colors: [0xe6d5ff, 0xa678ff, 0xffffff], speed: 560, size: 0.42 });
-        }
-        finPOnce(R, 'chHit', tS, 950, function(){
-          finPFlash(R, 0.32, 480);
-          finPSpawnBurst(R, G.cx, G.cy, { count: 24, colors: R.burstCols, power: 1.3 });
-        });
-        finPOnce(R, 'chB1', tS, 2150, function(){ finPSpawnBurst(R, G.cx, G.cy + G.sumH * 0.4, { count: 26, colors: [0xc39bff, 0x8a5cff, 0x2a1650], power: 1.4 }); });
-        finPOnce(R, 'chB2', tS, 2650, function(){ finPSpawnBurst(R, G.cx, G.cy + G.sumH * 0.4, { count: 18, colors: [0xc39bff, 0x8a5cff], power: 1.1 }); });
       } else if (id === '51'){
         /* ティアマト：力を集中 → 紅蒼クロスビーム → 大爆発 */
         if (tS >= 500 && tS < 1750) R.glowWhite = 0.55 * FINP_EZ.easeInOut(finPProg(tS, 500, 1150));
@@ -11064,50 +11119,13 @@
             finPSpawnBurst(R, G.cx, N.vicC.position.y, { count: 3, rise: true, colors: R.burstCols, power: 0.7 });
           }
         } else if (R.breakStyle === 'vortex'){
-          var vo = finPProg(bl, 120, 1350);
-          var ve2 = FINP_EZ.easeIn(vo);
-          N.vicC.rotation = 16 * ve2 * Math.PI / 180;
-          N.vicC.scale.set(1 - 0.74 * ve2);
-          N.vicC.position.y = G.cy + G.sumH * 0.95 * ve2;
-          N.vicShadow.alpha = 0.45 + 0.4 * ve2;
-          /* 渦の山場は受け側の吸い込み（〜1470ms）で終わらせない：
-             ピークの濃さを決めセリフの表示中（破壊+2000ms）まで保ち、
-             その後 約500ms かけて絞って閉じる。以前は吸い込み完了と
-             同時に渦が消え、白背景にセリフと攻撃側だけが残って
-             アッサリ見えた。絞りは半径の縮小＋α減衰で「呑み終えた
-             渦が閉じる」読みにする（振付の拍・総尺は不変） */
-          var vIn = finPProg(bl, 120, 380);
-          var vHold = bl <= 2120 ? 1 : Math.max(0, 1 - finPProg(bl, 2120, 520));
-          var vEnv = vIn * vHold;
-          if (vEnv > 0.003){
-            var vRad = G.fxW * 0.60 * (0.90 + 0.14 * Math.min(1, bl / 700)) * (0.62 + 0.38 * vHold);
-            var vY = G.cy + G.sumH * 0.22;
-            if (N.vortexMesh && N.vortexMat){
-              N.vortexG.visible = false;
-              N.vortexMesh.visible = true;
-              N.vortexMesh.position.set(G.cx, vY);
-              N.vortexMesh.scale.set(vRad, vRad * 0.62);
-              N.vortexMat.uniforms.uFlow = (R.tF * 0.00042) % 64;
-              N.vortexMat.uniforms.uSpin = bl * 0.0035;
-              N.vortexMat.uniforms.uSuck = ve2;
-              N.vortexMat.uniforms.uAlpha = vEnv;
-              N.vortexMesh.alpha = 1;
-            } else {
-              N.vortexG.visible = true;
-              N.vortexG.position.set(G.cx, vY);
-              finPDrawVortex(N.vortexG, vRad, bl * 0.005, ve2);
-              N.vortexG.scale.set(1, 0.62);
-              N.vortexG.alpha = vEnv;
-            }
-          } else { N.vortexG.visible = false; if (N.vortexMesh) N.vortexMesh.visible = false; }
-          /* 吸い込みの残滓：鎖が消えた後も、渦が開いている間は金属の
-             細片と紫の塵が接線方向へ伸びながら渦へ落ち続ける。
-             量は従来の約2.5倍（間隔95→55ms／個数7→12＋細片4） */
-          if (bl > 120 && vEnv > 0.05 && (R.vxMoteFx == null || tFs - R.vxMoteFx > 55)){
-            R.vxMoteFx = tFs;
-            finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 12, radius: G.fxW * 0.55, colors: [0xc39bff, 0x8a5cff, 0xe6d5ff], speed: 430, size: 0.5, swirl: 200, stretch: 2.8 });
-            if (bl > 1400) finPSpawnMotes(R, G.cx, G.cy + G.sumH * 0.22, { count: 4, radius: G.fxW * 0.42, colors: [0xe6d5ff, 0xa678ff, 0xffffff], speed: 520, size: 0.4, swirl: 240, stretch: 3.2 });
-          }
+          /* ブラックホール一本化：受け側は破壊拍までに芯へ呑まれて
+             消滅済みで、ホール自体も一点へ収縮して閉じている。
+             ここでは残像を一切残さない（締めは共通の吹き飛び＋白化と
+             決めセリフが担う） */
+          N.vicC.visible = false;
+          N.vortexG.visible = false;
+          if (N.vortexMesh) N.vortexMesh.visible = false;
         } else if (R.breakStyle === 'explode'){
           /* 消滅（実機指定）：受け側は破壊の拍で光の粒へ崩れて消える。
              以前は約1.1秒かけて沈みながら薄れる形で、画面が割れて
@@ -20813,7 +20831,7 @@
     var FXCHECK_FINISH_ITEMS = [
       { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'【スクロール構成】キノコ形の弾頭＋太い尾の光波が飛び、相手SDを減速せず通り抜けて光の粒に浄化する' },
       { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'SDミラージュが残像を残して高速ワープを繰り返し、最後に相手SDを斬って消える' },
-      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に幾重にも被さり、闇の渦へ引きずり込んで消し去る' },
+      { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンのブラックホールが画面幅を超えて開き、相手SDを引き伸ばしながら呑み込んで一点に収縮する' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】紅蒼のツイスト弾が真下から昇って相手SDを通り抜け、爆発とともに受け側を消し去る' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】逆三日月斬撃（腹の縁がチラチラ溶ける）が弧を描いて飛び、相手SDを上へ通り抜けて真っ二つに崩す' },
       { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、巨大な顎が画面外から降ってきて相手SDを上から飲み込む' },
