@@ -4169,7 +4169,7 @@
         </div>
         <div class="fx-list" id="fxList"></div>
         <p class="fx-fin-head">神話フィニッシュ演出</p>
-        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。EX-キャリバー／セレスティア／ティアマトはスクロール構成（決め技を飛ばすと発射側SDは退場し、カメラが飛翔体を中央に捉えて背景とスピード線が下へ強く流れる→名前帯の予告→受け側が画面中央へ運ばれてきて着弾。セレスティアの光波は太い丸弾頭（幅広ドーム型）を持ち、弾単体の彗星として飛び続けてから弾頭の位置を引き継いで受け側をそのまま通り抜けて上端まで同じ形で通り、ティアマトは紅蒼のツイスト弾（先端は太い丸弾頭）が受け側の真下から絡み合ったまま昇って通り抜け、EXの斬撃は逆三日月型で弧を描いて跳び腹側の縁がチラチラ溶けながら二段加速で飛ぶ。スクロール中は画面が軽く揺れる）で再生されます。SD素材が読み込めない場合は従来の演出で再生されます。</p>
+        <p class="fx-fin-note">神話ユニットが止めを刺した時に再生されるフィニッシュ第3世代です。「間」（静止＋顔カットイン＋暗転）→場面転換（フィニッシュ専用空間で、ダミー召喚士SD＝クロエが浮遊して対峙）→決め技の着弾（フラッシュ→衝撃波リング→破片飛散の3段。攻撃エフェクトは専用空間の広い範囲へ広がり、魔法陣も光の破片に砕ける）で背景ごと吹っ飛び、テーマ色の光の粒が舞う白の余波の中で決めセリフ、の新フローで再生されます（ダミーパネルは演出後に元へ戻ります）。ロンギヌスは専用構成（受け側は名前帯の予告の後に登場し、下から突き上げて着弾）になります。EX-キャリバー／セレスティア／ティアマトはスクロール構成（決め技を飛ばすと発射側SDは退場し、カメラが飛翔体を中央に捉えて背景とスピード線が下へ強く流れる→名前帯の予告→受け側が画面中央へ運ばれてきて着弾。セレスティアの光波は太い丸弾頭（幅広ドーム型、画面幅の半分ほどまで拡大）を持ち、弾単体の彗星として飛び続けてから弾頭の位置を引き継いで受け側をそのまま通り抜けて上端まで同じ形で通り、ティアマトは紅蒼のツイスト弾（先端は太い丸弾頭）が受け側の真下から絡み合ったまま昇って通り抜け、EXの斬撃は逆三日月型で弧を描いて跳び腹側の縁がチラチラ溶けながら二段加速で飛び、着弾では受け側で止まらず上へ通り抜ける。着弾はいずれも途中スクロールと同じ速度感のまま減速させず、通り抜ける瞬間に貫通点で爆風（衝撃波リング＋光の破片）が弾ける。スクロール中は画面が軽く揺れる）で再生されます。SD素材が読み込めない場合は従来の演出で再生されます。</p>
         <div class="fx-list" id="fxFinishList"></div>
         <button class="btn-play" id="fxCloseBtn" type="button" style="width:100%; margin-top:16px;">タイトルに戻る</button>
       </div>
@@ -7239,10 +7239,10 @@
        新方式だけ拍を後ろへずらしてある（現行方式の FIN2_DESTROY_MS と
        SD_FIN_CUES は不変。新方式の破壊拍はこちらの destroy が優先される） */
     var FINP_CUES = {
-      '39':   { slow: [3850, 4150], stop: [4150, 130], destroy: 4150, se: [[1420, 'finBeam'], [3350, 'finBeam'], [4150, 'finPurify']] },
+      '39':   { stop: [4150, 130], destroy: 4150, se: [[1420, 'finBeam'], [3350, 'finBeam'], [4150, 'finPurify']] },
       '46':   { slow: [2000, 2230], stop: [2230, 120], destroy: 2480, se: [[620, 'finSlash'], [910, 'finSlash'], [1200, 'finSlash'], [1490, 'finSlash'], [2230, 'finSlash']] },
       '48':   { slow: [820, 1000],  stop: [1000, 120], destroy: 1000, se: [[550, 'finChains']] },
-      '51':   { slow: [5150, 5400], stop: [5400, 150], destroy: 5400, se: [[1750, 'finBeam'], [3900, 'finBeamLong']] },
+      '51':   { stop: [5400, 150], destroy: 5400, se: [[1750, 'finBeam'], [3900, 'finBeamLong']] },
       '52ex': { slow: [4100, 4250], stop: [4250, 150], destroy: 4250, se: [[2400, 'finSlash'], [3880, 'finSlash']] },
       '53ag': { stop: [1700, 150], destroy: 1700, se: [[1120, 'finRoar'], [1700, 'finCrunch']] },
       '54':   { slow: [1880, 2050], stop: [2050, 160], destroy: 2050, se: [[1000, 'finRush'], [2050, 'finImpactHeavy']] }
@@ -7357,6 +7357,9 @@
       N.voidC = voidC;
       N.ring = PS(bake.ring); N.ring.visible = false;
       space.addChild(N.ring);
+      /* 貫通の爆風専用リング（吹き飛びの大リングとは別に、小さく鋭く出す） */
+      N.blastRing = PS(bake.ring); N.blastRing.visible = false;
+      space.addChild(N.blastRing);
       N.cshards = [];
       for (var ci2 = 0; ci2 < 10; ci2++){
         var csc = PC();
@@ -7816,6 +7819,7 @@
       N.voidC.alpha = 1; N.voidC.scale.set(1); N.voidC.rotation = 0;
       N.circle.visible = true; N.circle.alpha = 0.5; N.circle.rotation = 0;
       N.ring.visible = false; N.ring.alpha = 0;
+      N.blastRing.visible = false; N.blastRing.alpha = 0;
       N.cshards.forEach(function(cs){ cs.cont.visible = false; cs.cont.alpha = 1; cs.cont.rotation = 0; });
       N.bshards.forEach(function(sp){ sp.visible = false; sp.alpha = 1; sp.rotation = 0; });
       N.embers.forEach(function(sp){ sp.visible = false; sp.alpha = 1; });
@@ -7927,6 +7931,7 @@
       });
       N.ring.position.set(G.cx, G.cy);
       N.ring.width = G.ringD * 1.09; N.ring.height = G.ringD * 1.09;
+      N.blastRing.width = G.ringD * 1.09; N.blastRing.height = G.ringD * 1.09;
       R.cshards = N.cshards.map(function(cs, ri){
         cs.cont.position.set(G.circleCx, G.circleCy);
         finPDrawCircleGeom(cs.gfx, G.circleD * 0.485, mainN, true);
@@ -8095,6 +8100,11 @@
       if (G.id === '39'){
         placeBeam(N.beams[0], G.handX, G.handY, G.cx, G.cy, Math.max(18, G.sdH * 0.98));
         finPDrawBeam(N.beams[0], 0xffd76a);
+        /* 弾頭の拡大（実機指定：もっと大きく、画面幅の半分程度まで
+           あってよい）。横幅＝半径×0.88×2 が画面幅の約半分になる半径
+           （vw*0.27）を狙い、SD寸法からも上限（sdH*1.55）をかけて
+           画面サイズが変わっても破綻させない。下限は従来寸 */
+        N.beams[0].headR = Math.max(Math.round(G.sdH * 0.46), Math.min(Math.round(vw * 0.27), Math.round(G.sdH * 1.55)));
         /* 旧方式のシェーダ発光と同寸のグロー：手元 sdH*0.62／着弾 sdH*0.9 */
         N.beams[0].srcBase = G.sdH * 0.62; N.beams[0].src.tint = 0xffeeb0;
         N.beams[0].hitBase = G.sdH * 0.95; N.beams[0].hit.tint = 0xfff3c4;
@@ -8232,6 +8242,7 @@
       R.curFloatY = 0;
       R.blown = false; R.blowFx = 0;
       R.flashFx0 = -1; R.flashDur = 0; R.flashMax = 0;
+      R.blastFx0 = -1;
       R.lineOn = false; R.lineFx0 = 0; R.lineFadeFx0 = -1;
       R.fadeOn = false; R.fadeFx0 = 0;
       R.lastAuraBurst = -9999;
@@ -8391,6 +8402,20 @@
     }
     function finPFlash(R, maxOp, dur){
       R.flashFx0 = R.tF; R.flashDur = dur; R.flashMax = maxOp;
+    }
+    /* 貫通の爆風（貫通系3種の共通部品）：弾が受け側を通り抜ける瞬間に、
+       貫通点で小さく鋭い爆風を出す。専用リングの急拡大＋放射状に弾ける
+       光の粒。弾の速度は落とさず手応えだけを足すための部品で、本体の
+       吹き飛び（破壊拍の大リング＋破片）のクライマックスとは別に、
+       約360msで速く閉じる */
+    function finPSpawnBlast(R, x, y, cols){
+      R.blastFx0 = R.tF;
+      var N = R.N;
+      N.blastRing.position.set(x, y);
+      N.blastRing.tint = cols[0];
+      N.blastRing.visible = true;
+      finPSpawnBurst(R, x, y, { count: 16, colors: cols, power: 2.0, size: 1.0 });
+      finPFlash(R, 0.4, 280);
     }
     /* 一度だけ発火する拍（ディレクター共通） */
     function finPOnce(R, key, tS, at, fn){
@@ -8612,7 +8637,7 @@
          N.bshards, N.embers, N.aimgs, N.swordGhosts, N.rush].forEach(function(arr){
           arr.forEach(function(sp){ if (sp.visible) vis++; });
         });
-        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont, N.convG, N.convGlow].forEach(function(sp){ if (sp && sp.visible) vis++; });
+        [N.fxBig, N.orb, N.orbGfx, N.pillarG, N.chainsC, N.vortexG, N.crackG, N.trailG, N.sword, N.fissure, N.jawC, N.bandC, N.flyUnit.cont, N.convG, N.convGlow, N.blastRing].forEach(function(sp){ if (sp && sp.visible) vis++; });
         N.beams.forEach(function(b){ if (b.cont.visible) vis++; });
         N.parts.forEach(function(p){ if (p.on) partsOn++; if (p.sp.visible) vis++; });
         if (N.space.visible) vis++;
@@ -9030,8 +9055,10 @@
          する。発射・単体飛行・着弾（貫通）の全区間で同じ頭を保つため、
          弾の形は最初から最後まで変わらない。太さは実機指定のスケッチ
          （幅広のドーム型）に合わせ、帯の太さではなく弾頭そのものが
-         主役になる寸法（半径 ≒ sdH*0.46、横に少し潰れたドーム）にする */
-      var headR = sdH * 0.46;
+         主役になる寸法にする。標準の半径は sdH*0.46、セレスティアは
+         実機指定でさらに大きく（画面幅の半分程度まで。u.headR を
+         ジオメトリ側で決める）、横に少し潰れたドームにする */
+      var headR = u.headR || sdH * 0.46;
       [[1.00, 0.30, 0.13], [0.84, 0.72, 0.30], [0.64, 0.95, 0.58], [0.44, 1.00, 0.95]].forEach(function(HL){
         c.beginFill(finPRampColor(FINP_GOLD_RAMP, HL[1]), HL[2]); c.drawEllipse(len, 0, headR * HL[0] * 0.88, headR * HL[0]); c.endFill();
       });
@@ -9056,16 +9083,18 @@
       var p = finPProg(R.tF - R.sceneFx0, fx0, dur);
       if (p <= 0 || p >= 1){ u.cont.visible = false; return false; }
       u.cont.visible = true;
-      /* headSlow（着弾＝貫通の光波）：先端の丸い弾頭が受け側を通り
-         抜ける過程を目で追えるよう、先端の前進を尺の55%まで引き
-         伸ばす。通常の発射は従来どおり16%で届く。
+      /* headSlow（着弾＝貫通の光波）：着弾でも減速させない（実機
+         指定：途中スクロールと同じ速度感で当てたい）。先端の前進は
+         尺の25%で完了させ、彗星の頭が残り約45%の帯長を進む実速が
+         背景スクロール（約1.15px/ms）とほぼ一致するようにする。
+         通常の発射は従来どおり16%で届く。
          head0（着弾側のみ）：単体飛行の彗星の弾頭がいた位置から
          先端を引き継ぐ。着弾の帯を画面下端から head=0 で出し直すと
          弾頭が画面中央→下端へ瞬間移動して「スクロール後にスムーズに
          着弾しない」読みになるため、彗星の弾頭位置（画面の約4割の
          高さ）から連続させて、そのまま上へ通り抜けさせる */
       var hStart = u.head0 || 0;
-      var head = Math.min(1, hStart + (1 - hStart) * (p / (u.headSlow ? 0.55 : 0.16)));
+      var head = Math.min(1, hStart + (1 - hStart) * (p / (u.headSlow ? 0.25 : 0.16)));
       var env = Math.min(1, p / 0.10 + 0.2) * (p > 0.74 ? Math.max(0, 1 - (p - 0.74) / 0.26) : 1);
       /* 着弾してからの経過で settle を進める：帯が届いた直後から
          うねりを絞り、持続中の形を安定させる（形変の対策）。
@@ -9230,14 +9259,15 @@
     }
     /* ツイストビームの更新：先端は尺の22%で画面上端の先まで届き、
        包絡は立ち上がり10%／減衰は78%から（双ビームの包絡に揃える）。
-       headSlow（着弾＝通り抜けのツイスト）：先端の前進を尺の60%まで
-       引き伸ばし、太い弾頭が受け側へ届いて通り抜ける過程を追える
-       ようにする（セレスティアの貫通と同じ読み） */
+       headSlow（着弾＝通り抜けのツイスト）：着弾でも減速させない
+       （実機指定：スクロールの速度感維持）。先端の前進は尺の35%で
+       完了させ、太い弾頭がスクロールと同じ速度感のまま受け側へ
+       届いて通り抜けるようにする（セレスティアの貫通と同じ読み） */
     function finPTwistUpdate(R, u, fx0, dur, colA, colB, axisOff, ph0){
       var p = finPProg(R.tF - R.sceneFx0, fx0, dur);
       if (p <= 0 || p >= 1){ if (p >= 1) u.cont.visible = false; return false; }
       u.cont.visible = true;
-      var head = Math.min(1, p / (u.headSlow ? 0.60 : 0.22));
+      var head = Math.min(1, p / (u.headSlow ? 0.35 : 0.22));
       var env = Math.min(1, p / 0.10) * (p > 0.78 ? Math.max(0, 1 - (p - 0.78) / 0.22) : 1);
       finPDrawTwistBeam(u, R.G.sdH, R.tF, head, axisOff, colA, colB, ph0);
       u.glow.alpha = env; u.core.alpha = env;
@@ -9698,18 +9728,20 @@
           R.dirOff = [0, Math.round(vh * 0.38 * ceXp * ceXp)];
           R.dirAlpha = 1 - ceXp;
         }
-        /* スクロール区間：スピード線＋名前帯の予告→受け側が中央へ運ばれてくる */
-        finPScrollLines(R, tS, dtF, 2050, 3320);
-        finPScrollShake(R, tS, 2050, 3320);
+        /* スクロール区間：スピード線＋名前帯の予告→受け側が中央へ運ばれてくる。
+           スピード線と揺れは着弾（通り抜け）の最中まで残し、当たる瞬間に
+           速度感が落ちないようにする（光柱が立つ直前で引く） */
+        finPScrollLines(R, tS, dtF, 2050, 3880);
+        finPScrollShake(R, tS, 2050, 3880);
         finPTargetBand(R, tS, 2180, 3260);
         finPVicArrive(R, tS, 2900);
         /* 着弾：画面下から昇る光波が、画面中央で静止した受け側を
            そのまま通り抜けて画面上端まで届く。発射時と同じうねる
-           光波＋丸い弾頭のまま（真っ直ぐな別帯へ差し替えない）、
-           弾頭の前進をゆっくりにして、丸い頭が受け側を通り抜ける
-           過程が目で追えるようにする。形を変える要素（届いた後の
-           うねり抑制＝settle、光柱の被さり）は着弾の読みから外し、
-           光柱は弾が通り抜けた後に立てる */
+           光波＋太い丸弾頭のまま（真っ直ぐな別帯へ差し替えない）、
+           弾頭の前進は減速させず、スクロールと同じ速度感のまま
+           一気に通り抜ける（貫通の瞬間には爆風で手応えを足す）。
+           形を変える要素（届いた後のうねり抑制＝settle、光柱の
+           被さり）は着弾の読みから外し、光柱は弾が通り抜けた後に立てる */
         finPOnce(R, 'beam2', tS, 3350, function(){
           R.beam2Fx0 = tFs;
           var bu1 = N.beams[0];
@@ -9721,6 +9753,9 @@
           bu1.head0 = 0.55; /* 彗星の弾頭位置から引き継ぎ、瞬間移動させない */
           if (bu1.hit) bu1.hit.position.set(Math.round(vh + 30 - G.cy), 0); /* 発光と飛沫は受け側の位置へ（帯はそのまま上へ抜ける） */
           if (bu1.src) bu1.src.position.set(0, 0);
+          /* 貫通の爆風：弾頭は彗星から引き継いだ位置（受け側の中心付近）
+             にいるため、通り抜けはこの拍とほぼ同時に起きる */
+          finPSpawnBlast(R, G.cx, G.cy, [0xffeeb0, 0xffffff, 0xffd76a]);
           finPFlash(R, 0.5, 460);
           finPSpawnBurst(R, G.cx, G.cy, { count: 34, colors: R.burstCols, power: 1.8 });
         });
@@ -9805,17 +9840,20 @@
           finPTwistUpdate(R, N.beams[0], R.twistFx0, 1850, R.beamCols[0][0], R.beamCols[0][1], N.beams[0].twistAxis || 0, 0);
           finPTwistUpdate(R, N.beams[1], R.twistFx0, 1850, R.beamCols[1][0], R.beamCols[1][1], N.beams[1].twistAxis || 0, Math.PI);
         }
-        /* スクロール区間：スピード線＋名前帯の予告→受け側が中央へ運ばれてくる */
-        finPScrollLines(R, tS, dtF, 1950, 3620);
-        finPScrollShake(R, tS, 1950, 3620);
+        /* スクロール区間：スピード線＋名前帯の予告→受け側が中央へ運ばれてくる。
+           スピード線と揺れは着弾（通り抜け）の最中まで残し、当たる瞬間に
+           速度感が落ちないようにする */
+        finPScrollLines(R, tS, dtF, 1950, 4450);
+        finPScrollShake(R, tS, 1950, 4450);
         finPTargetBand(R, tS, 2100, 3520);
         finPVicArrive(R, tS, 3350);
         /* 着弾：発射したツイスト弾が、そのまま画面中央の受け側へ
            届いて通り抜ける。起点は受け側の真下（画面中央の直下）に
            置く：両下隅から帯が斜めに出る読みはやめ、2本とも真下から
            中央の軸の周りで絡み合いながら昇る。帯は受け側で止めず、
-           太い弾頭（headSlow で前進を遅くし、通り抜ける過程を追える）
-           のまま画面上端まで抜ける＝セレスティアと同じ貫通の読み。
+           太い弾頭のまま画面上端まで抜ける＝セレスティアと同じ
+           貫通の読み。弾頭の前進は減速させず、スクロールと同じ
+           速度感を維持する（貫通の瞬間には爆風で手応えを足す）。
            発射時と同じツイスト描画＋太い丸弾頭のまま通す */
         finPOnce(R, 'tbeam', tS, 3900, function(){
           R.beamFx0 = tFs;
@@ -9833,6 +9871,11 @@
         if (R.beamFx0 != null){
           finPTwistUpdate(R, N.beams[0], R.beamFx0, 1750, R.beamCols[0][0], R.beamCols[0][1], N.beams[0].twistAxis || 0, 0);
           finPTwistUpdate(R, N.beams[1], R.beamFx0, 1750, R.beamCols[1][0], R.beamCols[1][1], N.beams[1].twistAxis || 0, Math.PI);
+          /* 貫通の爆風：ツイスト弾頭が受け側の位置へ届いた瞬間に一度だけ出す */
+          var tCross = (vh + 14 - G.cy) / (vh + 170);
+          finPOnce(R, 'tBlast', tFs, R.beamFx0 + Math.round(1750 * 0.35 * tCross), function(){
+            finPSpawnBlast(R, G.cx, G.cy, [0xffa04a, 0x9cc4ff, 0xffffff]);
+          });
           if (!R.blown) N.vicC.position.x = G.cx + Math.round(3 * Math.sin(tFs * 0.11));
           /* 収束点の火花：ツイストが受け側へ届いている間、命中点から
              紅蒼の粒が弾け続ける */
@@ -9945,12 +9988,19 @@
         finPScrollShake(R, tS, 2500, 3800);
         finPTargetBand(R, tS, 2620, 3740);
         finPVicArrive(R, tS, 3450);
-        /* 着弾（飛行の第2区間）：超巨大斬撃が画面下から昇り、中央で届く */
+        /* 着弾（飛行の第2区間）：超巨大斬撃が画面下から昇り、受け側で
+           止まらずにそのまま上へ通り抜けて画面上端まで抜ける（実機
+           指定）。カーブは、受け側の中心を横切る進み具合（crossU）へ
+           破壊拍の瞬間（hitF。スロー／ストップで演出時間が圧縮される
+           分を見込んだ値）が一致するよう正規化し、斬撃が受け側を
+           抜ける瞬間に破壊と爆風が重なるようにする */
         finPOnce(R, 'fly2', tS, 3880, function(){
           if (!R.fly) return;
           R.flyFx0 = tFs;
           R.flyDur = 620;
-          R.fly = { sx: G.cx, sy: vh + 150, tx: G.cx, ty: G.cy,
+          var flySy = vh + 150, flyTy = -Math.round(vh * 0.42);
+          R.fly = { sx: G.cx, sy: flySy, tx: G.cx, ty: flyTy, thru: true, hitF: 0.44,
+            crossU: (flySy - G.cy) / (flySy - flyTy),
             len0: Math.max(28, G.sdH * 0.30), len1: R.flyLenFull || R.fly.len1,
             th0: Math.max(4, G.sdH * 0.06), th1: Math.round(Math.max(30, Math.min(104, G.sdH * 0.60))) };
           finPSpawnBurst(R, G.cx, vh - 6, { count: 10, colors: R.burstCols, power: 0.8 });
@@ -9966,9 +10016,18 @@
                +10%伸びる。減衰は 0.60 から。
                cam（発射飛行）は二段加速：前半55%はゆっくり大きく
                育ちながら距離の34%だけ進み（カメラが中央に捉える）、
-               後半45%で急加速して画面を抜ける */
+               後半45%で急加速して画面を抜ける。
+               thru（着弾飛行）は受け側で止まらず、hitF で受け側の
+               中心（crossU）を横切り、そのまま加速して画面上端まで抜ける */
             var fArr = 0.465;
             var flyCurve = function(f){
+              if (R.fly.thru){
+                /* 通り抜け：受け側で減速・停止せず、加速したまま上へ
+                   抜ける。hitF で crossU（受け側の中心）へ一致させる */
+                var hu = R.fly.crossU || 0.46, hf = R.fly.hitF || 0.44;
+                return { u: hu * Math.pow(Math.max(0, f) / hf, 1.12),
+                  ge: Math.pow(Math.min(1, f / (hf * 1.05)), 1.5), over: 0 };
+              }
               if (R.fly.cam){
                 if (f <= 0) return { u: 0, ge: 0, over: 0 };
                 if (f < 0.55){ var q = f / 0.55; return { u: 0.34 * (q * q * (3 - 2 * q)), ge: 0.78 * Math.pow(q, 1.2), over: 0 }; }
@@ -10002,7 +10061,7 @@
             N.flyUnit.gfx.scale.set(fl2 / 200, ft2 / 46);
             N.flyUnit.glow.width = fl2 * 1.25; N.flyUnit.glow.height = ft2 * 2.6;
             N.flyUnit.glow.alpha = 0.4;
-            N.flyUnit.cont.alpha = R.fly.cam
+            N.flyUnit.cont.alpha = (R.fly.cam || R.fly.thru)
               ? Math.min(1, fp / 0.04) * (fp > 0.93 ? Math.max(0, 1 - (fp - 0.93) / 0.07) : 1)
               : Math.min(1, fp / 0.04) * (fp > 0.60 ? Math.max(0, 1 - (fp - 0.60) / 0.37) : 1);
             /* 残像ブレード：同じカーブで少し遅れた飛行状態を薄く追随させる */
@@ -10023,6 +10082,12 @@
               g.scale.set(flG / 200, ftG / 46);
               g.alpha = (gi === 0 ? 0.30 : 0.17) * N.flyUnit.cont.alpha;
             });
+            /* 貫通の爆風：斬撃が受け側の中心を横切る瞬間に一度だけ出す */
+            if (R.fly.thru){
+              finPOnce(R, 'exBlast', tFs, R.flyFx0 + Math.round((R.flyDur || 620) * (R.fly.hitF || 0.44)), function(){
+                finPSpawnBlast(R, G.cx, G.cy, [0xfff3c4, 0xffffff, 0xffd76a]);
+              });
+            }
             /* 溶解（逆三日月の腹側）：反った弧の腹の縁そのものが
                チラチラと溶ける。輪郭側は finPBladeOutline の腹側の
                欠け（時間バケットで不規則に切り替わる）で縁を崩し、
@@ -10454,6 +10519,17 @@
         var fp2 = finPProg(tF, R.flashFx0, R.flashDur);
         if (fp2 >= 1){ N.flash.alpha = 0; R.flashFx0 = -1; }
         else N.flash.alpha = R.flashMax * (fp2 < 0.16 ? fp2 / 0.16 : 1 - (fp2 - 0.16) / 0.84);
+      }
+      /* 貫通の爆風リング：吹き飛びの大リングより小さく（最大でも約3割の
+         スケールまで）、約360msで急拡大して消える */
+      if (R.blastFx0 >= 0){
+        var bp3 = finPProg(tF, R.blastFx0, 360);
+        if (bp3 >= 1){ N.blastRing.visible = false; R.blastFx0 = -1; }
+        else {
+          N.blastRing.visible = true;
+          N.blastRing.scale.set(0.05 + 0.27 * FINP_EZ.easeOut(bp3));
+          N.blastRing.alpha = 0.9 * (1 - bp3);
+        }
       }
       /* 粒子 */
       finPStepParts(R, dtF);
@@ -20072,11 +20148,11 @@
        そのまま再生して確認できる。
        パネルの破壊・消散は複製要素だけの見た目で、演出後に元へ戻る。 */
     var FXCHECK_FINISH_ITEMS = [
-      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'【スクロール構成】SDセレスティアが両手に集めた光を真上へ放つと、発射したSDは下へ流れながら退場する。太い丸弾頭（波動拳のような幅広ドーム型）を持つ光波は消えず、弾単体の彗星として画面中央を飛び続ける。スクロール中は画面が軽く揺れる。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、弾頭の位置を彗星から引き継いだ（瞬間移動しない）同じ光波＋太い丸弾頭が、そのまま形を変えずに相手を通り抜けて画面上端まで通って、光の粒に浄化する（着弾は画面中央。金のオーラ付き）' },
+      { key:'f39',   cardId:39,     label:'セレスティア（039）フィニッシュ',   desc:'【スクロール構成】SDセレスティアが両手に集めた光を真上へ放つと、発射したSDは下へ流れながら退場する。太い丸弾頭（波動拳のような幅広ドーム型。画面幅の半分ほどまで拡大）を持つ光波は消えず、弾単体の彗星として画面中央を飛び続ける。スクロール中は画面が軽く揺れる。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、弾頭の位置を彗星から引き継いだ（瞬間移動しない）同じ光波＋太い丸弾頭が、スクロールと同じ速度感のまま減速せずに相手を通り抜けて画面上端まで通って、光の粒に浄化する（貫通の瞬間に爆風。着弾は画面中央。金のオーラ付き）' },
       { key:'f46',   cardId:46,     label:'ミラージュ（046）フィニッシュ',     desc:'【テクスチャ方式】斬撃を、流れノイズのテクスチャを流す帯メッシュ（シェーダで色ランプ＋幅方向の減衰＋白熱コアを合成し、帯の中心ほど色が濃くハッキリ立つよう密度を底上げして、3層を加算で重ねる）で描く。斬撃はワープの着地に同期して速く出る。斬撃の区間は白化より前に閉じる。SDミラージュが残像と砂煙を残して高速ワープを繰り返し、最後は相手SDの位置で斬って消える' },
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンの鎖が相手SD全体に被さり、闇の渦へ引きずり込む' },
-      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】SDティアマトが紅と蒼のビームをツイスト（螺旋）させながら真上へ放つと、発射したSDは下へ流れながら退場する。スクロール中は画面が軽く揺れる。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、相手の真下からツイスト弾（先端は太い丸弾頭＝幅広ドーム型）が絡み合ったまま昇り、相手で止まらずにそのまま通り抜けて画面上端まで抜けてから爆発させる（着弾は画面中央）' },
-      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振り、逆三日月斬撃（中央が厚く両端が下向きに尖る。端は画面から見切れてよい）が弧を描いて跳ぶ。腹側の反った縁はチラチラと溶ける（縁が不規則に明滅・崩れ、光の欠片と滴が縁に沿って零れ落ちる）。発射直後はゆっくり大きく育ち、カメラが斬撃を中央に捉えて背景が下へ強く流れ、スクロール中は画面が軽く揺れる中で急加速して画面を抜け、発射したSDは退場する。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、画面下から超巨大な逆三日月斬撃（画面をはみ出す全長へ拡大＋残像＋光屑＋腹側の溶解）が昇って着弾し、光の裂け目を走らせて真っ二つに崩す' },
+      { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】SDティアマトが紅と蒼のビームをツイスト（螺旋）させながら真上へ放つと、発射したSDは下へ流れながら退場する。スクロール中は画面が軽く揺れる。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、相手の真下からツイスト弾（先端は太い丸弾頭＝幅広ドーム型）が絡み合ったまま昇り、相手で止まらず、スクロールと同じ速度感のまま減速せずに通り抜けて画面上端まで抜けてから爆発させる（貫通の瞬間に爆風。着弾は画面中央）' },
+      { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】SD EX-キャリバーがオーラを溜め、画面全体から光の輪が何重にも剣へ収束して輝きが高まると、SDの中心を支点に剣を振り、逆三日月斬撃（中央が厚く両端が下向きに尖る。端は画面から見切れてよい）が弧を描いて跳ぶ。腹側の反った縁はチラチラと溶ける（縁が不規則に明滅・崩れ、光の欠片と滴が縁に沿って零れ落ちる）。発射直後はゆっくり大きく育ち、カメラが斬撃を中央に捉えて背景が下へ強く流れ、スクロール中は画面が軽く揺れる中で急加速して画面を抜け、発射したSDは退場する。スピード線と名前帯の予告を経て、画面中央へ運ばれてきた相手SDへ、画面下から超巨大な逆三日月斬撃（画面をはみ出す全長へ拡大＋残像＋光屑＋腹側の溶解）が昇り、相手で止まらずにそのまま上へ通り抜けて画面上端まで抜け、光の裂け目を走らせて真っ二つに崩す（通り抜ける瞬間に爆風）' },
       { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが攻撃側に登場し、砂煙と風切りを残して真上へ消え、巨大な顎が口を下に向けて真上の画面外から降ってきて相手SDを上から飲み込む' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは最初は映らず、溜めで背景の光が流れ始め、加速区間（スピード線＋本人が画面下へ飛び去る＋名前帯の予告）を経て相手SDが上方から登場して静止した瞬間、下から突き上げて着弾し、背景ごと吹っ飛んで白背景で締める（着弾位置は画面中央寄りへ変更。着弾した槍は金のグローと光の粒で覆い、素材感を消す）' }
     ];
