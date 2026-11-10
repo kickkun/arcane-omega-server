@@ -8301,13 +8301,21 @@
          下顎ピボットの関節位置（素材座標 x=0.13／y=0.53。牙の境界線を
          実測して決めた）をコンテナ座標へ置く。シェーダ方式は従来の
          縦長寸法（縦の裂け目）のまま。
-         退場は「真上」：X は受け側中心のまま固定し、中心が画面上端の
-         少し上（小さく溶けた残りが上端へ消える位置）までだけ上げる */
+         姿勢は全方式共通でコンテナごと+90°回転させ、顎先（＝口）を
+         真下へ向ける（素材の頭部軸は横向きのため、回すと関節側が
+         真上・顎先が真下になり、口が下を向いた姿勢になる）。回転後の
+         見かけの縦寸法は素材方式では mawH でなく mawW になるため、
+         出現・退場のオフセットは素材方式だけ mawW 基準で取る。
+         素材方式の寸法は、回転で横幅が mawH（≒0.65×mawW）に縮む分、
+         従来より一回り大きく取る。
+         出現は受け側の真上の画面外から、退場も「真上」：X は受け側
+         中心のまま固定し、中心が画面上端の少し上（小さく溶けた残りが
+         上端へ消える位置）までだけ上げる */
       if (G.id === '53ag'){
         R.mawImg = !!(T.mawBack && T.mawUpper && T.mawLower && N.mawImgMats);
         var mawW, mawH;
         if (R.mawImg){
-          mawW = Math.round(Math.min(G.vw * 1.12, Math.max(G.fxW * 1.9, 400)));
+          mawW = Math.round(Math.min(G.vw * 1.28, Math.max(G.fxW * 2.15, 450)));
           mawH = Math.round(mawW * 1008 / 1547);
         } else {
           mawW = Math.round(Math.min(G.vw * 1.06, Math.max(G.fxW * 1.45, 340)));
@@ -8315,8 +8323,8 @@
         }
         R.mawW = mawW;
         R.mawH = mawH;
-        R.mawStartOff = -(G.cy + mawH * 0.62 + 40);
-        R.mawTopY = Math.round(-mawH * 0.10);
+        R.mawStartOff = R.mawImg ? -(G.cy + mawW * 0.62 + 40) : -(G.cy + mawH * 0.62 + 40);
+        R.mawTopY = Math.round(R.mawImg ? -mawW * 0.10 : -mawH * 0.10);
         if (R.mawImg){
           N.mawImgMats[0].uniforms.uTex = T.mawBack;
           N.mawImgMats[1].uniforms.uTex = T.mawUpper;
@@ -11092,13 +11100,14 @@
           R.dirAlpha = 1 - exXp;
         }
       } else if (id === '53ag'){
-        /* 黒のアギト：真上へ飛ぶ → 大顎が真上から降り、口を開いて
-           飲み込み、ガブッと噛み合って閉じ、真上へ小さく溶けて消える
-           （スローなし）。大顎の正方式は分割素材3点（奥の面／上顎／
-           下顎）を関節ピボットで組み立てる素材方式で、開閉量 mawOpen を
-           下顎の回転角へ写す。素材が揃わない場合は流れテクスチャ方式の
-           不定形の大顎（シェーダ面）が同じ mawOpen を縦の裂け目の
-           開きとして使う */
+        /* 黒のアギト：真上へ飛ぶ → 大顎が口を下に向けて真上から降り、
+           口を開いて飲み込み、ガブッと噛み合って閉じ、真上へ小さく
+           溶けて消える（スローなし）。大顎の姿勢は全方式共通で
+           コンテナごと+90°回転させ、顎先（＝口）を真下へ向ける。
+           大顎の正方式は分割素材3点（奥の面／上顎／下顎）を関節ピボット
+           で組み立てる素材方式で、開閉量 mawOpen を下顎の回転角へ写す。
+           素材が揃わない場合は流れテクスチャ方式の不定形の大顎
+           （シェーダ面）が同じ mawOpen を裂け目の開きとして使う */
         finPOnce(R, 'agUp', tS, 470, function(){
           R.agFx0 = tFs;
           finPSpawnDust(R, G.ax, G.feetY, true, 0xbfb0d4);
@@ -11117,9 +11126,9 @@
         finPOnce(R, 'mawIn', tS, 1120, function(){ R.mawFx0 = tFs; });
         if (R.mawFx0 != null){
           /* 大顎の振付（手書き指示の読み順：左上→下→右上）：
-             1120〜1660 真上の画面外から降りながら口が開く（素材方式は
-             下顎が関節ピボットで下へ開き、シェーダ方式は縦の裂け目が
-             左右へ開く）
+             1120〜1660 受け側の真上の画面外から、口を下に向けたまま
+             まっすぐ降りながら口が開く（素材方式は下顎が関節ピボットで
+             開き、シェーダ方式は裂け目が開く）
              1700（破壊拍） ガブッと閉じる（約130ms）＋横の震え
              〜2140 閉じたまま保持（受け側は口の中へ吸い込まれて消える）
              2140〜2470 真上へだけ上昇し、小さくなりながら泥のように
@@ -11166,6 +11175,7 @@
             N.mawG.visible = false;
             N.mawImgC.visible = !mawDone;
             N.mawImgC.position.set(G.cx + mawJitX, mawY);
+            N.mawImgC.rotation = Math.PI / 2; /* 顎先を真下へ（口を下向きに） */
             N.mawImgC.scale.set(mawScale);
             N.mawLowerC.rotation = -0.05 + 0.30 * mawOpen;
             for (var mi = 0; mi < 3; mi++){
@@ -11176,6 +11186,7 @@
           } else if (N.mawMesh && N.mawMat){
             N.mawMesh.visible = !mawDone;
             N.mawG.visible = false;
+            N.mawMesh.rotation = Math.PI / 2; /* 口を下向きに（素材方式と姿勢を揃える） */
             N.mawMesh.position.set(G.cx + mawJitX, mawY);
             N.mawMesh.scale.set(R.mawW * 0.5 * mawScale, R.mawH * 0.5 * mawScale);
             N.mawMat.uniforms.uFlow = tFs / 1000;
@@ -11185,6 +11196,7 @@
             N.mawMesh.alpha = 1;
           } else {
             N.mawG.visible = !mawDone;
+            N.mawG.rotation = Math.PI / 2; /* 口を下向きに（素材方式と姿勢を揃える） */
             N.mawG.position.set(G.cx + mawJitX, mawY);
             N.mawG.scale.set(mawScale);
             finPDrawMawG(N.mawG, R.mawW, R.mawH, mawOpen, mawMelt, tFs, mawAlpha * (1 - mawMelt * 0.3));
@@ -11537,10 +11549,11 @@
           }
           if (ex >= 1) N.vicC.visible = false;
         } else if (R.breakStyle === 'suck'){
-          /* アギト：縦の裂け目へ横に潰されながら吸い込まれる */
+          /* アギト：真上から口を下に向けて降りた大顎へ、縦に潰され
+             ながら喉側（真上）へ吸い込まれる */
           var su = FINP_EZ.easeIn(finPProg(bl, 0, 520));
-          N.vicC.scale.set(1 - 0.94 * su, 1 - 0.20 * su);
-          N.vicC.position.y = G.cy;
+          N.vicC.scale.set(1 - 0.20 * su, 1 - 0.94 * su);
+          N.vicC.position.y = G.cy - G.sdH * 0.30 * su;
           N.vicC.rotation = -3 * su * Math.PI / 180;
           N.vicC.alpha = 1 - su;
         }
@@ -12957,12 +12970,16 @@
              回してガブッと噛む。揃わなければ Canvas の手続き描画
              （黒紫の靄の面＋縦の裂け目＋左右に開く大顎＋真っ黒な喉＋
              白く硬い牙）へフォールバックする。
-             振付：真上の画面外から降りながら口が開く（540ms）→
-             破壊拍でガブッと閉じる → 真上へだけ上昇し、小さくなり
-             ながら溶けて消える（斜め移動はしない） */
+             姿勢は Pixi 方式と共通で、キャンバスごと90°回して顎先
+             （＝口）を真下へ向ける（回転は mawFrame の transform が
+             担う）。素材方式の寸法は回転で横幅が縮む分、一回り
+             大きく取る。
+             振付：真上の画面外から口を下に向けたまま降りながら口が
+             開く（540ms）→ 破壊拍でガブッと閉じる → 真上へだけ上昇し、
+             小さくなりながら溶けて消える（斜め移動はしない） */
           var mawImgs = maw2Ready()
             ? { back: sdImgEls[FIN_MAW2_SRC.back], upper: sdImgEls[FIN_MAW2_SRC.upper], lower: sdImgEls[FIN_MAW2_SRC.lower] } : null;
-          var mawW = mawImgs ? Math.round(Math.min(window.innerWidth * 1.12, Math.max(fxW * 1.9, 400)))
+          var mawW = mawImgs ? Math.round(Math.min(window.innerWidth * 1.28, Math.max(fxW * 2.15, 450)))
                              : Math.round(Math.min(window.innerWidth * 1.06, Math.max(fxW * 1.45, 340)));
           var mawH = mawImgs ? Math.round(mawW * 1008 / 1547) : Math.round(mawW * 1.15);
           var mawCv = sdFinNode('canvas', 'fx-sd-char');
@@ -12972,8 +12989,8 @@
           mawCv.style.left = pcx + 'px'; mawCv.style.top = pcy + 'px';
           mawCv.style.pointerEvents = 'none';
           var mctx = mawCv.getContext('2d');
-          var mawStartOff = -(pcy + mawH * 0.62 + 40);
-          var mawTopDy = -mawH * 0.10 - pcy; /* 退場の到達点（真上）の中心オフセット */
+          var mawStartOff = mawImgs ? -(pcy + mawW * 0.62 + 40) : -(pcy + mawH * 0.62 + 40);
+          var mawTopDy = (mawImgs ? -mawW * 0.10 : -mawH * 0.10) - pcy; /* 退場の到達点（真上）の中心オフセット */
           function drawMaw(open, melt, tMs, alpha){
             var t = tMs * 0.001;
             mctx.setTransform(MDPR, 0, 0, MDPR, 0, 0);
@@ -13086,22 +13103,25 @@
               melt = je;                          /* 泥のように溶ける */
               open = 0.05 * (1 - je);
             }
-            mawCv.style.transform = 'translate(-50%,-50%) translate(' + Math.round(jitX) + 'px,' + Math.round(dy) + 'px) scale(' + scale.toFixed(3) + ')';
+            /* rotate(90deg)：顎先（＝口）を真下へ向ける（Pixi 方式の
+               コンテナ回転と同じ姿勢） */
+            mawCv.style.transform = 'translate(-50%,-50%) translate(' + Math.round(jitX) + 'px,' + Math.round(dy) + 'px) scale(' + scale.toFixed(3) + ') rotate(90deg)';
             mawCv.style.opacity = String(Math.min(1, p / 0.12));
             drawMaw(open, melt, t, 1);
             if (t < 1400) requestAnimationFrame(mawFrame);
             else mawCv.style.opacity = '0';
           }
           requestAnimationFrame(mawFrame);
-          /* 噛み砕く：パネルは縦の裂け目へ横に潰されながら吸い込まれて消える */
+          /* 噛み砕く：パネルは真下を向いた口へ、縦に潰されながら
+             喉側（真上）へ吸い込まれて消える */
           later(function(){
             fxQuake('fx-quake-md', 560);
             pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
             pixiFinAgitoBiteFx(pcx, pcy, mawW); /* 噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（拍は従来どおり） */
             fxFinAnimate(cl, [
               { transform: 'translate(0px,0px) scale(1,1)', opacity: 1 },
-              { transform: 'translate(2px,0px) scale(.5,.92) rotate(-2deg)', opacity: 0.9, offset: 0.45 },
-              { transform: 'translate(-2px,0px) scale(.06,.8) rotate(-4deg)', opacity: 0 }
+              { transform: 'translate(0px,-6%) scale(.92,.5) rotate(-2deg)', opacity: 0.9, offset: 0.45 },
+              { transform: 'translate(0px,-14%) scale(.8,.06) rotate(-4deg)', opacity: 0 }
             ], { duration: 520, easing: 'ease-in', fill: 'forwards' });
           }, 580);
         }, 1120);
@@ -21337,7 +21357,7 @@
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンのブラックホールが画面幅を超えて開き、相手SDを引き伸ばしながら呑み込んで一点に収縮する' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】紅蒼のツイスト弾が真下から昇って相手SDを通り抜け、爆発とともに受け側を消し去る' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】逆三日月斬撃（腹の縁がチラチラ溶ける）が弧を描いて飛び、相手SDを上へ通り抜けて真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、ドット絵の大顎（分割素材：奥の面／上顎／下顎を関節ピボットで組立て）が上から降り、下顎がガバっと開いて相手SDを飲み込み、ガブッと噛み合って閉じ、真上へ小さく溶けて消える（素材が無い場合はシェーダ大顎）' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、ドット絵の大顎（分割素材：奥の面／上顎／下顎を関節ピボットで組立て）が真上から口を下に向けて降りてきて、下顎がガバっと開いて相手SDを飲み込み、ガブッと噛み合って閉じ、真上へ小さく溶けて消える（素材が無い場合はシェーダ大顎）' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは名前帯の予告の後に登場し、静止した瞬間に下から突き上げて着弾、背景ごと吹っ飛ぶ' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
