@@ -8094,6 +8094,9 @@
       N.mawGlowUpperM = (mawParts && mawParts.glowUpper) ? mawParts.glowUpper.mesh : null;
       N.mawGlowLowerM = (mawParts && mawParts.glowLower) ? mawParts.glowLower.mesh : null;
       N.mawGlowMats = (mawParts && mawParts.glowUpper && mawParts.glowLower) ? [mawParts.glowUpper.mat, mawParts.glowLower.mat] : null;
+      N.mawFlowUpperM = (mawParts && mawParts.flowUpper) ? mawParts.flowUpper.mesh : null;
+      N.mawFlowLowerM = (mawParts && mawParts.flowLower) ? mawParts.flowLower.mesh : null;
+      N.mawFlowMats = (mawParts && mawParts.flowUpper && mawParts.flowLower) ? [mawParts.flowUpper.mat, mawParts.flowLower.mat] : null;
       N.mawMouthM = (mawParts && mawParts.mouth) ? mawParts.mouth.mesh : null;
       N.mawMouthMat = (mawParts && mawParts.mouth) ? mawParts.mouth.mat : null;
       var mawLowerC = PC();
@@ -8104,12 +8107,15 @@
            部品と一緒に回って輪郭へ追随させる */
         if (mawParts.glowLower) mawLowerC.addChild(mawParts.glowLower.mesh);
         mawLowerC.addChild(mawParts.lower);
+        /* 表面の流れは部品の前面に同寸で重ね、回転へ完全追随させる */
+        if (mawParts.flowLower) mawLowerC.addChild(mawParts.flowLower.mesh);
         mawImgC.addChild(mawLowerC);
         /* 口内の霞は下顎と上顎のあいだに置き、開いた口の中から
            漏れ出して見える重ね順にする */
         if (mawParts.mouth) mawImgC.addChild(mawParts.mouth.mesh);
         if (mawParts.glowUpper) mawUpperC.addChild(mawParts.glowUpper.mesh);
         mawUpperC.addChild(mawParts.upper);
+        if (mawParts.flowUpper) mawUpperC.addChild(mawParts.flowUpper.mesh);
         mawImgC.addChild(mawUpperC);
       }
       mawImgC.visible = false;
@@ -8497,7 +8503,8 @@
       if (N.mawImgMats) N.mawImgMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
       if (N.mawAuraMat){ N.mawAuraMat.uniforms.uMelt = 0; N.mawAuraMat.uniforms.uAlpha = 0; }
       if (N.mawGlowMats) N.mawGlowMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
-      if (N.mawMouthMat){ N.mawMouthMat.uniforms.uMelt = 0; N.mawMouthMat.uniforms.uAlpha = 0; }
+      if (N.mawFlowMats) N.mawFlowMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
+      if (N.mawMouthMat){ N.mawMouthMat.uniforms.uMelt = 0; N.mawMouthMat.uniforms.uAlpha = 0; N.mawMouthMat.uniforms.uFlow = 0; }
       if (N.mawMat) N.mawMat.uniforms.uGlow = 0;
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.bandC.visible = false; N.bandC.alpha = 1;
@@ -8846,6 +8853,10 @@
             N.mawGlowMats[0].uniforms.uTex = T.mawUpper;
             N.mawGlowMats[1].uniforms.uTex = T.mawLower;
           }
+          if (N.mawFlowMats){
+            N.mawFlowMats[0].uniforms.uTex = T.mawUpper;
+            N.mawFlowMats[1].uniforms.uTex = T.mawLower;
+          }
           /* オーラ面：部品より大きく（縦 1.84×／横 1.76×）。濃く広く
              まとわせる演出強化で従来（縦1.48×／横1.6×）から拡大した。
              出現オフセットは従来のまま：出現直後は全体の不透明度が
@@ -8871,6 +8882,15 @@
           if (N.mawGlowLowerM){
             N.mawGlowLowerM.position.set(-pivX * 1.09, -pivY * 1.09);
             N.mawGlowLowerM.scale.set(mawW * 0.5 * 1.09, mawH * 0.5 * 1.09);
+          }
+          /* 表面の流れ面：部品と同寸・同じピボット基準で前面に敷く */
+          if (N.mawFlowUpperM){
+            N.mawFlowUpperM.position.set(-pivX, -pivY);
+            N.mawFlowUpperM.scale.set(mawW * 0.5, mawH * 0.5);
+          }
+          if (N.mawFlowLowerM){
+            N.mawFlowLowerM.position.set(-pivX, -pivY);
+            N.mawFlowLowerM.scale.set(mawW * 0.5, mawH * 0.5);
           }
           /* 口内の霞：関節から顎先方向へ少し入った、上下顎のあいだの
              中心に置く。広がりは更新側が開き量で拡縮する */
@@ -10048,7 +10068,11 @@
       '  float n1 = texture2D(uNoise, vUvs * vec2(1.3, 1.0) + vec2(uTime * 0.025, -uTime * 0.041)).a;',
       '  float n2 = texture2D(uNoise, vUvs * vec2(3.1, 2.4) + vec2(-uTime * 0.06, uTime * 0.03) + 0.37).a;',
       '  float flick = 0.82 + 0.36 * n2;',
-      '  float g = (halo * 1.45 + a0 * 0.34) * uAlpha * flick;',
+      /* 縁の流れ：輪郭に沿う座標（arc）へ時間で進む脈動を重ね、光が
+         縁を巡るように流す。平均の明るさは従来とほぼ揃える */
+      '  float arc = vUvs.x * 0.85 + vUvs.y * 0.55;',
+      '  float pulse = 0.80 + 0.34 * sin(arc * 12.566 - uTime * 3.1 + n1 * 5.2);',
+      '  float g = (halo * 1.45 + a0 * 0.34) * uAlpha * flick * pulse * 1.2;',
       /* 溶け：部品と同じノイズ閾値で崩れる */
       '  float keep = n2 * 0.60 + n1 * 0.40;',
       '  float dis = mix(1.0, smoothstep(uMelt * 1.12, uMelt * 1.12 + 0.22, keep + 0.10), step(0.001, uMelt));',
@@ -10056,6 +10080,45 @@
       '  if (g < 0.004){ gl_FragColor = vec4(0.0); return; }',
       '  vec3 col = mix(vec3(0.46, 0.20, 1.0), vec3(0.74, 0.52, 1.0), halo);',
       '  gl_FragColor = vec4(col * g, g);',
+      '}'
+    ].join('\n');
+    /* --- 顎の表面を流れる薄い光（素材方式・部品ごとの前面） ---
+       素材のアルファでマスクし、描き込みの明るい筋に沿って紫の光が
+       顎の長さ方向（テクスチャU）へゆっくり流れる面。部品と同じ
+       ピボット子コンテナへ部品と同寸で敷くため、顎の回転・開閉へ
+       完全追随する。サンプル位置は部品シェーダと同じ蠢き・垂れの
+       式でずらし、表面へ吸着させる。加算合成の薄い乗りなので
+       素材の描き込みは隠さない。溶けは部品と同じ閾値で一緒に崩す */
+    var FINP_MAWFLOW_FS = [
+      'varying vec2 vUvs;',
+      'uniform sampler2D uTex;',
+      'uniform sampler2D uNoise;',
+      'uniform float uTime;',
+      'uniform float uMelt;',
+      'uniform float uAlpha;',
+      'void main(){',
+      /* 部品シェーダと同じ蠢き・垂れで素材面へ吸着させる */
+      '  float n1 = texture2D(uNoise, vUvs * vec2(0.9, 0.6) + vec2(uTime * 0.021, -uTime * 0.037)).a;',
+      '  float n2 = texture2D(uNoise, vUvs * vec2(2.3, 1.5) + vec2(-uTime * 0.043, uTime * 0.017) + 0.37).a;',
+      '  vec2 wob = vec2(n1 - 0.5, n2 - 0.5) * (0.014 + uMelt * 0.05);',
+      '  vec2 muv = vUvs + wob;',
+      '  muv.y -= uMelt * n1 * 0.10;',
+      '  vec4 tex = texture2D(uTex, muv);',
+      '  if (tex.a < 0.01){ gl_FragColor = vec4(0.0); return; }',
+      /* 筋の流れ：共有ノイズを顎の長さ方向へ細長く伸ばし、ゆっくり流す */
+      '  float s1 = texture2D(uNoise, vec2(vUvs.x * 0.55 - uTime * 0.030, vUvs.y * 3.1)).a;',
+      '  float s2 = texture2D(uNoise, vec2(vUvs.x * 1.15 - uTime * 0.052 + 0.41, vUvs.y * 5.3 + 0.23)).a;',
+      '  float streak = smoothstep(0.50, 0.92, s1 * 0.62 + s2 * 0.55);',
+      /* 描き込みの明るい筋（発光線）に沿わせ、暗い面ではごく薄くする */
+      '  float lum = dot(tex.rgb, vec3(0.299, 0.587, 0.114));',
+      '  float vein = 0.25 + 0.75 * smoothstep(0.04, 0.42, lum);',
+      /* 溶け：部品と同じノイズ閾値で一緒に崩れる */
+      '  float keep = n2 * 0.60 + n1 * 0.40;',
+      '  float dis = mix(1.0, smoothstep(uMelt * 1.12, uMelt * 1.12 + 0.22, keep + 0.10), step(0.001, uMelt));',
+      '  float a = tex.a * streak * vein * uAlpha * dis;',
+      '  if (a < 0.004){ gl_FragColor = vec4(0.0); return; }',
+      '  vec3 col = mix(vec3(0.44, 0.20, 0.95), vec3(0.78, 0.60, 1.0), streak);',
+      '  gl_FragColor = vec4(col * a, a);',
       '}'
     ].join('\n');
     /* --- 口の中から漏れる霞（素材方式） ---
@@ -10066,13 +10129,16 @@
       'varying vec2 vUvs;',
       'uniform sampler2D uNoise;',
       'uniform float uTime;',
+      'uniform float uFlow;',
       'uniform float uAlpha;',
       'uniform float uMelt;',
       'void main(){',
-      /* 霞の流れ：塊が顎先方向（+X）へゆっくり流れ出る */
-      '  float n1 = texture2D(uNoise, vUvs * vec2(1.5, 1.9) + vec2(-uTime * 0.045, -uTime * 0.020)).a;',
-      '  float n2 = texture2D(uNoise, vUvs * vec2(3.0, 3.6) + vec2(-uTime * 0.085, uTime * 0.034) + 0.41).a;',
-      '  float n3 = texture2D(uNoise, vUvs * vec2(5.2, 6.4) + vec2(-uTime * 0.14, -uTime * 0.07) + 0.73).a;',
+      /* 霞の流れ：塊が顎先方向（+X＝内側から外）へ流れ出る。流速は
+         位相 uFlow が担い、呼び出し側が開き量に比例して進めるため、
+         開くほど湧き出すように速く流れ、閉じればほぼ止まる */
+      '  float n1 = texture2D(uNoise, vUvs * vec2(1.5, 1.9) + vec2(-uFlow * 0.055, -uTime * 0.020)).a;',
+      '  float n2 = texture2D(uNoise, vUvs * vec2(3.0, 3.6) + vec2(-uFlow * 0.105, uTime * 0.034) + 0.41).a;',
+      '  float n3 = texture2D(uNoise, vUvs * vec2(5.2, 6.4) + vec2(-uFlow * 0.17, -uTime * 0.07) + 0.73).a;',
       '  float noise = clamp(n1 * 0.52 + n2 * 0.40 + n3 * 0.30, 0.0, 1.0);',
       '  float clot = smoothstep(0.16, 0.85, noise);',
       '  vec2 d = vUvs * 2.0 - 1.0;',
@@ -10130,17 +10196,34 @@
           }
           glowU = mkGlow(); glowL = mkGlow();
         } catch (e3) { glowU = null; glowL = null; }
+        /* 顎表面の流れも、作れなければ無しで部品方式を続行する */
+        var flowU = null, flowL = null;
+        try {
+          function mkFlow(){
+            var geo = new PIXI.Geometry();
+            geo.addAttribute('aVertexPosition', new PIXI.Buffer(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), false), 2);
+            geo.addAttribute('aUvs', new PIXI.Buffer(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), false), 2);
+            geo.addIndex([0, 1, 2, 2, 1, 3]);
+            var mat = PIXI.Shader.from(FINP_MAW_VS, FINP_MAWFLOW_FS, {
+              uTex: finPMirageFlowTexture(), uNoise: finPMirageFlowTexture(), uTime: 0, uMelt: 0, uAlpha: 0
+            });
+            var mesh = new PIXI.Mesh(geo, mat);
+            mesh.blendMode = PIXI.BLEND_MODES.ADD;
+            return { mesh: mesh, mat: mat };
+          }
+          flowU = mkFlow(); flowL = mkFlow();
+        } catch (e5) { flowU = null; flowL = null; }
         try {
           var mgeo = new PIXI.Geometry();
           mgeo.addAttribute('aVertexPosition', new PIXI.Buffer(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), false), 2);
           mgeo.addAttribute('aUvs', new PIXI.Buffer(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), false), 2);
           mgeo.addIndex([0, 1, 2, 2, 1, 3]);
           var mmat = PIXI.Shader.from(FINP_MAW_VS, FINP_MAWMOUTH_FS, {
-            uNoise: finPMirageFlowTexture(), uTime: 0, uAlpha: 0, uMelt: 0
+            uNoise: finPMirageFlowTexture(), uTime: 0, uFlow: 0, uAlpha: 0, uMelt: 0
           });
           mouth = { mesh: new PIXI.Mesh(mgeo, mmat), mat: mmat };
         } catch (e4) { mouth = null; }
-        return { back: null, upper: u.mesh, lower: l.mesh, mats: [u.mat, l.mat], aura: aura, glowUpper: glowU, glowLower: glowL, mouth: mouth };
+        return { back: null, upper: u.mesh, lower: l.mesh, mats: [u.mat, l.mat], aura: aura, glowUpper: glowU, glowLower: glowL, flowUpper: flowU, flowLower: flowL, mouth: mouth };
       } catch (e) { return null; }
     }
     /* 大顎の Graphics フォールバック（シェーダが作れない環境用）。
@@ -11854,7 +11937,7 @@
         }
         finPOnce(R, 'agWind', tS, 720, function(){ finPSpawnWind(R, G.ax + 6, G.feetY - G.sdH * 1.5, -90, G.sdH * 0.95, 0xffffff); });
         finPOnce(R, 'jawDust', tS, R.destroyMs, function(){ finPSpawnDust(R, G.cx, G.cy + G.sumH * 0.42, true, 0xbfb0d4); });
-        finPOnce(R, 'mawIn', tS, 1120, function(){ R.mawFx0 = tFs; });
+        finPOnce(R, 'mawIn', tS, 1120, function(){ R.mawFx0 = tFs; R.mawFlowPh = 0; R.mawFlowT = null; });
         if (R.mawFx0 != null){
           /* 大顎の振付（手書き指示の読み順：左上→下→右上）：
              1120〜1660 受け側の真上の画面外から、口を下に向けたまま
@@ -11863,7 +11946,9 @@
              1700（破壊拍） ガブッと閉じる（約130ms）＋横の震え
              〜2140 閉じたまま保持（受け側は口の中へ吸い込まれて消える）
              2140〜2470 真上へだけ上昇し、小さくなりながら泥のように
-             溶けて消える（斜め移動はしない。X は受け側中心で固定） */
+             溶けて消える（斜め移動はしない。X は受け側中心で固定。
+             B案：噛む拍で閉じ切った後は退場中も open=0 のままにし、
+             閉じた状態を一度はっきり見せてから溶かす。再び開かない） */
           var mp = finPProg(tFs, R.mawFx0, 540);
           var me = FINP_EZ.jaw(mp);
           var mawY = G.cy + R.mawStartOff * (1 - me);
@@ -11886,7 +11971,9 @@
             mawY = mawY + (R.mawTopY - mawY) * je2; /* 真上へ（X は不変） */
             mawScale = 1 - 0.78 * je2;              /* 小さく（右上のコマの山） */
             mawMelt = je2;                          /* 泥のように溶ける */
-            mawOpen = 0.05 * (1 - je2);
+            /* B案：噛む拍で閉じ切った口（open=0）は退場中も開き直さ
+               ない。閉じたまま溶けて消える */
+            mawOpen = 0;
             if (jo >= 1) mawDone = true;
           }
           /* 落下の風切り：大顎が降りている間、その位置に風の筋を流し続ける */
@@ -11959,9 +12046,25 @@
                 N.mawGlowMats[mg].uniforms.uAlpha = mawAlpha * Math.min(1.55, mawGlow) * 0.95;
               }
             }
+            /* 顎表面の流れ：素材の筋に沿う薄い紫の光。部品前面に同寸で
+               敷いてあるため顎の回転へ完全追随する。噛む拍で少し強め、
+               溶けでは部品と一緒に崩れる */
+            if (N.mawFlowMats){
+              for (var mf2 = 0; mf2 < N.mawFlowMats.length; mf2++){
+                N.mawFlowMats[mf2].uniforms.uTime = tFs / 1000;
+                N.mawFlowMats[mf2].uniforms.uMelt = mawMelt;
+                N.mawFlowMats[mf2].uniforms.uAlpha = mawAlpha * (0.16 + 0.13 * Math.min(2.2, mawGlow)) * (1 - mawMelt * 0.4);
+              }
+            }
             /* 口内の霞：開くほど広がって溢れ、噛む拍の押し出しでも漏れる */
             if (N.mawMouthMat && N.mawMouthM){
               N.mawMouthMat.uniforms.uTime = tFs / 1000;
+              /* 霞の流速：位相を開き量に比例して進め、開くほど内側から
+                 外へ湧き出す流れにする（閉じればほぼ止まる） */
+              var mDt = R.mawFlowT == null ? 0 : Math.min(60, Math.max(0, tFs - R.mawFlowT));
+              R.mawFlowT = tFs;
+              R.mawFlowPh = (R.mawFlowPh || 0) + (mDt / 1000) * (0.20 + 1.30 * Math.min(1.2, Math.max(0, mawMistOpen)));
+              N.mawMouthMat.uniforms.uFlow = R.mawFlowPh;
               N.mawMouthMat.uniforms.uMelt = mawMelt;
               N.mawMouthMat.uniforms.uAlpha = mawAlpha * Math.pow(Math.max(0, Math.min(1.2, mawMistOpen)), 1.15) * (0.60 + 0.35 * mawGlow) * (1 - mawMelt * 0.55);
               var mSpread = 0.55 + 0.70 * Math.min(1.2, mawMistOpen);
@@ -14011,7 +14114,7 @@
               dy = mawTopDy * je;                 /* 真上へ（X は不変） */
               scale = 1 - 0.78 * je;              /* 小さく */
               melt = je;                          /* 泥のように溶ける */
-              open = 0.05 * (1 - je);
+              open = 0;                           /* B案：閉じ切ったまま溶ける（退場中に開き直さない） */
             }
             /* rotate(90deg)：顎先（＝口）を真下へ向ける（Pixi 方式の
                コンテナ回転と同じ姿勢） */
