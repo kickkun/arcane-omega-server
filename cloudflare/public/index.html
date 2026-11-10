@@ -4513,6 +4513,32 @@
     /* 親カードID → 形態カード（詳細画面の導線用。052→EX-キャリバー、053→黒のアギト） */
     var FORM_FOR_PARENT = {};
     FORM_CARDS.forEach(function(c){ FORM_FOR_PARENT[c.formOf] = c; });
+    /* 武器種別（攻撃SEの鳴らし分け専用。ルールには影響しない）：
+       sword=剣／spear=槍／strike=打撃（素手・鈍器・体当たり）／claw=爪・牙／magic=魔法・遠距離。
+       カードの名前・見た目・フレーバーから分類した。スペルとコインは攻撃しないので付けない。
+       攻撃時は seAttackForFollower／seAttackForCardId がこの種別を見て音を選ぶ
+       （剣は実ファイルの斬撃音、それ以外は当面は現行ヒット音の仮置き）。 */
+    var WEAPON_BY_ID = {
+      1:'sword', 2:'magic', 3:'magic', 4:'strike', 5:'claw', 6:'claw', 7:'sword', 8:'sword',
+      9:'claw', 10:'sword', 11:'strike', 12:'strike', 13:'strike', 14:'magic',
+      18:'magic', 19:'strike', 20:'magic', 21:'magic', 22:'sword', 23:'claw', 24:'magic',
+      25:'claw', 26:'claw', 27:'sword', 28:'magic', 29:'sword', 30:'sword', 31:'sword',
+      32:'strike', 33:'claw', 34:'claw', 35:'strike', 36:'spear', 37:'sword', 38:'sword',
+      39:'magic', 40:'strike', 41:'sword', 42:'sword', 43:'magic', 44:'magic', 45:'sword',
+      46:'sword', 47:'strike', 48:'magic', 49:'magic', 50:'sword', 51:'claw', 52:'sword',
+      53:'claw', 54:'spear', '52ex':'sword', '53ag':'claw'
+    };
+    Object.keys(WEAPON_BY_ID).forEach(function(k){
+      var wc = CARD_BY_ID[k];
+      if (wc) wc.weapon = WEAPON_BY_ID[k];
+    });
+    /* 場のユニットの武器種別を返す（インスタンスに無ければカード定義から引く） */
+    function followerWeapon(f){
+      if (!f) return null;
+      if (f.weapon) return f.weapon;
+      var wc2 = CARD_BY_ID[f.cardId];
+      return wc2 ? (wc2.weapon || null) : null;
+    }
     /* 神話カードかどうか（デッキには1種類のみ・同名3枚まで） */
     function isMythicCard(c){ return !!(c && c.mythic); }
     /* 場のユニットのコスト。トークンはカードIDを持たないため0コストとして扱う */
@@ -5352,6 +5378,49 @@
             break;
         }
       } catch (e) {}
+    }
+    /* ===== 攻撃SEの武器種別分岐 =====
+       攻撃音は攻撃側ユニットの武器種別（card.weapon）で鳴らし分ける。
+       剣（sword）は効果音ラボ「剣で斬る2」の実ファイル（se/se-slash-sword.mp3、
+       ゲーム向けの短め斬撃。クレジット不要）を鳴らす。それ以外の種別
+       （槍spear／打撃strike／爪・牙claw／魔法magic）は、種別ごとの最終選定が
+       済むまで現行の合成ヒット音（'hit'）を仮置きする。
+       ファイル再生は BGM と同じ HTMLAudio 方式（fx/ や bgm/ と同じ外出し）。
+       SE オン/オフ（seEnabled）と HEADLESS 無効化は合成音と揃え、同一音の
+       連打間引き（70ms）も sePlay と共通の seLastPlay で行う。 */
+    var SE_FILE_SRC = { sword: 'se/se-slash-sword.mp3' };
+    var seFileEls = {};
+    function seFilePlay(key, src, vol){
+      if (HEADLESS || !seEnabled) return;
+      var nowMs = fxNow();
+      if (seLastPlay[key] && nowMs - seLastPlay[key] < 70) return;
+      seLastPlay[key] = nowMs;
+      try {
+        var el = seFileEls[key];
+        if (!el){
+          el = new Audio();
+          el.preload = 'auto';
+          el.src = src;
+          seFileEls[key] = el;
+        }
+        el.volume = vol;
+        try { el.currentTime = 0; } catch (e) {}
+        var pr = el.play();
+        if (pr && pr.catch) pr.catch(function(){});
+      } catch (e) {}
+    }
+    /* 武器種別から攻撃SEを選んで鳴らす（種別不明・未定義は従来のヒット音） */
+    function seAttackHit(weapon){
+      if (weapon === 'sword' && SE_FILE_SRC.sword){
+        seFilePlay('atkSword', SE_FILE_SRC.sword, 0.55);
+      } else {
+        sePlay('hit'); /* 仮置き：種別ごとの実ファイルが決まるまでは現行音 */
+      }
+    }
+    function seAttackForFollower(f){ seAttackHit(followerWeapon(f)); }
+    function seAttackForCardId(cardId){
+      var c = CARD_BY_ID[cardId];
+      seAttackHit(c ? (c.weapon || null) : null);
     }
     /* ===== 神話SDフィニッシュ専用SE（第5弾） =====
        既存の WebAudio 合成基盤（seTone／seNoise）と SE オン/オフ設定
@@ -18705,7 +18774,7 @@
         noAtkDmg: !!card.noAtkDmg, growAtk: !!card.growAtk, playedTurnCount: 0,
         transformCelestia: !!card.transformCelestia,
         isEgg: !!card.egg, hatched: false,
-        breakthrough: !!card.breakthrough, shootdown: !!card.shootdown, penetrate: !!card.penetrate, longinus: card.id === 54, extraAttackUsed: false,
+        breakthrough: !!card.breakthrough, shootdown: !!card.shootdown, penetrate: !!card.penetrate, weapon: card.weapon || 'strike', longinus: card.id === 54, extraAttackUsed: false,
         effectKind: card.effect.kind, effectN: (typeof card.effect.n === 'number' ? card.effect.n : null), token: false, branGuard: false,
         atkDebuff: 0,
         /* 突破（ロンギヌス）は出たターンからユニットを攻撃できるため sick にしない
@@ -18852,7 +18921,7 @@
         case 'summonToken': {
           var side = sideObj(sideKey);
           if (side.board.length < 5){
-            side.board.push({ uid: uidSeq++, cardId: 0, name: TOKEN_DEF.name, img: TOKEN_DEF.img, atk: TOKEN_DEF.atk, hp: TOKEN_DEF.hp, maxHp: TOKEN_DEF.hp, guard:false, rush:false, armor:false, counter:false, turnEndHeal:0, effectKind:'none', token:true, branGuard:false, sick:true, attacked:false, multiAtk:1, attacksLeft:1, noAtkDmg:false, growAtk:false, playedTurnCount:0 });
+            side.board.push({ uid: uidSeq++, cardId: 0, weapon:'claw', name: TOKEN_DEF.name, img: TOKEN_DEF.img, atk: TOKEN_DEF.atk, hp: TOKEN_DEF.hp, maxHp: TOKEN_DEF.hp, guard:false, rush:false, armor:false, counter:false, turnEndHeal:0, effectKind:'none', token:true, branGuard:false, sick:true, attacked:false, multiAtk:1, attacksLeft:1, noAtkDmg:false, growAtk:false, playedTurnCount:0 });
             logMsg('金龍トークン（3/3）が場に出た。', 'sys');
           } else {
             logMsg('場が満杯で金龍トークンは出なかった。');
@@ -18862,7 +18931,7 @@
         case 'summonClone': {
           var sideC = sideObj(sideKey);
           if (sideC.board.length < 5){
-            sideC.board.push({ uid: uidSeq++, cardId: 0, name: CLONE_DEF.name, img: CLONE_DEF.img, atk: CLONE_DEF.atk, hp: CLONE_DEF.hp, maxHp: CLONE_DEF.hp, guard:false, rush:false, armor:false, counter:false, turnEndHeal:0, effectKind:'none', token:true, branGuard:false, sick:true, attacked:false, multiAtk:1, attacksLeft:1, noAtkDmg:false, growAtk:false, playedTurnCount:0 });
+            sideC.board.push({ uid: uidSeq++, cardId: 0, weapon:'sword', name: CLONE_DEF.name, img: CLONE_DEF.img, atk: CLONE_DEF.atk, hp: CLONE_DEF.hp, maxHp: CLONE_DEF.hp, guard:false, rush:false, armor:false, counter:false, turnEndHeal:0, effectKind:'none', token:true, branGuard:false, sick:true, attacked:false, multiAtk:1, attacksLeft:1, noAtkDmg:false, growAtk:false, playedTurnCount:0 });
             logMsg('分身トークン（2/2）が場に出た。', 'sys');
           } else {
             logMsg('場が満杯で分身トークンは出なかった。');
@@ -19201,7 +19270,7 @@
            フィニッシュ演出を発動する。召喚士への攻撃ではヒットストップは入れない */
         var lethalLeader = atk.atk > 0 && (sideObj(defSide).hp - atk.atk) <= 0;
         if (lethalLeader){ fxTriggerFinish(fxMythicFinishArg(atk, defSide)); fxLeaderPopFinish = true; pixiScheduleFinish(defSide); }
-        if (atk.atk > 0) sePlay('hit');
+        if (atk.atk > 0) seAttackForFollower(atk); /* 攻撃SEは武器種別で分岐 */
         /* 第2弾【2】召喚士への直撃も打撃点演出の対象にする（発火は再描画後の fxApplyCpu） */
         if (!HEADLESS && atk.atk > 0) fxHitQueue.push({ kind: 'leader', side: defSide });
         damageLeader(defSide, atk.atk);
@@ -19271,7 +19340,7 @@
           fxLeaderPopFinish = false;
         }
         /* 演出：ユニット同士の戦闘でダメージが入った瞬間のヒット音＋ヒットストップ */
-        if (defDmg > 0 || atkDmg > 0){ sePlay('hit'); fxHitstop(); }
+        if (defDmg > 0 || atkDmg > 0){ seAttackForFollower(atk); fxHitstop(); } /* 攻撃SEは武器種別で分岐 */
         /* 反撃：実際に1以上の戦闘ダメージを受けた反撃持ちは、相手ユニットへ1ダメージ返す。
            素ダメージで倒れた側の反撃も発動する（破壊は反撃の解決後）。
            反撃ダメージでは新たな反撃は発動しない（applyCounterHit は体力だけを減らす）。 */
@@ -23211,7 +23280,17 @@
       /* 演出強化 第1弾：SE／ヒットストップ／フィニッシュ（見た目のみ。
          ヒットストップは突進＝ユニット同士の戦闘でダメージが入った時だけ） */
       if (plan.spawn.length) sePlay(plan.spawn.some(function(s){ return s.mythic; }) ? 'summonMythic' : 'summon');
-      if (plan.hit.length) sePlay('hit');
+      if (plan.hit.length){
+        /* 攻撃SEは武器種別で分岐：突進（plan.lunge）の攻撃ユニットを
+           サーバー権威の場から特定し、そのカードの武器種別で鳴らす。
+           特定できない場合は従来のヒット音にフォールバックする */
+        var ovAtkCardId = null;
+        if (plan.lunge){
+          var ovAtkField = plan.lunge.side === 'me' ? v.me.field : v.opponent.field;
+          (ovAtkField || []).forEach(function(x){ if (String(x.uid) === String(plan.lunge.uid)) ovAtkCardId = x.cardId; });
+        }
+        if (ovAtkCardId != null) seAttackForCardId(ovAtkCardId); else sePlay('hit');
+      }
       if (plan.destroyed > 0) sePlay('destroy');
       if (plan.pops.some(function(p){ return p.cls === 'heal'; }) || plan.leaderPops.some(function(p){ return p.cls === 'heal'; })) sePlay('heal');
       if (plan.lunge && plan.hit.length) fxHitstop();
