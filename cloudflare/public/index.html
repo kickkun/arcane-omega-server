@@ -6586,7 +6586,7 @@
 
     /* ===== 神話フィニッシュ SDキャラ方式（見た目のみ） =====
        素材（SDキャラ透過WebP／透過エフェクトWebP。アギトの大顎は
-       分割素材3点（奥の面／上顎／下顎）を関節ピボットで組み立てる
+       分割素材2点（上顎／下顎）を関節ピボットで組み立てる
        方式で、素材が揃わない場合は流れテクスチャ方式の手続き描画）は
        同一オリジンの fx/ 以下に置く外部ファイル前提で、相対パスで参照する
        （HTMLへは埋め込まない）。読み込みは非同期プリロードのみで行い、
@@ -6657,17 +6657,42 @@
     };
     /* 任意素材：無くても演出は成立する（登場の魔法陣画像／EXの剣） */
     var SD_FIN_EXTRA = ['fx/fx-circle.webp', 'fx/fx-sword.webp'];
-    /* 黒のアギトの大顎（分割素材：奥の面／上顎／下顎。ドット絵タッチの
-       実素材を関節ピボットで組み立てる方式の部品）。3点が揃って読めた
-       時だけ素材方式になり、揃わなければ従来のシェーダ大顎（流れ
-       テクスチャ方式）へフォールバックする */
-    var FIN_MAW2_SRC = { back: 'fx/agito-maw2-back.webp', upper: 'fx/agito-maw2-upper.webp', lower: 'fx/agito-maw2-lower.webp' };
-    function maw2Ready(){ return sdImgState[FIN_MAW2_SRC.back] === 1 && sdImgState[FIN_MAW2_SRC.upper] === 1 && sdImgState[FIN_MAW2_SRC.lower] === 1; }
+    /* 黒のアギトの大顎（分割素材：上顎／下顎。ドット絵タッチの実素材を
+       関節ピボットで組み立てる方式の部品）。正素材は牙の噛み合わせの
+       ギザギザ境界で分割し直した maw3 ペアで、ペアが揃って読めた時だけ
+       素材方式になる。maw3 が揃わなければ従来の maw2 ペア、それも
+       揃わなければシェーダ大顎（流れテクスチャ方式）へフォールバック
+       する。奥の面（影）は描かない：実体が閉じた頭全体のシルエットで、
+       どう変形しても「閉じたまま」に見えるため、開いた口の中は背景の
+       闇が見える状態にする */
+    var FIN_MAW3_SRC = { upper: 'fx/agito-maw3-upper.webp', lower: 'fx/agito-maw3-lower.webp' };
+    var FIN_MAW2_SRC = { upper: 'fx/agito-maw2-upper.webp', lower: 'fx/agito-maw2-lower.webp' };
+    /* 使える顎素材ペア（maw3優先→maw2）。揃わなければ null */
+    function mawImgSrcs(){
+      if (sdImgState[FIN_MAW3_SRC.upper] === 1 && sdImgState[FIN_MAW3_SRC.lower] === 1) return FIN_MAW3_SRC;
+      if (sdImgState[FIN_MAW2_SRC.upper] === 1 && sdImgState[FIN_MAW2_SRC.lower] === 1) return FIN_MAW2_SRC;
+      return null;
+    }
+    function maw2Ready(){ return !!mawImgSrcs(); }
+    /* 顎素材ペアの確定待ちかどうか：優先ペアから順に見て、使えるペアが
+       既にあれば待たない。ペアの一部でも失敗が確定したらそのペアは
+       諦めて次のペアを見る。全ペア失敗確定なら待たない（シェーダへ） */
+    function mawImgPending(){
+      var pairs = [FIN_MAW3_SRC, FIN_MAW2_SRC];
+      for (var i = 0; i < pairs.length; i++){
+        var u = sdImgState[pairs[i].upper], l = sdImgState[pairs[i].lower];
+        if (u === 1 && l === 1) return false;
+        if (u === -1 || l === -1) continue;
+        return true;
+      }
+      return false;
+    }
     var sdImgState = {}; /* src -> 1:読込OK / -1:失敗 / 0:読込中 */
     var sdImgEls = {};   /* src -> Image（SD素材の縦横比を実測するために保持する） */
     function sdFxPreload(){
       if (HEADLESS) return;
       var srcs = SD_FIN_EXTRA.slice();
+      Object.keys(FIN_MAW3_SRC).forEach(function(k){ srcs.push(FIN_MAW3_SRC[k]); });
       Object.keys(FIN_MAW2_SRC).forEach(function(k){ srcs.push(FIN_MAW2_SRC[k]); });
       Object.keys(SD_FIN).forEach(function(k){ srcs.push(SD_FIN[k].sd); srcs.push(SD_FIN[k].fx); });
       srcs.forEach(function(src){
@@ -7551,8 +7576,8 @@
          吹き飛びの破片。発光は「芯（白熱）→内光→外光」の多層描画で作り、
          熱っぽさは輪郭を時間でうねらせる疑似ゆらぎで表す。素材のまま
          残すのは造形物だけ：EXの剣／ロンギヌスの槍（と
-         SD・カード絵そのもの）。アギトの大顎は分割素材3点（奥の面／
-         上顎／下顎）を関節ピボットで組み立てる素材方式を正とし、
+         SD・カード絵そのもの）。アギトの大顎は分割素材2点
+         （上顎／下顎）を関節ピボットで組み立てる素材方式を正とし、
          素材が揃わない環境では流れテクスチャ方式の不定形の大顎
          （シェーダ面）へフォールバックする。素材方式でも溶け・蠢きは
          部品ごとのシェーダ面（FINP_MAWIMG）だけが担う。
@@ -8013,7 +8038,7 @@
       N.jawC = jawC;
       /* アギトの大顎（新方式）：不定形の闇＋牙のシェーダ面。顎素材の
          スプライト（jawC）はもう使わない。シェーダが作れない環境では
-         Graphics 版（finPDrawMawG）へ落ちる。分割素材3点が揃った
+         Graphics 版（finPDrawMawG）へ落ちる。分割素材2点が揃った
          コンボでは素材方式（mawImgC）がこちらより優先される */
       var maw = finPMawMesh();
       N.mawMesh = maw ? maw.mesh : null;
@@ -8021,19 +8046,18 @@
       if (N.mawMesh) space.addChild(N.mawMesh);
       N.mawG = new PIXI.Graphics(); N.mawG.visible = false;
       space.addChild(N.mawG);
-      /* アギトの大顎（素材方式）：分割素材3点（奥の面／上顎／下顎）を
+      /* アギトの大顎（素材方式）：分割素材2点（上顎／下顎）を
          関節ピボットで組み立てる。各部品はシェーダ面（FINP_MAWIMG）で
          描き、溶け・蠢きはシェーダ側だけが担う（部品の変形・移動では
          表現しない）。下顎と上顎は関節位置（素材座標で x=0.13／
          y=0.53）に置いた共通のピボット子コンテナで互いに逆向きへ
-         回し、上下両開きの異形の開口にする。奥の面だけ固定する。
-         重ね順は 霧のオーラ → 奥の面 → 下顎 → 上顎（噛み合う時に
+         回し、上下両開きの異形の開口にする。奥の面（影）は置かない：
+         開いた口の中は背景の闇が見える。
+         重ね順は 霧のオーラ → 下顎 → 上顎（噛み合う時に
          下顎の牙が上顎の裏へ回り込む読みにする）。オーラは流れ
          テクスチャの流動で蠢く黒紫の靄を大顎の輪郭の外へまとわせる
          シェーダ面（FINP_MAWAURA）で、部品より一回り大きい面を
-         最背面に置く。奥の面は組み立て上は固定だが、再生側
-         （finProto のティック）が口の開きに合わせて関節線を
-         支点に縦スケールで開く */
+         最背面に置く */
       var mawImgC = PC();
       var mawParts = finPMawImgParts();
       N.mawBackM = mawParts ? mawParts.back : null;
@@ -8046,7 +8070,6 @@
       var mawUpperC = PC();
       if (mawParts){
         if (mawParts.aura) mawImgC.addChild(mawParts.aura.mesh);
-        mawImgC.addChild(mawParts.back);
         mawLowerC.addChild(mawParts.lower);
         mawImgC.addChild(mawLowerC);
         mawUpperC.addChild(mawParts.upper);
@@ -8154,11 +8177,14 @@
       T.silVic = finProtoSilTexture(vicSrc, conf.color, 5, 0.5);
       T.silVicBlk = finProtoSilTexture(vicSrc, '#000000', 5, 0.85);
       T.silVicWht = finProtoSilTexture(vicSrc, '#ffffff', 5, 1);
-      /* アギトの大顎（分割素材）：揃っていれば素材方式のテクスチャを焼く */
-      if (id === '53ag' && maw2Ready()){
-        T.mawBack = finProtoImgTexture(FIN_MAW2_SRC.back);
-        T.mawUpper = finProtoImgTexture(FIN_MAW2_SRC.upper);
-        T.mawLower = finProtoImgTexture(FIN_MAW2_SRC.lower);
+      /* アギトの大顎（分割素材）：使えるペア（maw3優先→maw2）が
+         揃っていれば素材方式のテクスチャを焼く。奥の面は焼かない */
+      if (id === '53ag'){
+        var mawSrcs = mawImgSrcs();
+        if (mawSrcs){
+          T.mawUpper = finProtoImgTexture(mawSrcs.upper);
+          T.mawLower = finProtoImgTexture(mawSrcs.lower);
+        }
       }
       /* 受け側SDの破片用テクスチャ（3×2分割／上下2分割／2×2分割） */
       T.vicFrames = []; T.vicHalves = []; T.vicQuads = [];
@@ -8203,15 +8229,10 @@
         }
       }
       /* アギトの大顎の分割素材は必須ではない（欠ければシェーダ大顎へ
-         フォールバックする）が、読み込み中なら確定を待ってから焼く。
-         読み込み失敗が確定している場合は待たずに進む */
+         フォールバックする）が、使えるペア（maw3→maw2の順）の確定を
+         待ってから焼く。全ペアの失敗が確定している場合は待たずに進む */
       if (id === '53ag'){
-        var mawWait = false, mawBad = false;
-        Object.keys(FIN_MAW2_SRC).forEach(function(k){
-          var st = sdImgState[FIN_MAW2_SRC[k]];
-          if (st === 0) mawWait = true; else if (st === -1) mawBad = true;
-        });
-        if (mawWait && !mawBad){
+        if (mawImgPending()){
           finProtoTexCache[key] = { building: true };
           setTimeout(function(){
             var cc = finProtoTexCache[key];
@@ -8433,7 +8454,6 @@
       hide(N.mawImgC); if (N.mawImgC){ N.mawImgC.alpha = 1; N.mawImgC.rotation = 0; N.mawImgC.scale.set(1); }
       if (N.mawLowerC) N.mawLowerC.rotation = 0;
       if (N.mawUpperC) N.mawUpperC.rotation = 0;
-      if (N.mawBackM) N.mawBackM.position.set(0, 0); /* 奥の面の開き（縦伸ばし）の支点ずらしを戻す。スケールは流し込み側が毎回設定する */
       if (N.mawImgMats) N.mawImgMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
       if (N.mawAuraMat){ N.mawAuraMat.uniforms.uMelt = 0; N.mawAuraMat.uniforms.uAlpha = 0; }
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
@@ -8758,7 +8778,7 @@
          中心のまま固定し、中心が画面上端の少し上（小さく溶けた残りが
          上端へ消える位置）までだけ上げる */
       if (G.id === '53ag'){
-        R.mawImg = !!(T.mawBack && T.mawUpper && T.mawLower && N.mawImgMats);
+        R.mawImg = !!(T.mawUpper && T.mawLower && N.mawImgMats);
         var mawW, mawH;
         if (R.mawImg){
           mawW = Math.round(Math.min(G.vw * 1.28, Math.max(G.fxW * 2.15, 450)));
@@ -8774,16 +8794,13 @@
         R.mawStartOff = R.mawImg ? -(G.cy + mawW * 0.80 + 40) : -(G.cy + mawH * 0.62 + 40);
         R.mawTopY = Math.round(R.mawImg ? -mawW * 0.10 : -mawH * 0.10);
         if (R.mawImg){
-          N.mawImgMats[0].uniforms.uTex = T.mawBack;
-          N.mawImgMats[1].uniforms.uTex = T.mawUpper;
-          N.mawImgMats[2].uniforms.uTex = T.mawLower;
-          N.mawBackM.scale.set(mawW * 0.5, mawH * 0.5);
+          N.mawImgMats[0].uniforms.uTex = T.mawUpper;
+          N.mawImgMats[1].uniforms.uTex = T.mawLower;
           /* オーラ面：部品より一回り大きく（縦 1.48×／横 1.6×）、
              輪郭の外へ靄がはみ出してまとう寸法にする */
           if (N.mawAuraM) N.mawAuraM.scale.set(mawW * 0.74, mawH * 0.80);
           /* 関節ピボットは上下顎で共通：両顎とも同じ関節点を中心に
-             逆向きへ回る（上顎が開くと関節より後ろの頭部側が奥の面の
-             裏へ沈むため、固定の奥の面が隙間を覆う読みになる） */
+             逆向きへ回る */
           var pivX = Math.round((0.13 - 0.5) * mawW), pivY = Math.round((0.53 - 0.5) * mawH);
           N.mawUpperC.position.set(pivX, pivY);
           N.mawUpperM.position.set(-pivX, -pivY);
@@ -9703,7 +9720,7 @@
       } catch (e) { return null; }
     }
     /* --- 大顎（黒のアギト）：流れテクスチャ方式の不定形の闇 ---
-       （分割素材3点が揃わない場合のフォールバック。正方式は素材方式
+       （分割素材2点が揃わない場合のフォールバック。正方式は素材方式
        finPMawImgParts／FINP_MAWIMG_FS）
        リアルな竜の顔・顎の素材絵は廃止し、「闇そのものに歯が生えた」
        不定形の大顎（ユーの手書き指示：左上＝上から開く大顎／下＝
@@ -9844,7 +9861,7 @@
         return { mesh: mesh, mat: mat };
       } catch (e) { return null; }
     }
-    /* --- 大顎（素材方式）：分割素材3点のシェーダ面 ---
+    /* --- 大顎（素材方式）：分割素材2点のシェーダ面 ---
        素材絵そのままの色・形（ドット絵の階調）を保ち、蠢き（流れ
        ノイズによる UV の微振動）と溶け（ノイズ閾値のディゾルブ＋
        下方向への垂れ）だけをシェーダが担う。開閉はシェーダでは
@@ -9873,7 +9890,7 @@
       '  gl_FragColor = vec4(col.rgb * a, col.a * a);',
       '}'
     ].join('\n');
-    /* 分割素材3点ぶんのメッシュ＋マテリアルを生成する（ジオメトリは
+    /* 分割素材2点ぶんのメッシュ＋マテリアルを生成する（ジオメトリは
        シェーダ大顎と共通の全面クワッド。テクスチャはコンボごとに
        finProtoApplyGeometry で流し込む）。作れなければ null を返し、
        呼び出し側はシェーダ大顎へフォールバックする */
@@ -9926,7 +9943,7 @@
           });
           return { mesh: new PIXI.Mesh(geo, mat), mat: mat };
         }
-        var b = mk(), u = mk(), l = mk();
+        var u = mk(), l = mk();
         /* オーラだけは作れなくても部品方式を落とさない（霧なしで続行） */
         var aura = null;
         try {
@@ -9939,7 +9956,7 @@
           });
           aura = { mesh: new PIXI.Mesh(ageo, amat), mat: amat };
         } catch (e2) { aura = null; }
-        return { back: b.mesh, upper: u.mesh, lower: l.mesh, mats: [b.mat, u.mat, l.mat], aura: aura };
+        return { back: null, upper: u.mesh, lower: l.mesh, mats: [u.mat, l.mat], aura: aura };
       } catch (e) { return null; }
     }
     /* 大顎の Graphics フォールバック（シェーダが作れない環境用）。
@@ -11609,7 +11626,7 @@
            口を開いて飲み込み、ガブッと噛み合って閉じ、真上へ小さく
            溶けて消える（スローなし）。大顎の姿勢は全方式共通で
            コンテナごと+90°回転させ、顎先（＝口）を真下へ向ける。
-           大顎の正方式は分割素材3点（奥の面／上顎／下顎）を関節ピボット
+           大顎の正方式は分割素材2点（上顎／下顎）を関節ピボット
            で組み立てる素材方式で、開閉量 mawOpen を上下両顎の回転角へ
            写す（下顎は開く向き、上顎は逆向きに開く両開き）。
            素材が揃わない場合は流れテクスチャ方式の不定形の大顎
@@ -11684,10 +11701,9 @@
                上下非対称の開きで異形感を出す。以前は上顎の開きが
                小さく、牙列が下顎側にだけ付いて見えたため、上顎側も
                牙列がはっきり離れて見える角度まで開く。
-               奥の面（影）も口と一緒に開く：固定したままでは閉じた
-               シルエットが口の中央に残って開口を塞ぐため、関節線
-               （素材 y=0.53）を支点に縦へ引き伸ばし（最大1.55倍）、
-               少しだけ透かして口の闇として読ませる。
+               奥の面（影）は描かない：開いた口の中は背景の闇が
+               そのまま見える（閉じた頭全体のシルエット素材はどう
+               変形しても「閉じたまま」に見えるため）。
                溶け・蠢きは部品シェーダ（uMelt／uTime）だけが担う。
                霧のオーラは口が開くほど濃くまとわせ、溶けでは部品と
                一緒に崩す（uAlpha は開き連動、uMelt は部品と同値） */
@@ -11699,19 +11715,10 @@
             N.mawImgC.scale.set(mawScale);
             N.mawLowerC.rotation = -0.04 + 1.00 * mawOpen;
             N.mawUpperC.rotation = 0.025 - 0.62 * mawOpen;
-            /* 奥の面（影）の開き：関節線（テクスチャ y=0.53、面の
-               ローカル座標では +0.06）がずれないよう、縦スケールを
-               伸ばした分だけ位置を戻す */
-            if (N.mawBackM){
-              var bkF = 1 + 0.55 * mawOpen;
-              N.mawBackM.scale.set(R.mawW * 0.5, R.mawH * 0.5 * bkF);
-              N.mawBackM.position.y = Math.round(0.03 * R.mawH * (1 - bkF));
-            }
-            for (var mi = 0; mi < 3; mi++){
+            for (var mi = 0; mi < N.mawImgMats.length; mi++){
               N.mawImgMats[mi].uniforms.uTime = tFs / 1000;
               N.mawImgMats[mi].uniforms.uMelt = mawMelt;
-              /* 奥の面（mats[0]）だけ開くほど少し透かし、口の闇を際立てる */
-              N.mawImgMats[mi].uniforms.uAlpha = (mi === 0) ? mawAlpha * (1 - 0.12 * mawOpen) : mawAlpha;
+              N.mawImgMats[mi].uniforms.uAlpha = mawAlpha;
             }
             if (N.mawAuraMat){
               N.mawAuraMat.uniforms.uTime = tFs / 1000;
@@ -13475,9 +13482,9 @@
         /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて大顎が
            真上の画面外から降り、口を開いてパネルを飲み込み、ガブッと
            噛み合って閉じ、真上へ小さく溶けて消える（間・総尺・SEは
-           従来どおり）。大顎は分割素材3点が揃えば素材方式（上下
-           両顎を関節ピボットで回し、奥の面も関節線を支点に縦へ
-           開く）、揃わなければ手続き描画の大顎 */
+           従来どおり）。大顎は分割素材2点が揃えば素材方式（上下
+           両顎を関節ピボットで回す。奥の面は描かない）、
+           揃わなければ手続き描画の大顎 */
         later(function(){
           var up = feetY + sdH + 90;
           fxFinAnimate(sd, [
@@ -13501,7 +13508,7 @@
             { transform: 'translate(0px,0px)' }, { transform: 'translate(-2.5px,1px)' },
             { transform: 'translate(2.5px,-1px)' }, { transform: 'translate(0px,0px)' }
           ], { duration: 300, iterations: 2 });
-          /* 大顎は分割素材3点（奥の面／上顎／下顎）が揃っていれば
+          /* 大顎は分割素材2点（上顎／下顎）が揃っていれば
              素材方式：下顎を関節ピボット（素材座標 x=0.13／y=0.53）で
              回してガブッと噛む。揃わなければ Canvas の手続き描画
              （黒紫の靄の面＋縦の裂け目＋左右に開く大顎＋真っ黒な喉＋
@@ -13513,8 +13520,9 @@
              振付：真上の画面外から口を下に向けたまま降りながら口が
              開く（540ms）→ 破壊拍でガブッと閉じる → 真上へだけ上昇し、
              小さくなりながら溶けて消える（斜め移動はしない） */
-          var mawImgs = maw2Ready()
-            ? { back: sdImgEls[FIN_MAW2_SRC.back], upper: sdImgEls[FIN_MAW2_SRC.upper], lower: sdImgEls[FIN_MAW2_SRC.lower] } : null;
+          var mawPair = mawImgSrcs();
+          var mawImgs = mawPair
+            ? { upper: sdImgEls[mawPair.upper], lower: sdImgEls[mawPair.lower] } : null;
           var mawW = mawImgs ? Math.round(Math.min(window.innerWidth * 1.28, Math.max(fxW * 2.15, 450)))
                              : Math.round(Math.min(window.innerWidth * 1.06, Math.max(fxW * 1.45, 340)));
           var mawH = mawImgs ? Math.round(mawW * 1008 / 1547) : Math.round(mawW * 1.15);
@@ -13522,8 +13530,8 @@
              枠外へはみ出す分と、周囲へ広がる霧（オーラ）の描画域。
              余白は対称に取り、大顎の中心は従来どおりキャンバス中心に
              一致させる（配置・回転の基準は不変）。縦の余白は開き拡大
-             （下顎+0.96rad／上顎-0.595rad／奥の面の縦伸ばし）に合わせて
-             顎先と奥の面の下端が切れない量まで広げた */
+             （下顎+0.96rad／上顎-0.595rad）に合わせて
+             顎先が切れない量まで広げた */
           var mawPadX = mawImgs ? Math.round(mawW * 0.16) : 0;
           var mawPadY = mawImgs ? Math.round(mawH * 0.74) : 0;
           var mawCvW = mawW + mawPadX * 2, mawCvH = mawH + mawPadY * 2;
@@ -13571,23 +13579,14 @@
             mctx.clearRect(0, 0, mawCvW, mawCvH);
             mctx.translate(mawPadX, mawPadY);
             if (mawImgs){
-              /* 素材方式：霧のオーラ → 奥の面 → 下顎（関節ピボット
-                 回転）→ 上顎（関節ピボット回転）の順に重ねる。開き
-                 open の写像は新方式と共通（下顎 1＝+0.96rad／
-                 上顎 1＝-0.595rad。以前は上顎が固定で開きも小さく、
-                 牙が下側だけに付いて見えた）。奥の面（影）も関節線
-                 （素材 y=0.53）を支点に縦へ引き伸ばして一緒に開き、
-                 少しだけ透かす（新方式と共通）。
+              /* 素材方式：霧のオーラ → 下顎（関節ピボット回転）→
+                 上顎（関節ピボット回転）の順に重ねる。開き open の
+                 写像は新方式と共通（下顎 1＝+0.96rad／上顎 1＝
+                 -0.595rad）。奥の面（影）は描かず、開いた口の中は
+                 背景の闇が見える（新方式と共通）。
                  溶けはシェーダが無い分、透明度フェードで代替する
                  （上昇・縮小は呼び出し側の transform が担う） */
               drawMawAura(open, melt, t, alpha);
-              mctx.globalAlpha = alpha * (1 - melt * 0.85) * (1 - 0.12 * open);
-              mctx.save();
-              mctx.translate(0, mawH * 0.53);
-              mctx.scale(1, 1 + 0.55 * open);
-              mctx.translate(0, -mawH * 0.53);
-              mctx.drawImage(mawImgs.back, 0, 0, mawW, mawH);
-              mctx.restore();
               mctx.globalAlpha = alpha * (1 - melt * 0.85);
               mctx.save();
               mctx.translate(mawW * 0.13, mawH * 0.53);
@@ -22025,7 +22024,7 @@
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンのブラックホールが画面幅を超えて開き、相手SDを引き伸ばしながら呑み込んで一点に収縮する' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】紅蒼のツイスト弾が真下から昇って相手SDを通り抜け、爆発とともに受け側を消し去る' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】逆三日月斬撃（腹の縁がチラチラ溶ける）が弧を描いて飛び、相手SDを上へ通り抜けて真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、ドット絵の大顎（分割素材：奥の面／上顎／下顎を関節ピボットで組立て）が真上から口を下に向けて降りてきて、下顎がガバっと開いて相手SDを飲み込み、ガブッと噛み合って閉じ、真上へ小さく溶けて消える（素材が無い場合はシェーダ大顎）' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、ドット絵の大顎（分割素材：上顎／下顎を関節ピボットで組立て。奥の面は無く、開いた口の中は闇）が真上から口を下に向けて降りてきて、上下両顎がガバっと開いて相手SDを飲み込み、ガブッと噛み合って閉じ、真上へ小さく溶けて消える（素材が無い場合はシェーダ大顎）' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは名前帯の予告の後に登場し、静止した瞬間に下から突き上げて着弾、背景ごと吹っ飛ぶ' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
