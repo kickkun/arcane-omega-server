@@ -7595,16 +7595,22 @@
          描き、溶け・蠢きはシェーダ側だけが担う（部品の変形・移動では
          表現しない）。下顎は関節位置（素材座標で x=0.13／y=0.53）に
          置いたピボット子コンテナで回し、上顎と奥の面は固定する。
-         重ね順は 奥の面 → 下顎 → 上顎（噛み合う時に下顎の牙が上顎の
-         裏へ回り込む読みにする） */
+         重ね順は 霧のオーラ → 奥の面 → 下顎 → 上顎（噛み合う時に
+         下顎の牙が上顎の裏へ回り込む読みにする）。オーラは流れ
+         テクスチャの流動で蠢く黒紫の靄を大顎の輪郭の外へまとわせる
+         シェーダ面（FINP_MAWAURA）で、部品より一回り大きい面を
+         最背面に置く */
       var mawImgC = PC();
       var mawParts = finPMawImgParts();
       N.mawBackM = mawParts ? mawParts.back : null;
       N.mawUpperM = mawParts ? mawParts.upper : null;
       N.mawLowerM = mawParts ? mawParts.lower : null;
       N.mawImgMats = mawParts ? mawParts.mats : null;
+      N.mawAuraM = (mawParts && mawParts.aura) ? mawParts.aura.mesh : null;
+      N.mawAuraMat = (mawParts && mawParts.aura) ? mawParts.aura.mat : null;
       var mawLowerC = PC();
       if (mawParts){
+        if (mawParts.aura) mawImgC.addChild(mawParts.aura.mesh);
         mawImgC.addChild(mawParts.back);
         mawLowerC.addChild(mawParts.lower);
         mawImgC.addChild(mawLowerC);
@@ -7990,6 +7996,7 @@
       hide(N.mawImgC); if (N.mawImgC){ N.mawImgC.alpha = 1; N.mawImgC.rotation = 0; N.mawImgC.scale.set(1); }
       if (N.mawLowerC) N.mawLowerC.rotation = 0;
       if (N.mawImgMats) N.mawImgMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
+      if (N.mawAuraMat){ N.mawAuraMat.uniforms.uMelt = 0; N.mawAuraMat.uniforms.uAlpha = 0; }
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
       N.bandC.visible = false; N.bandC.alpha = 1;
       N.parts.forEach(function(p){ p.on = false; p.sp.visible = false; p.sp.alpha = 1; p.sp.rotation = 0; });
@@ -8323,7 +8330,9 @@
         }
         R.mawW = mawW;
         R.mawH = mawH;
-        R.mawStartOff = R.mawImg ? -(G.cy + mawW * 0.62 + 40) : -(G.cy + mawH * 0.62 + 40);
+        /* 素材方式の出現オフセットは、大きく開く下顎と周囲の霧の
+           オーラ（縦寸法 ≒1.5×mawW）まで画面外へ収まるよう深めに取る */
+        R.mawStartOff = R.mawImg ? -(G.cy + mawW * 0.80 + 40) : -(G.cy + mawH * 0.62 + 40);
         R.mawTopY = Math.round(R.mawImg ? -mawW * 0.10 : -mawH * 0.10);
         if (R.mawImg){
           N.mawImgMats[0].uniforms.uTex = T.mawBack;
@@ -8331,6 +8340,9 @@
           N.mawImgMats[2].uniforms.uTex = T.mawLower;
           N.mawBackM.scale.set(mawW * 0.5, mawH * 0.5);
           N.mawUpperM.scale.set(mawW * 0.5, mawH * 0.5);
+          /* オーラ面：部品より一回り大きく（縦 1.48×／横 1.6×）、
+             輪郭の外へ靄がはみ出してまとう寸法にする */
+          if (N.mawAuraM) N.mawAuraM.scale.set(mawW * 0.74, mawH * 0.80);
           var pivX = Math.round((0.13 - 0.5) * mawW), pivY = Math.round((0.53 - 0.5) * mawH);
           N.mawLowerC.position.set(pivX, pivY);
           N.mawLowerM.position.set(-pivX, -pivY);
@@ -9312,7 +9324,7 @@
       '  float inY = (1.0 - smoothstep(endY - bw, endY + bw, abs(c.y)));',
       /* 裂け目の半幅：開くほど左右へ広がる。中央だけで膨らませず、上下の端ほど大きく開く（口角がガバっと開く） */
       '  float gapP = 0.60 + 0.55 * pow(yn, 1.7);',
-      '  float gap = 0.015 + uOpen * 0.34 * gapP + surge * 0.012 * uOpen;',
+      '  float gap = 0.015 + uOpen * 0.50 * gapP + surge * 0.012 * uOpen;',
       /* 顎の厚み：縦中央で厚く、上下の端へ向けて絞って顎先を尖らせる（丸い塊にしない） */
       '  float thick = max(0.46 * (1.0 - 0.55 * pow(yn, 2.2)) + wobE, 0.02);',
       '  float outerH = gap + thick;',
@@ -9421,6 +9433,43 @@
        シェーダ大顎と共通の全面クワッド。テクスチャはコンボごとに
        finProtoApplyGeometry で流し込む）。作れなければ null を返し、
        呼び出し側はシェーダ大顎へフォールバックする */
+    /* --- 大顎の霧のオーラ（素材方式の最背面） ---
+       ドット絵の大顎の輪郭の外へ、流れテクスチャの流動で蠢く黒紫の
+       靄をまとわせる面。形は頭部シルエットを核にした楕円の減衰で、
+       縁はノイズで侵食して霧のほつれにする。色はシェーダ大顎と
+       同じ黒紫のランプ（濃い塊にだけ紫が差す）。溶けは部品と
+       同じノイズ閾値のディゾルブで一緒に崩れる。面は部品より
+       一回り大きく取り、スケールは呼び出し側（finProtoApplyGeometry）
+       が決める。出力は部品シェーダと同じプリマルチプライ前提 */
+    var FINP_MAWAURA_FS = [
+      'varying vec2 vUvs;',
+      'uniform sampler2D uNoise;',
+      'uniform float uTime;',
+      'uniform float uAlpha;',
+      'uniform float uMelt;',
+      'void main(){',
+      /* 靄の流れ：共有の流れテクスチャを3層、別方向・別速度で流す */
+      '  float n1 = texture2D(uNoise, vUvs * vec2(1.4, 2.2) + vec2(uTime * 0.030, -uTime * 0.052)).a;',
+      '  float n2 = texture2D(uNoise, vUvs * vec2(2.6, 3.8) + vec2(-uTime * 0.047, uTime * 0.021) + 0.41).a;',
+      '  float n3 = texture2D(uNoise, vUvs * vec2(4.5, 6.0) + vec2(uTime * 0.083, uTime * 0.061) + 0.73).a;',
+      '  float noise = clamp(n1 * 0.52 + n2 * 0.40 + n3 * 0.30, 0.0, 1.0);',
+      '  float clot = smoothstep(0.18, 0.85, noise);',
+      /* まとわり形：中心の核から外へ、縁をノイズで侵食しながら消える */
+      '  vec2 d = vUvs * 2.0 - 1.0;',
+      '  float body = length(d * vec2(0.88, 1.02));',
+      '  float fall = smoothstep(1.12, 0.30, body + (noise - 0.5) * 0.62);',
+      '  float a = uAlpha * fall * (0.22 + 0.78 * clot);',
+      /* 溶け：部品と同じノイズ閾値で崩れる */
+      '  float keep = n2 * 0.60 + n1 * 0.40;',
+      '  float dis = mix(1.0, smoothstep(uMelt * 1.12, uMelt * 1.12 + 0.22, keep + 0.10), step(0.001, uMelt));',
+      '  a *= dis;',
+      '  if (a < 0.003){ gl_FragColor = vec4(0.0); return; }',
+      /* 色：黒紫の濃い靄。塊の濃い所と流れの速い所にだけ紫が差す */
+      '  vec3 col = mix(vec3(0.012, 0.006, 0.030), vec3(0.075, 0.032, 0.170), clot);',
+      '  col += vec3(0.34, 0.18, 0.78) * smoothstep(0.55, 0.97, n3) * 0.20;',
+      '  gl_FragColor = vec4(col * a, a);',
+      '}'
+    ].join('\n');
     function finPMawImgParts(){
       try {
         function mk(){
@@ -9434,7 +9483,19 @@
           return { mesh: new PIXI.Mesh(geo, mat), mat: mat };
         }
         var b = mk(), u = mk(), l = mk();
-        return { back: b.mesh, upper: u.mesh, lower: l.mesh, mats: [b.mat, u.mat, l.mat] };
+        /* オーラだけは作れなくても部品方式を落とさない（霧なしで続行） */
+        var aura = null;
+        try {
+          var ageo = new PIXI.Geometry();
+          ageo.addAttribute('aVertexPosition', new PIXI.Buffer(new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), false), 2);
+          ageo.addAttribute('aUvs', new PIXI.Buffer(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), false), 2);
+          ageo.addIndex([0, 1, 2, 2, 1, 3]);
+          var amat = PIXI.Shader.from(FINP_MAW_VS, FINP_MAWAURA_FS, {
+            uNoise: finPMirageFlowTexture(), uTime: 0, uAlpha: 0, uMelt: 0
+          });
+          aura = { mesh: new PIXI.Mesh(ageo, amat), mat: amat };
+        } catch (e2) { aura = null; }
+        return { back: b.mesh, upper: u.mesh, lower: l.mesh, mats: [b.mat, u.mat, l.mat], aura: aura };
       } catch (e) { return null; }
     }
     /* 大顎の Graphics フォールバック（シェーダが作れない環境用）。
@@ -9448,7 +9509,7 @@
       function wob(y, seed){ return 0.045 * Math.sin(y * 9 - t * 2.7 + seed) + 0.022 * Math.sin(y * 17.3 - t * 4.1 + seed * 2.0); }
       function X(cx){ return cx * W * 0.5; }
       function Y(cy){ return cy * H * 0.5; }
-      function gapAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return 0.015 + open * 0.34 * (0.60 + 0.55 * Math.pow(yn, 1.7)); }
+      function gapAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return 0.015 + open * 0.50 * (0.60 + 0.55 * Math.pow(yn, 1.7)); }
       function lipL(y){ return -gapAt(y) + wob(y, 1.3) * 0.35; }
       function lipR(y){ return gapAt(y) + wob(y, 4.1) * 0.35; }
       function thickAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return Math.max(0.05, 0.46 * (1 - 0.55 * Math.pow(yn, 2.2)) + wob(y, 7.7) * 0.5); }
@@ -11166,22 +11227,32 @@
           var mawAlpha = Math.min(1, mp / 0.12);
           if (R.mawImg && N.mawImgC){
             /* 素材方式：組立てコンテナを降ろし、下顎だけを関節ピボットで
-               回す。開き量 mawOpen の写像：1＝大きく開く（+0.25rad）／
-               0＝噛み合う（-0.05rad）。閉じ側は浅く取る：作画自体が
-               「少し開いた状態」で牙の噛み合い位置に近く、大きく閉じる
-               と顎先が上顎を突き抜けて見えるため（合成実測で確定）。
-               溶け・蠢きは部品シェーダ（uMelt／uTime）だけが担う */
+               回す。開き量 mawOpen の写像：1＝めちゃくちゃ開く
+               （+0.54rad≒31°）／0＝噛み合う（-0.04rad）。閉じ側は
+               浅く取る：作画自体が「少し開いた状態」で牙の噛み合い
+               位置に近く、大きく閉じると顎先が上顎を突き抜けて見える
+               ため（合成実測で確定）。開き側は奥の面のシルエットが
+               口内を覆う範囲で大きく取り、大きく開くほど口の闇が
+               際立つ読みにする。
+               溶け・蠢きは部品シェーダ（uMelt／uTime）だけが担う。
+               霧のオーラは口が開くほど濃くまとわせ、溶けでは部品と
+               一緒に崩す（uAlpha は開き連動、uMelt は部品と同値） */
             if (N.mawMesh) N.mawMesh.visible = false;
             N.mawG.visible = false;
             N.mawImgC.visible = !mawDone;
             N.mawImgC.position.set(G.cx + mawJitX, mawY);
             N.mawImgC.rotation = Math.PI / 2; /* 顎先を真下へ（口を下向きに） */
             N.mawImgC.scale.set(mawScale);
-            N.mawLowerC.rotation = -0.05 + 0.30 * mawOpen;
+            N.mawLowerC.rotation = -0.04 + 0.58 * mawOpen;
             for (var mi = 0; mi < 3; mi++){
               N.mawImgMats[mi].uniforms.uTime = tFs / 1000;
               N.mawImgMats[mi].uniforms.uMelt = mawMelt;
               N.mawImgMats[mi].uniforms.uAlpha = mawAlpha;
+            }
+            if (N.mawAuraMat){
+              N.mawAuraMat.uniforms.uTime = tFs / 1000;
+              N.mawAuraMat.uniforms.uAlpha = mawAlpha * (0.45 + 0.55 * mawOpen) * (1 - mawMelt * 0.45);
+              N.mawAuraMat.uniforms.uMelt = mawMelt;
             }
           } else if (N.mawMesh && N.mawMat){
             N.mawMesh.visible = !mawDone;
@@ -12982,29 +13053,68 @@
           var mawW = mawImgs ? Math.round(Math.min(window.innerWidth * 1.28, Math.max(fxW * 2.15, 450)))
                              : Math.round(Math.min(window.innerWidth * 1.06, Math.max(fxW * 1.45, 340)));
           var mawH = mawImgs ? Math.round(mawW * 1008 / 1547) : Math.round(mawW * 1.15);
+          /* 素材方式はキャンバスに余白を持たせる：大きく開いた下顎が
+             枠外へはみ出す分と、周囲へ広がる霧（オーラ）の描画域。
+             余白は対称に取り、大顎の中心は従来どおりキャンバス中心に
+             一致させる（配置・回転の基準は不変） */
+          var mawPadX = mawImgs ? Math.round(mawW * 0.16) : 0;
+          var mawPadY = mawImgs ? Math.round(mawH * 0.34) : 0;
+          var mawCvW = mawW + mawPadX * 2, mawCvH = mawH + mawPadY * 2;
           var mawCv = sdFinNode('canvas', 'fx-sd-char');
           var MDPR = Math.min(2, window.devicePixelRatio || 1);
-          mawCv.width = Math.round(mawW * MDPR); mawCv.height = Math.round(mawH * MDPR);
-          mawCv.style.width = mawW + 'px'; mawCv.style.height = mawH + 'px';
+          mawCv.width = Math.round(mawCvW * MDPR); mawCv.height = Math.round(mawCvH * MDPR);
+          mawCv.style.width = mawCvW + 'px'; mawCv.style.height = mawCvH + 'px';
           mawCv.style.left = pcx + 'px'; mawCv.style.top = pcy + 'px';
           mawCv.style.pointerEvents = 'none';
           var mctx = mawCv.getContext('2d');
-          var mawStartOff = mawImgs ? -(pcy + mawW * 0.62 + 40) : -(pcy + mawH * 0.62 + 40);
+          var mawStartOff = mawImgs ? -(pcy + mawW * 0.80 + 40) : -(pcy + mawH * 0.62 + 40);
           var mawTopDy = (mawImgs ? -mawW * 0.10 : -mawH * 0.10) - pcy; /* 退場の到達点（真上）の中心オフセット */
+          /* 怪しい霧のオーラ（素材方式のみ）：大顎の輪郭の外へ黒紫の
+             靄をまとわせる。Canvas 2D には流れシェーダが無いため、
+             ゆっくり漂い明滅する柔らかい塊の重ねで近似する（本方式の
+             見えは Pixi 側のオーラシェーダ FINP_MAWAURA）。濃さは
+             口の開きに連動させ、溶けでは一緒に薄れる */
+          function drawMawAura(open, melt, t, alpha){
+            var aBase = alpha * (0.45 + 0.55 * open) * (1 - melt * 0.5);
+            if (aBase <= 0.01) return;
+            var cxA = mawW * 0.50, cyA = mawH * 0.50;
+            function blob(x, y, r, rgb, a){
+              var gr = mctx.createRadialGradient(x, y, 0, x, y, r);
+              gr.addColorStop(0, 'rgba(' + rgb + ',' + a.toFixed(3) + ')');
+              gr.addColorStop(1, 'rgba(' + rgb + ',0)');
+              mctx.fillStyle = gr;
+              mctx.fillRect(x - r, y - r, r * 2, r * 2);
+            }
+            /* 輪郭を包む濃い靄のハロ（2層） */
+            blob(cxA, cyA, mawW * 0.60, '16,7,38', 0.55 * aBase);
+            blob(cxA, cyA, mawH * 0.72, '44,18,96', 0.40 * aBase);
+            /* 漂う霧の塊：ゆっくり周回しながら明滅する */
+            for (var k = 0; k < 6; k++){
+              var ph = k * 2.399 + t * (0.11 + (k % 3) * 0.05) * (k % 2 ? 1 : -1);
+              var ox = Math.cos(ph) * mawW * (0.30 + 0.10 * Math.sin(t * 0.23 + k * 1.7));
+              var oy = Math.sin(ph * 0.9 + k) * mawH * 0.34;
+              var br = mawW * (0.17 + 0.07 * Math.sin(t * 0.31 + k * 2.3));
+              var ba = (0.16 + 0.10 * (0.5 + 0.5 * Math.sin(t * 0.43 + k * 1.3))) * aBase;
+              blob(cxA + ox, cyA + oy, br, k % 2 ? '88,44,196' : '30,12,72', ba);
+            }
+          }
           function drawMaw(open, melt, tMs, alpha){
             var t = tMs * 0.001;
             mctx.setTransform(MDPR, 0, 0, MDPR, 0, 0);
-            mctx.clearRect(0, 0, mawW, mawH);
+            mctx.clearRect(0, 0, mawCvW, mawCvH);
+            mctx.translate(mawPadX, mawPadY);
             if (mawImgs){
-              /* 素材方式：奥の面 → 下顎（関節ピボット回転）→ 上顎の順に
-                 重ねる。開き open の写像は新方式と共通（1＝+0.25rad／
-                 0＝-0.05rad）。溶けはシェーダが無い分、透明度フェードで
-                 代替する（上昇・縮小は呼び出し側の transform が担う） */
+              /* 素材方式：霧のオーラ → 奥の面 → 下顎（関節ピボット
+                 回転）→ 上顎の順に重ねる。開き open の写像は新方式と
+                 共通（1＝めちゃくちゃ開く +0.54rad／0＝-0.04rad）。
+                 溶けはシェーダが無い分、透明度フェードで代替する
+                 （上昇・縮小は呼び出し側の transform が担う） */
+              drawMawAura(open, melt, t, alpha);
               mctx.globalAlpha = alpha * (1 - melt * 0.85);
               mctx.drawImage(mawImgs.back, 0, 0, mawW, mawH);
               mctx.save();
               mctx.translate(mawW * 0.13, mawH * 0.53);
-              mctx.rotate(-0.05 + 0.30 * open);
+              mctx.rotate(-0.04 + 0.58 * open);
               mctx.translate(-mawW * 0.13, -mawH * 0.53);
               mctx.drawImage(mawImgs.lower, 0, 0, mawW, mawH);
               mctx.restore();
@@ -13018,7 +13128,7 @@
             function wob(y, seed){ return 0.045 * Math.sin(y * 9 - t * 2.7 + seed) + 0.022 * Math.sin(y * 17.3 - t * 4.1 + seed * 2.0); }
             function X(cx){ return cx0 + cx * mawW * 0.5; }
             function Y(cy){ return cy0 + cy * mawH * 0.5; }
-            function gapAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return 0.015 + open * 0.34 * (0.60 + 0.55 * Math.pow(yn, 1.7)); }
+            function gapAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return 0.015 + open * 0.50 * (0.60 + 0.55 * Math.pow(yn, 1.7)); }
             function lipL(y){ return -gapAt(y) + wob(y, 1.3) * 0.35; }
             function lipR(y){ return gapAt(y) + wob(y, 4.1) * 0.35; }
             function thickAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return Math.max(0.05, 0.46 * (1 - 0.55 * Math.pow(yn, 2.2)) + wob(y, 7.7) * 0.5); }
