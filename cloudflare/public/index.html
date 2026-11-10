@@ -6688,6 +6688,28 @@
       if (pair === FIN_MAW4_SRC) return { hRatio: 933 / 1024, pivX: 0.06, pivY: 0.57, is4: true };
       return { hRatio: 1008 / 1547, pivX: 0.13, pivY: 0.53, is4: false };
     }
+    /* maw4 の閉じ代（閉口専用の追加回転）：素材実ファイル
+       （agito-maw4-upper／lower.webp）をピボット（0.06／0.57）で
+       合成してピクセル実測したところ、従来の open=0 の角度
+       （下顎 -0.04rad／上顎 +0.025rad）では素材自体の作画ポーズ
+       （牙列の開いた V 字）がそのまま残り、牙と牙の間に大きな
+       菱形の隙間が開いていた。牙列が実際に噛み合うのは open を
+       -0.32 まで押し込んだ位置（下顎は追加で約 -18.3°、上顎は
+       追加で約 +11.4°）で、それ以上（-0.36 相当）では上顎の牙が
+       下顎の肉へめり込み始めることも実測で確認した。
+       そのため maw4 の時だけ、開閉量 open を写像の入口で
+       「実効開き」へ変換する：open=0 では -0.32 を足し込み、
+       open>=0.30 では従来どおり open そのもの（開き角・振付は
+       不変）。あいだは smoothstep でつなぎ、閉じ代は閉口付近
+       でのみ効く。maw2／maw3 とシェーダ顎は対象外で従来どおり */
+    function mawOpenEff(open, spec){
+      if (!spec || !spec.is4) return open;
+      if (open >= 0.30) return open;
+      if (open <= 0) return open - 0.32;
+      var s = 1 - open / 0.30;
+      var f = s * s * (3 - 2 * s);
+      return open - 0.32 * f;
+    }
     /* 使える顎素材ペア（maw4優先→maw3→maw2）。揃わなければ null */
     function mawImgSrcs(){
       if (sdImgState[FIN_MAW4_SRC.upper] === 1 && sdImgState[FIN_MAW4_SRC.lower] === 1) return FIN_MAW4_SRC;
@@ -12002,10 +12024,14 @@
             /* 素材方式：組立てコンテナを降ろし、上下両顎を共通の関節
                ピボットで互いに逆向きへ回す両開きにする。
                下顎の写像：1＝めちゃくちゃ開く（+0.96rad≒55°）／
-               0＝噛み合う（-0.04rad）。閉じ側は浅く取る：作画自体が
-               「少し開いた状態」で牙の噛み合い位置に近く、大きく
-               閉じると顎先が上顎を突き抜けて見えるため（合成実測で
-               確定）。開き側は実機フィードバック（開きが小さい・
+               0＝噛み合う（-0.04rad）。ただし maw4 は素材自体の
+               作画ポーズが牙列の開いた V 字で、0 のままでは牙間に
+               大きな隙間が残る（実機確認＋素材合成のピクセル実測）。
+               maw4 の時だけ mawOpenEff の閉じ代で open=0 を
+               実効 -0.32 まで押し込み、牙列を噛み合わせる（詳細は
+               mawOpenEff 側のコメント）。maw2／maw3 は作画自体が
+               噛み合い位置に近く、従来どおり閉じ側は浅く取る。
+               開き側は実機フィードバック（開きが小さい・
                もっと大げさに）を受けて大幅に拡大した。
                上顎の写像：1＝逆向きに開く（-0.595rad≒-34°）／
                0＝噛み合う（+0.025rad）。下顎より角度を小さく取り、
@@ -12024,8 +12050,13 @@
             N.mawImgC.position.set(G.cx + mawJitX, mawY);
             N.mawImgC.rotation = Math.PI / 2; /* 顎先を真下へ（口を下向きに） */
             N.mawImgC.scale.set(mawScale);
-            N.mawLowerC.rotation = -0.04 + 1.00 * mawOpen;
-            N.mawUpperC.rotation = 0.025 - 0.62 * mawOpen;
+            /* maw4 は閉じ代込みの実効開きで回す（mawOpenEff）。
+               open=1 の開き角（下顎 +0.96rad／上顎 -0.595rad）は
+               従来と完全一致し、閉口時だけ牙列が噛み合う位置まで
+               余分に閉じる。グロー・霞は従来どおり mawOpen 基準 */
+            var mawEff = mawOpenEff(mawOpen, R.mawSpec);
+            N.mawLowerC.rotation = -0.04 + 1.00 * mawEff;
+            N.mawUpperC.rotation = 0.025 - 0.62 * mawEff;
             for (var mi = 0; mi < N.mawImgMats.length; mi++){
               N.mawImgMats[mi].uniforms.uTime = tFs / 1000;
               N.mawImgMats[mi].uniforms.uMelt = mawMelt;
@@ -13980,9 +14011,13 @@
                  （上昇・縮小は呼び出し側の transform が担う） */
               drawMawAura(open, melt, t, alpha, gk);
               mctx.globalAlpha = alpha * (1 - melt * 0.85);
+              /* maw4 は閉じ代込みの実効開きで回す（新方式と共通の
+                 mawOpenEff。open=1 の開き角は従来と完全一致し、
+                 閉口時だけ牙列が噛み合うまで余分に閉じる） */
+              var oEff = mawOpenEff(open, mawSpec);
               mctx.save();
               mctx.translate(mawW * mawSpec.pivX, mawH * mawSpec.pivY);
-              mctx.rotate(-0.04 + 1.00 * open);
+              mctx.rotate(-0.04 + 1.00 * oEff);
               mctx.translate(-mawW * mawSpec.pivX, -mawH * mawSpec.pivY);
               drawJawGlowPass(mawImgs.lower, gk);
               mctx.drawImage(mawImgs.lower, 0, 0, mawW, mawH);
@@ -13990,7 +14025,7 @@
               drawMawMouthMist(mOpen, melt, t, alpha * (1 - melt * 0.85), gk);
               mctx.save();
               mctx.translate(mawW * mawSpec.pivX, mawH * mawSpec.pivY);
-              mctx.rotate(0.025 - 0.62 * open);
+              mctx.rotate(0.025 - 0.62 * oEff);
               mctx.translate(-mawW * mawSpec.pivX, -mawH * mawSpec.pivY);
               drawJawGlowPass(mawImgs.upper, gk);
               mctx.drawImage(mawImgs.upper, 0, 0, mawW, mawH);
