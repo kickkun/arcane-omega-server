@@ -2078,6 +2078,109 @@
         #startOverlay.title-intro .title-rise{animation:none;}
         #startOverlay.title-intro .emb-fade{opacity:1;}
       }
+      /* ===== 専用タイトル画面（スプラッシュ） =====
+         初回表示のときだけ、メニュー（#startOverlay）の手前に挟む全画面
+         タイトル。背景は既存の #titleBg（氷アート＋ヴェール＋光の粒子）を
+         そのまま透かして使うため、この要素自身は薄いグラデーションだけを
+         敷く。ロゴとエンブレムはメニュー側と共通クラスを使い、金の質感・
+         待機アニメーション（光の走り／発光の呼吸／魔法陣の回転）を共有する。
+         タップが音声解放の扉：このタップで bgmUnlock が走り、タイトルBGMが
+         鳴り始めてからメニューへ渡す（JS 側 showTitleSplash 参照）。
+         対戦から「タイトルへ」で戻る時は挟まない（初回タップで pending が
+         解ける）ので、通常の導線に余分なタップは増えない。 */
+      #titleSplash{
+        position:fixed; inset:0; z-index:95; display:none;
+        flex-direction:column; align-items:center; justify-content:center;
+        padding:28px 12px calc(18px + env(safe-area-inset-bottom));
+        cursor:pointer; -webkit-tap-highlight-color:transparent; overflow:hidden;
+        background:linear-gradient(180deg, rgba(9,9,26,.22) 0%, rgba(9,9,26,.03) 42%, rgba(5,6,16,.52) 100%);
+      }
+      #titleSplash.show{display:flex;}
+      /* 退場：閃光が広がり、全体がフェードしてメニューへ渡す */
+      #titleSplash.leaving{opacity:0; transition:opacity .55s ease .15s; pointer-events:none;}
+      #titleSplash.leaving .splash-brand{transform:scale(1.05);}
+      #titleSplash.leaving .splash-flash{animation:titleLogoFlash .6s ease-out both;}
+      #titleSplash.leaving .splash-ring{scale:1.16; opacity:0; transition:scale .6s ease, opacity .6s ease;}
+      /* 背後の大きな魔法陣リング（ごく薄く、エンブレムと逆向きにゆっくり回る） */
+      .splash-ring{
+        position:absolute; left:50%; top:37%; translate:-50% -50%;
+        width:min(94vw,560px); height:min(94vw,560px);
+        opacity:.13; pointer-events:none;
+      }
+      .splash-ring .splash-ring-rotor{transform-box:view-box; transform-origin:50% 50%; animation:emblemSpin 110s linear infinite reverse;}
+      /* ロゴ背後の柔らかい光（金と紫の滲み、ゆっくり明滅） */
+      .splash-glow{
+        position:absolute; left:50%; top:37%; translate:-50% -50%;
+        width:min(125vw,660px); height:min(125vw,660px); border-radius:50%;
+        background:radial-gradient(circle, rgba(236,205,126,.17) 0%, rgba(120,100,220,.10) 44%, rgba(0,0,0,0) 68%);
+        pointer-events:none; animation:splashGlowPulse 6s ease-in-out infinite;
+      }
+      @keyframes splashGlowPulse{0%,100%{opacity:.72;}50%{opacity:1;}}
+      .splash-flash{
+        position:absolute; inset:0; pointer-events:none; opacity:0;
+        background:radial-gradient(ellipse at 50% 37%, rgba(255,246,205,.95) 0%, rgba(255,232,150,.42) 38%, rgba(255,232,150,0) 68%);
+      }
+      .splash-brand{position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform .55s ease;}
+      #titleSplash .title-emblem{width:clamp(118px,32vw,162px); height:clamp(118px,32vw,162px); margin:0;}
+      #titleSplash .title-logo-text{font-size:clamp(34px,10.4vw,62px); letter-spacing:.03em; white-space:nowrap; margin:12px 0 0;}
+      #titleSplash .title-logo-sub{font-size:13px; letter-spacing:.42em; margin:13px 0 0;}
+      #titleSplash .title-logo-sub::before,#titleSplash .title-logo-sub::after{flex-basis:56px;}
+      #titleSplash .title-logo-sub .sub-text{margin-right:-.42em;}
+      .splash-tagline{margin:15px 0 0; font-size:12.5px; font-weight:700; letter-spacing:.3em; text-indent:.3em; color:rgba(226,232,245,.68);}
+      /* --- TAP TO START：金の文字がゆっくり明滅する --- */
+      .splash-tap-zone{position:relative; margin-top:clamp(50px,12.5vh,118px); text-align:center;}
+      .splash-tap-rule{width:124px; height:1px; margin:0 auto 15px; background:linear-gradient(90deg,transparent,rgba(217,195,132,.85),transparent);}
+      .splash-tap{
+        margin:0; font-family:"Cinzel",serif; font-weight:700;
+        font-size:clamp(17px,5.2vw,23px); letter-spacing:.44em; text-indent:.44em;
+        color:#f2d98c; text-shadow:0 0 16px rgba(236,205,126,.6), 0 2px 8px rgba(0,0,0,.65);
+        animation:splashTapPulse 2.3s ease-in-out infinite;
+      }
+      @keyframes splashTapPulse{0%,100%{opacity:.42;}50%{opacity:1;}}
+      /* --- 右下クレジット --- */
+      .splash-credit{
+        position:absolute; right:16px; bottom:calc(12px + env(safe-area-inset-bottom));
+        margin:0; font-size:11px; letter-spacing:.1em; color:rgba(232,224,204,.78);
+        text-shadow:0 1px 4px rgba(0,0,0,.7);
+      }
+      /* --- 登場演出（メニュー版より少し長め・派手に：約2.3秒） ---
+         キーフレームはメニュー側と共通（titleDraw／titleFadeIn／
+         titleLogoDrop／titleLogoFlash／titleRiseIn）。pointer-events には
+         触らないため、演出の途中でもタップで即メニューへ進める。 */
+      #titleSplash.splash-intro .emb-draw{stroke-dasharray:1; stroke-dashoffset:1; animation:titleDraw 1.15s ease-out forwards;}
+      #titleSplash.splash-intro .emb-draw.d2{animation-delay:.15s; animation-duration:1s;}
+      #titleSplash.splash-intro .emb-draw.d3{animation-delay:.38s; animation-duration:.9s;}
+      #titleSplash.splash-intro .emb-fade{opacity:0; animation:titleFadeIn .45s ease-out .85s forwards;}
+      #titleSplash.splash-intro .splash-logo-wrap{animation:titleLogoDrop .6s cubic-bezier(.22,1.35,.36,1) .55s both;}
+      #titleSplash.splash-intro .title-logo-flash{animation:titleLogoFlash .6s ease-out 1.05s forwards;}
+      #titleSplash.splash-intro .splash-sub{animation:titleRiseIn .45s ease-out 1s both;}
+      #titleSplash.splash-intro .splash-tagline{animation:titleRiseIn .45s ease-out 1.15s both;}
+      #titleSplash.splash-intro .splash-tap-zone{animation:titleRiseIn .5s ease-out 1.55s both;}
+      #titleSplash.splash-intro .splash-credit{opacity:0; animation:titleFadeIn .5s ease-out 1.8s forwards;}
+      /* 縦の短い画面（横向き等）では一段詰める */
+      @media (max-height:560px){
+        #titleSplash .title-emblem{width:84px; height:84px;}
+        #titleSplash .title-logo-text{font-size:clamp(28px,7.5vh,40px); margin-top:6px;}
+        .splash-tap-zone{margin-top:30px;}
+        .splash-ring{width:min(70vh,94vw); height:min(70vh,94vw);}
+      }
+      @media (prefers-reduced-motion: reduce){
+        #titleSplash{transition:none;}
+        #titleSplash .splash-tap{animation:none; opacity:.85;}
+        #titleSplash .splash-glow{animation:none;}
+        .splash-ring .splash-ring-rotor{animation:none;}
+        #titleSplash.leaving .splash-flash{animation:none;}
+        #titleSplash.splash-intro .emb-draw,
+        #titleSplash.splash-intro .emb-fade,
+        #titleSplash.splash-intro .splash-logo-wrap,
+        #titleSplash.splash-intro .title-logo-flash,
+        #titleSplash.splash-intro .splash-sub,
+        #titleSplash.splash-intro .splash-tagline,
+        #titleSplash.splash-intro .splash-tap-zone,
+        #titleSplash.splash-intro .splash-credit{animation:none;}
+        #titleSplash.splash-intro .emb-fade,
+        #titleSplash.splash-intro .splash-credit{opacity:1;}
+      }
       /* ===== 長押しでブラウザメニューが出る問題への対策 =====
          ゲーム内のカード画像・カード要素（手札 .hcard／オンライン手札 .ov-hcard、
          場 .follower／.ov-unit、図鑑 .gcard、詳細シート .detail-art／.detail-card、
@@ -3636,6 +3739,67 @@
       </div>
     </div>
 
+    <!-- 専用タイトル画面（スプラッシュ）：初回だけメニューの手前に表示する。
+         背景は #titleBg（氷アート＋粒子）を透かして使う。タップで音声が
+         解放されタイトルBGMが流れ始め、閃光とともにメニューへ渡す。
+         制御は JS 側 showTitleSplash／dismissTitleSplash（showStart 付近）。 -->
+    <div id="titleSplash" role="button" tabindex="0" aria-label="アーケインサモンΩ。タップしてスタート">
+      <div class="splash-glow" aria-hidden="true"></div>
+      <svg class="splash-ring" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
+        <g class="splash-ring-rotor" fill="none" stroke="#eccd7e">
+          <circle cx="120" cy="120" r="117" stroke-width="1" />
+          <circle cx="120" cy="120" r="103" stroke-width=".8" stroke-dasharray="2 7" />
+          <polygon points="120,26 214,120 120,214 26,120" stroke-width=".8" opacity=".7" />
+          <g fill="#eccd7e" stroke="none">
+            <rect x="117" y="3" width="6" height="6" transform="rotate(45 120 6)" />
+            <rect x="231" y="117" width="6" height="6" transform="rotate(45 234 120)" />
+            <rect x="117" y="231" width="6" height="6" transform="rotate(45 120 234)" />
+            <rect x="3" y="117" width="6" height="6" transform="rotate(45 6 120)" />
+          </g>
+        </g>
+      </svg>
+      <div class="splash-flash" aria-hidden="true"></div>
+      <div class="splash-brand">
+        <svg class="title-emblem splash-emblem" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="splashEmblemGold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f4e2a0" />
+              <stop offset=".5" stop-color="#c9a24b" />
+              <stop offset="1" stop-color="#eccd7e" />
+            </linearGradient>
+          </defs>
+          <g class="emblem-rotor" fill="none" stroke="url(#splashEmblemGold)">
+            <circle class="emb-draw" pathLength="1" cx="60" cy="60" r="56" stroke-width="1.6" />
+            <circle class="emb-draw d2" pathLength="1" cx="60" cy="60" r="50.5" stroke-width=".8" opacity=".65" />
+            <circle class="emb-fade" cx="60" cy="60" r="41" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="0.01 6.43" opacity=".85" />
+            <polygon class="emb-draw d3" pathLength="1" points="60,17 103,60 60,103 17,60" stroke-width="1.4" />
+            <polygon class="emb-draw d3" pathLength="1" points="60,33 87,60 60,87 33,60" stroke-width="1" opacity=".7" />
+            <g class="emb-fade" fill="url(#splashEmblemGold)" stroke="none">
+              <rect x="57" y="1" width="6" height="6" transform="rotate(45 60 4)" />
+              <rect x="113" y="57" width="6" height="6" transform="rotate(45 116 60)" />
+              <rect x="57" y="113" width="6" height="6" transform="rotate(45 60 116)" />
+              <rect x="1" y="57" width="6" height="6" transform="rotate(45 4 60)" />
+            </g>
+          </g>
+          <g fill="none" stroke="url(#splashEmblemGold)">
+            <circle class="emb-draw d2" pathLength="1" cx="60" cy="60" r="13" stroke-width="1.2" />
+            <polygon class="emb-fade" points="60,50 70,60 60,70 50,60" fill="url(#splashEmblemGold)" stroke="none" />
+          </g>
+        </svg>
+        <div class="title-logo-wrap splash-logo-wrap">
+          <span class="title-logo-flash" aria-hidden="true"></span>
+          <p class="title-logo-text">アーケインサモンΩ</p>
+        </div>
+        <p class="title-logo-sub splash-sub"><span class="sub-text">ARCANE SUMMON Ω</span></p>
+        <p class="splash-tagline">召喚士カードバトル</p>
+      </div>
+      <div class="splash-tap-zone">
+        <div class="splash-tap-rule" aria-hidden="true"></div>
+        <p class="splash-tap">TAP TO START</p>
+      </div>
+      <p class="splash-credit">音楽：魔王魂</p>
+    </div>
+
     <div class="overlay" id="startOverlay">
       <div class="start-box">
         <div class="title-brand">
@@ -3684,6 +3848,12 @@
           <p class="first-choice-label">効果音（SE）</p>
           <button class="btn-sub" id="seToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700;" aria-pressed="true">効果音：ON</button>
           <p class="seg-note">召喚・攻撃・破壊・回復などの効果音です。設定はこの端末に保存されます。</p>
+        </div>
+        <div class="first-choice" id="bgmChoiceBlock" style="margin-top:4px;">
+          <p class="first-choice-label">BGM</p>
+          <button class="btn-sub" id="bgmToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700;" aria-pressed="true">BGM：ON</button>
+          <p class="seg-note">タイトルでは「新たな大地」、対戦中は「駆け抜ける戦場の嵐」が流れます。効果音がOFFの間はBGMも止まります。設定はこの端末に保存されます。</p>
+          <p class="seg-note">音楽：<a href="https://maou.audio/category/bgm/bgm-fantasy/" target="_blank" rel="noopener" style="color:var(--gold-bright);">魔王魂</a></p>
         </div>
         <p class="over-sub" id="startDeckInfo"></p>
         <div class="first-choice title-rise" style="margin-top:4px; --rd:.62s;">
@@ -4911,6 +5081,7 @@
         var booting = !!(loEl && !loEl.classList.contains('hide'));
         if (!booting && !document.getElementById('startOverlay').classList.contains('show')){
           playBattleStartIntro(S.me.summonerId, S.cpu.summonerId, null);
+          bgmSetScene('battle'); /* 対戦開始：対戦BGMへ切り替える（全モード共通の入口） */
         }
         /* フィニッシュ新方式の先行構築：対戦開始時点で両召喚士×全神話の
            テクスチャ・場面ノード・GPU転送を温めておく（実戦は常時新方式） */
@@ -5311,8 +5482,129 @@
       seSave();
       renderSeToggle();
       if (seEnabled){ seUnlock(); sePlay('summon'); }
+      bgmApply(); /* BGMはSE設定にも従う（SE OFFの間は止める／ONで再開する） */
     });
     renderSeToggle();
+
+    /* ===== BGM（魔王魂：タイトル「新たな大地」／対戦「駆け抜ける戦場の嵐」） =====
+       曲ファイルは fx/ や summoners/ と同じ外出し方式で、同一オリジンの
+       bgm/bgm-title.* ／ bgm/bgm-battle.* を相対パスで読む（ループ版素材を
+       そのまま全曲ループ）。形式は Ogg(Opus) を優先し、再生できない環境
+       （旧iOS Safari等）では MP3 にフォールバックする。読めない環境では
+       無音のまま他の機能に影響しない。
+       ブラウザの自動再生制限に合わせ、再生はユーザーの最初の操作
+       （pointerdown／click／keydown）以降にだけ始める。音量はSEより控えめ
+       （BGM_VOL）に固定し、場面の切り替え時は約0.9秒でクロスフェードする。
+       オン/オフは BGM 単体の設定（localStorage）に加えて SE 設定にも従う
+       （SEがOFFの間はBGMも止まる）。HEADLESS（テストプレイ）中は鳴らさない。
+       場面の指定は bgmSetScene('title'|'battle')：タイトル表示は showStart、
+       対戦開始は newGame の合図演出とオンラインのマッチ成立が呼ぶ。 */
+    var BGM_KEY = 'cardbattle.bgm.v1';
+    var bgmEnabled = true;
+    try { if (localStorage.getItem(BGM_KEY) === 'off') bgmEnabled = false; } catch (e) {}
+    var BGM_VOL = 0.30;
+    var bgmScene = 'title';
+    var bgmUnlocked = false;
+    var bgmFading = {}; /* scene -> 目標音量（フェード中の内部状態） */
+    var bgmTracks = {
+      title:  { base: 'bgm/bgm-title',  el: null, mp3Tried: false },
+      battle: { base: 'bgm/bgm-battle', el: null, mp3Tried: false }
+    };
+    function bgmSave(){
+      try { localStorage.setItem(BGM_KEY, bgmEnabled ? 'on' : 'off'); } catch (e) {}
+    }
+    function bgmWanted(){
+      return bgmEnabled && seEnabled;
+    }
+    function bgmMakeEl(scene){
+      var tr = bgmTracks[scene];
+      if (tr.el) return tr.el;
+      var el = new Audio();
+      el.loop = true;
+      el.preload = 'auto';
+      el.volume = 0;
+      /* Ogg(Opus) を再生できる環境はそちら、無理なら MP3 を使う */
+      var oggOk = false;
+      try { oggOk = !!(el.canPlayType && el.canPlayType('audio/ogg; codecs="opus"')); } catch (e) {}
+      el.src = tr.base + (oggOk ? '.ogg' : '.mp3');
+      if (oggOk){
+        /* 対応申告でも読み込みに失敗したら MP3 へ切り替える（一度だけ） */
+        el.addEventListener('error', function(){
+          if (tr.mp3Tried) return;
+          tr.mp3Tried = true;
+          var wasPlaying = !el.paused && bgmFading[scene] > 0;
+          el.src = tr.base + '.mp3';
+          el.load();
+          if (wasPlaying){ var p = el.play(); if (p && p.catch) p.catch(function(){}); }
+        });
+      }
+      tr.el = el;
+      bgmFading[scene] = 0;
+      return el;
+    }
+    var bgmFadeTimer = null;
+    function bgmFadeTick(){
+      var active = false;
+      ['title', 'battle'].forEach(function(scene){
+        var tr = bgmTracks[scene];
+        if (!tr.el) return;
+        var target = bgmFading[scene] || 0;
+        var cur = tr.el.volume;
+        if (Math.abs(cur - target) > 0.005){
+          active = true;
+          var step = BGM_VOL * (50 / 900); /* 約0.9秒で BGM_VOL ぶん変化 */
+          var next = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
+          try { tr.el.volume = next; } catch (e) {}
+          cur = next;
+        }
+        if (target === 0 && cur <= 0.005 && !tr.el.paused){
+          tr.el.pause();
+        }
+      });
+      if (!active && bgmFadeTimer){ clearInterval(bgmFadeTimer); bgmFadeTimer = null; }
+    }
+    function bgmApply(){
+      if (HEADLESS) return;
+      var playScene = (bgmUnlocked && bgmWanted()) ? bgmScene : null;
+      ['title', 'battle'].forEach(function(scene){
+        if (scene === playScene){
+          var el = bgmMakeEl(scene);
+          bgmFading[scene] = BGM_VOL;
+          if (el.paused){
+            try { var p = el.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {}
+          }
+        } else if (bgmTracks[scene].el){
+          bgmFading[scene] = 0;
+        }
+      });
+      if (!bgmFadeTimer) bgmFadeTimer = setInterval(bgmFadeTick, 50);
+    }
+    function bgmSetScene(scene){
+      if (bgmScene !== scene) bgmScene = scene;
+      bgmApply();
+    }
+    function bgmUnlock(){
+      if (bgmUnlocked) return;
+      bgmUnlocked = true;
+      bgmApply();
+    }
+    document.addEventListener('pointerdown', bgmUnlock, true);
+    document.addEventListener('click', bgmUnlock, true);
+    document.addEventListener('keydown', bgmUnlock, true);
+    function renderBgmToggle(){
+      var btn = document.getElementById('bgmToggleBtn');
+      if (!btn) return;
+      btn.textContent = bgmEnabled ? 'BGM：ON' : 'BGM：OFF';
+      btn.setAttribute('aria-pressed', bgmEnabled ? 'true' : 'false');
+    }
+    document.getElementById('bgmToggleBtn').addEventListener('click', function(){
+      bgmEnabled = !bgmEnabled;
+      bgmSave();
+      renderBgmToggle();
+      bgmUnlock(); /* ボタンのタップ自体が最初の操作になり得る */
+      bgmApply();
+    });
+    renderBgmToggle();
     /* ヒットストップ：ユニット同士の戦闘でダメージが入った瞬間だけ、
        盤面アニメーションを約80ms止める（JS側の進行は止めない） */
     var fxHitstopTimer = null;
@@ -7593,8 +7885,9 @@
       /* アギトの大顎（素材方式）：分割素材3点（奥の面／上顎／下顎）を
          関節ピボットで組み立てる。各部品はシェーダ面（FINP_MAWIMG）で
          描き、溶け・蠢きはシェーダ側だけが担う（部品の変形・移動では
-         表現しない）。下顎は関節位置（素材座標で x=0.13／y=0.53）に
-         置いたピボット子コンテナで回し、上顎と奥の面は固定する。
+         表現しない）。下顎と上顎は関節位置（素材座標で x=0.13／
+         y=0.53）に置いた共通のピボット子コンテナで互いに逆向きへ
+         回し、上下両開きの異形の開口にする。奥の面だけ固定する。
          重ね順は 霧のオーラ → 奥の面 → 下顎 → 上顎（噛み合う時に
          下顎の牙が上顎の裏へ回り込む読みにする）。オーラは流れ
          テクスチャの流動で蠢く黒紫の靄を大顎の輪郭の外へまとわせる
@@ -7609,17 +7902,20 @@
       N.mawAuraM = (mawParts && mawParts.aura) ? mawParts.aura.mesh : null;
       N.mawAuraMat = (mawParts && mawParts.aura) ? mawParts.aura.mat : null;
       var mawLowerC = PC();
+      var mawUpperC = PC();
       if (mawParts){
         if (mawParts.aura) mawImgC.addChild(mawParts.aura.mesh);
         mawImgC.addChild(mawParts.back);
         mawLowerC.addChild(mawParts.lower);
         mawImgC.addChild(mawLowerC);
-        mawImgC.addChild(mawParts.upper);
+        mawUpperC.addChild(mawParts.upper);
+        mawImgC.addChild(mawUpperC);
       }
       mawImgC.visible = false;
       space.addChild(mawImgC);
       N.mawImgC = mawImgC;
       N.mawLowerC = mawLowerC;
+      N.mawUpperC = mawUpperC;
       /* ロンギヌス：加速区間のスピード線プールと標的の名前帯 */
       N.rush = [];
       for (var rui = 0; rui < 36; rui++){ var rus = PS(bake.white); rus.visible = false; space.addChild(rus); N.rush.push(rus); }
@@ -7995,6 +8291,7 @@
       hide(N.mawG); N.mawG.alpha = 1; N.mawG.rotation = 0; N.mawG.scale.set(1); if (N.mawG.clear) N.mawG.clear();
       hide(N.mawImgC); if (N.mawImgC){ N.mawImgC.alpha = 1; N.mawImgC.rotation = 0; N.mawImgC.scale.set(1); }
       if (N.mawLowerC) N.mawLowerC.rotation = 0;
+      if (N.mawUpperC) N.mawUpperC.rotation = 0;
       if (N.mawImgMats) N.mawImgMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
       if (N.mawAuraMat){ N.mawAuraMat.uniforms.uMelt = 0; N.mawAuraMat.uniforms.uAlpha = 0; }
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
@@ -8305,8 +8602,8 @@
       }
       /* アギト：大顎の寸法と口の位置（中心＝口の中心）。
          素材方式は横長の頭部絵（1547×1008）に合わせた寸法にし、
-         下顎ピボットの関節位置（素材座標 x=0.13／y=0.53。牙の境界線を
-         実測して決めた）をコンテナ座標へ置く。シェーダ方式は従来の
+         上下顎共通の関節ピボットの位置（素材座標 x=0.13／y=0.53。
+         牙の境界線を実測して決めた）をコンテナ座標へ置く。シェーダ方式は従来の
          縦長寸法（縦の裂け目）のまま。
          姿勢は全方式共通でコンテナごと+90°回転させ、顎先（＝口）を
          真下へ向ける（素材の頭部軸は横向きのため、回すと関節側が
@@ -8339,11 +8636,16 @@
           N.mawImgMats[1].uniforms.uTex = T.mawUpper;
           N.mawImgMats[2].uniforms.uTex = T.mawLower;
           N.mawBackM.scale.set(mawW * 0.5, mawH * 0.5);
-          N.mawUpperM.scale.set(mawW * 0.5, mawH * 0.5);
           /* オーラ面：部品より一回り大きく（縦 1.48×／横 1.6×）、
              輪郭の外へ靄がはみ出してまとう寸法にする */
           if (N.mawAuraM) N.mawAuraM.scale.set(mawW * 0.74, mawH * 0.80);
+          /* 関節ピボットは上下顎で共通：両顎とも同じ関節点を中心に
+             逆向きへ回る（上顎が開くと関節より後ろの頭部側が奥の面の
+             裏へ沈むため、固定の奥の面が隙間を覆う読みになる） */
           var pivX = Math.round((0.13 - 0.5) * mawW), pivY = Math.round((0.53 - 0.5) * mawH);
+          N.mawUpperC.position.set(pivX, pivY);
+          N.mawUpperM.position.set(-pivX, -pivY);
+          N.mawUpperM.scale.set(mawW * 0.5, mawH * 0.5);
           N.mawLowerC.position.set(pivX, pivY);
           N.mawLowerM.position.set(-pivX, -pivY);
           N.mawLowerM.scale.set(mawW * 0.5, mawH * 0.5);
@@ -11166,7 +11468,8 @@
            溶けて消える（スローなし）。大顎の姿勢は全方式共通で
            コンテナごと+90°回転させ、顎先（＝口）を真下へ向ける。
            大顎の正方式は分割素材3点（奥の面／上顎／下顎）を関節ピボット
-           で組み立てる素材方式で、開閉量 mawOpen を下顎の回転角へ写す。
+           で組み立てる素材方式で、開閉量 mawOpen を上下両顎の回転角へ
+           写す（下顎は開く向き、上顎は逆向きに開く両開き）。
            素材が揃わない場合は流れテクスチャ方式の不定形の大顎
            （シェーダ面）が同じ mawOpen を裂け目の開きとして使う */
         finPOnce(R, 'agUp', tS, 470, function(){
@@ -11226,14 +11529,19 @@
           }
           var mawAlpha = Math.min(1, mp / 0.12);
           if (R.mawImg && N.mawImgC){
-            /* 素材方式：組立てコンテナを降ろし、下顎だけを関節ピボットで
-               回す。開き量 mawOpen の写像：1＝めちゃくちゃ開く
-               （+0.54rad≒31°）／0＝噛み合う（-0.04rad）。閉じ側は
-               浅く取る：作画自体が「少し開いた状態」で牙の噛み合い
-               位置に近く、大きく閉じると顎先が上顎を突き抜けて見える
-               ため（合成実測で確定）。開き側は奥の面のシルエットが
-               口内を覆う範囲で大きく取り、大きく開くほど口の闇が
-               際立つ読みにする。
+            /* 素材方式：組立てコンテナを降ろし、上下両顎を共通の関節
+               ピボットで互いに逆向きへ回す両開きにする。
+               下顎の写像：1＝めちゃくちゃ開く（+0.54rad≒31°）／
+               0＝噛み合う（-0.04rad）。閉じ側は浅く取る：作画自体が
+               「少し開いた状態」で牙の噛み合い位置に近く、大きく
+               閉じると顎先が上顎を突き抜けて見えるため（合成実測で
+               確定）。開き側は奥の面のシルエットが口内を覆う範囲で
+               大きく取り、大きく開くほど口の闇が際立つ読みにする。
+               上顎の写像：1＝逆向きに開く（-0.34rad≒-19°）／
+               0＝噛み合う（+0.025rad）。下顎より角度を小さく取り、
+               上下非対称の開きで異形感を出す。上顎が開くと顎先の
+               牙列が持ち上がり、関節より後ろは固定の奥の面の裏へ
+               沈むため、頭部がちぎれて見える隙間は生まれない。
                溶け・蠢きは部品シェーダ（uMelt／uTime）だけが担う。
                霧のオーラは口が開くほど濃くまとわせ、溶けでは部品と
                一緒に崩す（uAlpha は開き連動、uMelt は部品と同値） */
@@ -11244,6 +11552,7 @@
             N.mawImgC.rotation = Math.PI / 2; /* 顎先を真下へ（口を下向きに） */
             N.mawImgC.scale.set(mawScale);
             N.mawLowerC.rotation = -0.04 + 0.58 * mawOpen;
+            N.mawUpperC.rotation = 0.025 - 0.365 * mawOpen;
             for (var mi = 0; mi < 3; mi++){
               N.mawImgMats[mi].uniforms.uTime = tFs / 1000;
               N.mawImgMats[mi].uniforms.uMelt = mawMelt;
@@ -20230,7 +20539,7 @@
       titleMenuBtn.setAttribute('aria-expanded', 'false');
     }
     if (titleMenu && titleMenuBtn){
-      ['startDeckInfo','firstSegNote','cpuSourceNote','titleSlotNote','seChoiceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
+      ['startDeckInfo','firstSegNote','cpuSourceNote','titleSlotNote','seChoiceBlock','bgmChoiceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
         var el = document.getElementById(id);
         if (el) titleMenu.appendChild(el);
       });
@@ -20501,8 +20810,78 @@
         titleIntroTimer = null;
       }, 1600);
     }
+    /* ============ 専用タイトル画面（スプラッシュ） ============
+       初回表示のときだけ、メニューの手前に全画面タイトルを挟む。
+       狙いは音の動線：ブラウザは操作前の自動再生を止めるため、この
+       「TAP TO START」のタップを音声解放の扉にして、タイトルBGM
+       （新たな大地）が流れ始めてからメニューへ渡す。場面指定は
+       showStart が既に行う bgmSetScene('title') をそのまま使う。
+       対戦から「タイトルへ」で戻る場合は挟まない（pending は初回の
+       タップで解け、以降の showStart は従来どおりメニューを直接出す）。
+       HEADLESS（テストプレイ）と reduced-motion では演出を省く。 */
+    var titleSplashPending = true;
+    var titleSplashEl = document.getElementById('titleSplash');
+    var splashIntroTimer = null;
+    var splashLeaveTimer = null;
+    function splashReducedMotion(){
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+    function showTitleSplash(){
+      if (!titleSplashEl || HEADLESS){
+        titleSplashPending = false;
+        startOverlay.classList.add('show');
+        startOverlay.scrollTop = 0;
+        playTitleIntro();
+        return;
+      }
+      titleSplashEl.classList.remove('leaving');
+      titleSplashEl.classList.add('show');
+      if (splashReducedMotion()) return;
+      titleSplashEl.classList.remove('splash-intro');
+      void titleSplashEl.offsetWidth; /* 再描画を挟み、登場演出を先頭から再生する */
+      titleSplashEl.classList.add('splash-intro');
+      if (splashIntroTimer) clearTimeout(splashIntroTimer);
+      splashIntroTimer = setTimeout(function(){
+        titleSplashEl.classList.remove('splash-intro');
+        splashIntroTimer = null;
+      }, 2600);
+    }
+    function dismissTitleSplash(){
+      if (!titleSplashPending || !titleSplashEl) return;
+      titleSplashPending = false;
+      bgmUnlock(); /* このタップが音声解放の扉（document の pointerdown でも呼ばれるが、ここでも明示する） */
+      if (splashIntroTimer){ clearTimeout(splashIntroTimer); splashIntroTimer = null; }
+      titleSplashEl.classList.remove('splash-intro');
+      var reduce = splashReducedMotion();
+      if (reduce){
+        titleSplashEl.classList.remove('show');
+        startOverlay.classList.add('show');
+        startOverlay.scrollTop = 0;
+        playTitleIntro();
+        return;
+      }
+      titleSplashEl.classList.add('leaving');
+      /* 閃光が広がる最中に、メニューが下から姿を現して登場演出を始める */
+      setTimeout(function(){
+        startOverlay.classList.add('show');
+        startOverlay.scrollTop = 0;
+        playTitleIntro();
+      }, 160);
+      splashLeaveTimer = setTimeout(function(){
+        titleSplashEl.classList.remove('show');
+        titleSplashEl.classList.remove('leaving');
+        splashLeaveTimer = null;
+      }, 780);
+    }
+    if (titleSplashEl){
+      titleSplashEl.addEventListener('click', dismissTitleSplash);
+      titleSplashEl.addEventListener('keydown', function(ev){
+        if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); dismissTitleSplash(); }
+      });
+    }
     function showStart(){
       closeAllOverlays();
+      bgmSetScene('title'); /* タイトル画面ではタイトルBGMへ切り替える */
       clearBattleField(); /* フィールド種別と背景を外し、タイトル背景（固定の氷）に切り替える */
       var titleBgEl2 = document.getElementById('titleBg');
       if (titleBgEl2) titleBgEl2.classList.add('on');
@@ -20510,6 +20889,12 @@
       refreshStartInfo();
       if (typeof renderTitleRecord === 'function') renderTitleRecord();
       closeTitleMenu();
+      /* 初回だけ専用タイトル画面（スプラッシュ）を挟み、メニューは
+         TAP TO START のタップで dismissTitleSplash が表示する */
+      if (titleSplashPending){
+        showTitleSplash();
+        return;
+      }
       startOverlay.classList.add('show');
       /* 表示し直した直後は必ず先頭から（前回の残り位置で固まって見えるのを防ぐ） */
       startOverlay.scrollTop = 0;
@@ -22532,6 +22917,7 @@
             pickBattleField();
             /* マッチング成立／リマッチ開始：対戦開始の合図演出（BATTLE START） */
             try { playBattleStartIntro(m.me.summoner, m.opponent.summoner, null); } catch (e) {}
+            try { bgmSetScene('battle'); } catch (e) {} /* オンライン対戦も対戦BGMへ */
             /* フィニッシュ新方式の先行構築（オンラインも実戦は常時新方式） */
             try { finProtoPrebuildBattle(m.me.summoner, m.opponent.summoner); } catch (e) {}
           }
