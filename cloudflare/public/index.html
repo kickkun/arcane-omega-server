@@ -4778,10 +4778,14 @@
       im.onerror = function(){ SUMMONER_ICON_STATE[x.id] = 2; };
       im.src = summonerIconSrc(x.id);
     });
-    /* 先読み完了後に表示中のバッジ類を描き直し、顔アイコンへ差し替える */
+    /* 先読み完了後に表示中のバッジ類を描き直し、顔アイコンへ差し替える。
+       タイトルのグリッドは表示中かどうかで弾かない：初回はスプラッシュ
+       （TAP TO START）表示中に先読みが完了することが多く、.show 条件で
+       弾くとタップで開いたメニューが記号バッジのまま残ってしまう。
+       非表示のグリッドを描き直しても害はないため、常に描き直す */
     function refreshSummonerIcons(){
       try {
-        if (document.getElementById('startOverlay').classList.contains('show') && typeof renderSummonerGrid === 'function') renderSummonerGrid();
+        if (typeof renderSummonerGrid === 'function') renderSummonerGrid();
         var streakOv = document.getElementById('streakOverlay');
         if (streakOv && streakOv.classList.contains('show') && typeof streakRenderBoard === 'function') streakRenderBoard();
         if (typeof S !== 'undefined' && S && !HEADLESS && typeof render === 'function') render();
@@ -8027,7 +8031,9 @@
          下顎の牙が上顎の裏へ回り込む読みにする）。オーラは流れ
          テクスチャの流動で蠢く黒紫の靄を大顎の輪郭の外へまとわせる
          シェーダ面（FINP_MAWAURA）で、部品より一回り大きい面を
-         最背面に置く */
+         最背面に置く。奥の面は組み立て上は固定だが、再生側
+         （finProto のティック）が口の開きに合わせて関節線を
+         支点に縦スケールで開く */
       var mawImgC = PC();
       var mawParts = finPMawImgParts();
       N.mawBackM = mawParts ? mawParts.back : null;
@@ -8427,6 +8433,7 @@
       hide(N.mawImgC); if (N.mawImgC){ N.mawImgC.alpha = 1; N.mawImgC.rotation = 0; N.mawImgC.scale.set(1); }
       if (N.mawLowerC) N.mawLowerC.rotation = 0;
       if (N.mawUpperC) N.mawUpperC.rotation = 0;
+      if (N.mawBackM) N.mawBackM.position.set(0, 0); /* 奥の面の開き（縦伸ばし）の支点ずらしを戻す。スケールは流し込み側が毎回設定する */
       if (N.mawImgMats) N.mawImgMats.forEach(function(m){ m.uniforms.uMelt = 0; m.uniforms.uAlpha = 0; });
       if (N.mawAuraMat){ N.mawAuraMat.uniforms.uMelt = 0; N.mawAuraMat.uniforms.uAlpha = 0; }
       N.rush.forEach(function(sp){ sp.visible = false; sp.alpha = 0; });
@@ -11666,17 +11673,21 @@
           if (R.mawImg && N.mawImgC){
             /* 素材方式：組立てコンテナを降ろし、上下両顎を共通の関節
                ピボットで互いに逆向きへ回す両開きにする。
-               下顎の写像：1＝めちゃくちゃ開く（+0.54rad≒31°）／
+               下顎の写像：1＝めちゃくちゃ開く（+0.96rad≒55°）／
                0＝噛み合う（-0.04rad）。閉じ側は浅く取る：作画自体が
                「少し開いた状態」で牙の噛み合い位置に近く、大きく
                閉じると顎先が上顎を突き抜けて見えるため（合成実測で
-               確定）。開き側は奥の面のシルエットが口内を覆う範囲で
-               大きく取り、大きく開くほど口の闇が際立つ読みにする。
-               上顎の写像：1＝逆向きに開く（-0.34rad≒-19°）／
+               確定）。開き側は実機フィードバック（開きが小さい・
+               もっと大げさに）を受けて大幅に拡大した。
+               上顎の写像：1＝逆向きに開く（-0.595rad≒-34°）／
                0＝噛み合う（+0.025rad）。下顎より角度を小さく取り、
-               上下非対称の開きで異形感を出す。上顎が開くと顎先の
-               牙列が持ち上がり、関節より後ろは固定の奥の面の裏へ
-               沈むため、頭部がちぎれて見える隙間は生まれない。
+               上下非対称の開きで異形感を出す。以前は上顎の開きが
+               小さく、牙列が下顎側にだけ付いて見えたため、上顎側も
+               牙列がはっきり離れて見える角度まで開く。
+               奥の面（影）も口と一緒に開く：固定したままでは閉じた
+               シルエットが口の中央に残って開口を塞ぐため、関節線
+               （素材 y=0.53）を支点に縦へ引き伸ばし（最大1.55倍）、
+               少しだけ透かして口の闇として読ませる。
                溶け・蠢きは部品シェーダ（uMelt／uTime）だけが担う。
                霧のオーラは口が開くほど濃くまとわせ、溶けでは部品と
                一緒に崩す（uAlpha は開き連動、uMelt は部品と同値） */
@@ -11686,12 +11697,21 @@
             N.mawImgC.position.set(G.cx + mawJitX, mawY);
             N.mawImgC.rotation = Math.PI / 2; /* 顎先を真下へ（口を下向きに） */
             N.mawImgC.scale.set(mawScale);
-            N.mawLowerC.rotation = -0.04 + 0.58 * mawOpen;
-            N.mawUpperC.rotation = 0.025 - 0.365 * mawOpen;
+            N.mawLowerC.rotation = -0.04 + 1.00 * mawOpen;
+            N.mawUpperC.rotation = 0.025 - 0.62 * mawOpen;
+            /* 奥の面（影）の開き：関節線（テクスチャ y=0.53、面の
+               ローカル座標では +0.06）がずれないよう、縦スケールを
+               伸ばした分だけ位置を戻す */
+            if (N.mawBackM){
+              var bkF = 1 + 0.55 * mawOpen;
+              N.mawBackM.scale.set(R.mawW * 0.5, R.mawH * 0.5 * bkF);
+              N.mawBackM.position.y = Math.round(0.03 * R.mawH * (1 - bkF));
+            }
             for (var mi = 0; mi < 3; mi++){
               N.mawImgMats[mi].uniforms.uTime = tFs / 1000;
               N.mawImgMats[mi].uniforms.uMelt = mawMelt;
-              N.mawImgMats[mi].uniforms.uAlpha = mawAlpha;
+              /* 奥の面（mats[0]）だけ開くほど少し透かし、口の闇を際立てる */
+              N.mawImgMats[mi].uniforms.uAlpha = (mi === 0) ? mawAlpha * (1 - 0.12 * mawOpen) : mawAlpha;
             }
             if (N.mawAuraMat){
               N.mawAuraMat.uniforms.uTime = tFs / 1000;
@@ -13455,8 +13475,9 @@
         /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて大顎が
            真上の画面外から降り、口を開いてパネルを飲み込み、ガブッと
            噛み合って閉じ、真上へ小さく溶けて消える（間・総尺・SEは
-           従来どおり）。大顎は分割素材3点が揃えば素材方式（下顎を
-           関節ピボットで回す）、揃わなければ手続き描画の大顎 */
+           従来どおり）。大顎は分割素材3点が揃えば素材方式（上下
+           両顎を関節ピボットで回し、奥の面も関節線を支点に縦へ
+           開く）、揃わなければ手続き描画の大顎 */
         later(function(){
           var up = feetY + sdH + 90;
           fxFinAnimate(sd, [
@@ -13500,9 +13521,11 @@
           /* 素材方式はキャンバスに余白を持たせる：大きく開いた下顎が
              枠外へはみ出す分と、周囲へ広がる霧（オーラ）の描画域。
              余白は対称に取り、大顎の中心は従来どおりキャンバス中心に
-             一致させる（配置・回転の基準は不変） */
+             一致させる（配置・回転の基準は不変）。縦の余白は開き拡大
+             （下顎+0.96rad／上顎-0.595rad／奥の面の縦伸ばし）に合わせて
+             顎先と奥の面の下端が切れない量まで広げた */
           var mawPadX = mawImgs ? Math.round(mawW * 0.16) : 0;
-          var mawPadY = mawImgs ? Math.round(mawH * 0.34) : 0;
+          var mawPadY = mawImgs ? Math.round(mawH * 0.74) : 0;
           var mawCvW = mawW + mawPadX * 2, mawCvH = mawH + mawPadY * 2;
           var mawCv = sdFinNode('canvas', 'fx-sd-char');
           var MDPR = Math.min(2, window.devicePixelRatio || 1);
@@ -13549,20 +13572,35 @@
             mctx.translate(mawPadX, mawPadY);
             if (mawImgs){
               /* 素材方式：霧のオーラ → 奥の面 → 下顎（関節ピボット
-                 回転）→ 上顎の順に重ねる。開き open の写像は新方式と
-                 共通（1＝めちゃくちゃ開く +0.54rad／0＝-0.04rad）。
+                 回転）→ 上顎（関節ピボット回転）の順に重ねる。開き
+                 open の写像は新方式と共通（下顎 1＝+0.96rad／
+                 上顎 1＝-0.595rad。以前は上顎が固定で開きも小さく、
+                 牙が下側だけに付いて見えた）。奥の面（影）も関節線
+                 （素材 y=0.53）を支点に縦へ引き伸ばして一緒に開き、
+                 少しだけ透かす（新方式と共通）。
                  溶けはシェーダが無い分、透明度フェードで代替する
                  （上昇・縮小は呼び出し側の transform が担う） */
               drawMawAura(open, melt, t, alpha);
-              mctx.globalAlpha = alpha * (1 - melt * 0.85);
+              mctx.globalAlpha = alpha * (1 - melt * 0.85) * (1 - 0.12 * open);
+              mctx.save();
+              mctx.translate(0, mawH * 0.53);
+              mctx.scale(1, 1 + 0.55 * open);
+              mctx.translate(0, -mawH * 0.53);
               mctx.drawImage(mawImgs.back, 0, 0, mawW, mawH);
+              mctx.restore();
+              mctx.globalAlpha = alpha * (1 - melt * 0.85);
               mctx.save();
               mctx.translate(mawW * 0.13, mawH * 0.53);
-              mctx.rotate(-0.04 + 0.58 * open);
+              mctx.rotate(-0.04 + 1.00 * open);
               mctx.translate(-mawW * 0.13, -mawH * 0.53);
               mctx.drawImage(mawImgs.lower, 0, 0, mawW, mawH);
               mctx.restore();
+              mctx.save();
+              mctx.translate(mawW * 0.13, mawH * 0.53);
+              mctx.rotate(0.025 - 0.62 * open);
+              mctx.translate(-mawW * 0.13, -mawH * 0.53);
               mctx.drawImage(mawImgs.upper, 0, 0, mawW, mawH);
+              mctx.restore();
               mctx.globalAlpha = 1;
               return;
             }
