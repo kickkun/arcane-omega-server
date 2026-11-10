@@ -5278,6 +5278,22 @@
     document.addEventListener('pointerdown', seUnlock, true);
     document.addEventListener('click', seUnlock, true);
     document.addEventListener('keydown', seUnlock, true);
+    /* SEマスターゲイン：全ての合成SEはこの一段を通してから出力する。
+       BGM導入後、厚い対戦曲に短い合成SEが埋もれて聞き取りにくくなったため、
+       BGM側の音量は変えず、SE側だけをまとめて底上げする（約1.6倍）。
+       フィニッシュ専用SEも同じ seTone／seNoise を使うため自動で追随する。 */
+    var SE_MASTER_VOL = 1.6;
+    var seMaster = null;
+    var seMasterCtx = null;
+    function seMasterOut(){
+      if (!seMaster || seMasterCtx !== seCtx){
+        seMaster = seCtx.createGain();
+        seMaster.gain.value = SE_MASTER_VOL;
+        seMaster.connect(seCtx.destination);
+        seMasterCtx = seCtx;
+      }
+      return seMaster;
+    }
     /* 1音分の短い電子音：周波数を from→to へ滑らせ、指数減衰のエンベロープを付ける */
     function seTone(freqFrom, freqTo, dur, type, vol, delay){
       var t0 = seCtx.currentTime + (delay || 0);
@@ -5289,7 +5305,7 @@
       gain.gain.setValueAtTime(0.0001, t0);
       gain.gain.exponentialRampToValueAtTime(vol || 0.08, t0 + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      osc.connect(gain); gain.connect(seCtx.destination);
+      osc.connect(gain); gain.connect(seMasterOut());
       osc.start(t0); osc.stop(t0 + dur + 0.05);
     }
     /* 打撃用の短いノイズ（攻撃ヒット／破壊の質感付け） */
@@ -5302,7 +5318,7 @@
       var src = seCtx.createBufferSource(); src.buffer = buf;
       var filter = seCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = freq || 1200;
       var gain = seCtx.createGain(); gain.gain.value = vol || 0.1;
-      src.connect(filter); filter.connect(gain); gain.connect(seCtx.destination);
+      src.connect(filter); filter.connect(gain); gain.connect(seMasterOut());
       src.start(t0);
     }
     /* 場面ごとのSE。同じ音の連打は70ms未満の間隔では間引く（全体効果での多重発音防止） */
@@ -5311,6 +5327,7 @@
       var nowMs = fxNow();
       if (seLastPlay[name] && nowMs - seLastPlay[name] < 70) return;
       seLastPlay[name] = nowMs;
+      try { bgmDuck(340); } catch (e) {} /* SEが鳴る間だけBGMを少し引かせる */
       try {
         switch (name){
           case 'summon': /* 召喚：2音の上昇ブラップ */
@@ -5324,13 +5341,13 @@
             seTone(1047, 1568, 0.24, 'triangle', 0.08, 0.21);
             seTone(2093, 2093, 0.18, 'sine', 0.035, 0.21);
             break;
-          case 'hit': /* 攻撃ヒット：低い打撃＋ノイズ */
-            seTone(190, 55, 0.13, 'sine', 0.14);
-            seNoise(0.07, 0.07, 0, 1600);
+          case 'hit': /* 攻撃ヒット：低い打撃＋ノイズ（戦闘系は特に前に出す） */
+            seTone(190, 55, 0.13, 'sine', 0.17);
+            seNoise(0.07, 0.09, 0, 1600);
             break;
           case 'destroy': /* 破壊：下降スイープ＋崩れノイズ */
-            seTone(420, 60, 0.28, 'sawtooth', 0.07);
-            seNoise(0.22, 0.09, 0.02, 800);
+            seTone(420, 60, 0.28, 'sawtooth', 0.085);
+            seNoise(0.22, 0.11, 0.02, 800);
             break;
           case 'shatter': /* 第7弾：ガラスが割れる「パリンッ」。高音のピングを
              わずかにずらして重ね、破片の散らばりは短い高域ノイズで添える。
@@ -5395,6 +5412,7 @@
       var nowMs = fxNow();
       if (seLastPlay[key] && nowMs - seLastPlay[key] < 70) return;
       seLastPlay[key] = nowMs;
+      try { bgmDuck(480); } catch (e) {} /* ファイルSEもダッキング対象 */
       try {
         var el = seFileEls[key];
         if (!el){
@@ -5412,7 +5430,7 @@
     /* 武器種別から攻撃SEを選んで鳴らす（種別不明・未定義は従来のヒット音） */
     function seAttackHit(weapon){
       if (weapon === 'sword' && SE_FILE_SRC.sword){
-        seFilePlay('atkSword', SE_FILE_SRC.sword, 0.55);
+        seFilePlay('atkSword', SE_FILE_SRC.sword, 0.9);
       } else {
         sePlay('hit'); /* 仮置き：種別ごとの実ファイルが決まるまでは現行音 */
       }
@@ -5435,6 +5453,7 @@
     }
     function seFin(name){
       if (HEADLESS || !seEnabled || !seCtx || seCtx.state !== 'running') return;
+      try { bgmDuck(1300); } catch (e) {} /* 長尺のフィニッシュSEの間は引いたまま保つ */
       try {
         switch (name){
           case 'finStart': /* レターボックスと同期：短い「締まる」音＋低い溜め */
@@ -5596,15 +5615,27 @@
       var oggOk = false;
       try { oggOk = !!(el.canPlayType && el.canPlayType('audio/ogg; codecs="opus"')); } catch (e) {}
       el.src = tr.base + (oggOk ? '.ogg' : '.mp3');
+      /* 再生可能になった時点で、その場面が「鳴らすべき」状態なのに止まって
+         いたら自動で再生を再試行する。初回タップ直後はメディアの読み込みが
+         間に合わず play() が失敗することがあり、その失敗を取りこぼすと
+         「BGMを一度OFF→ONにするまで鳴らない」症状になるための保険。 */
+      el.addEventListener('canplay', function(){
+        if (bgmUnlocked && bgmWanted() && bgmScene === scene && el.paused){
+          try { var cp = el.play(); if (cp && cp.catch) cp.catch(function(){}); } catch (e) {}
+        }
+      });
       if (oggOk){
-        /* 対応申告でも読み込みに失敗したら MP3 へ切り替える（一度だけ） */
+        /* 対応申告でも読み込みに失敗したら MP3 へ切り替える（一度だけ）。
+           切り替え条件は「実際に再生中か」ではなく「鳴らすべき場面か」で
+           判定する（読み込み失敗時は paused のままなので、再生中判定では
+           切り替え後に二度と鳴らなくなる） */
         el.addEventListener('error', function(){
           if (tr.mp3Tried) return;
           tr.mp3Tried = true;
-          var wasPlaying = !el.paused && bgmFading[scene] > 0;
+          var wanted = bgmUnlocked && bgmWanted() && bgmScene === scene;
           el.src = tr.base + '.mp3';
           el.load();
-          if (wasPlaying){ var p = el.play(); if (p && p.catch) p.catch(function(){}); }
+          if (wanted){ var p = el.play(); if (p && p.catch) p.catch(function(){}); }
         });
       }
       tr.el = el;
@@ -5612,21 +5643,47 @@
       return el;
     }
     var bgmFadeTimer = null;
+    /* ===== ダッキング =====
+       SEが鳴る瞬間だけBGMを少し（約55%まで）引かせ、SEが終わったら滑らかに
+       戻す。BGM自体の音量設定（BGM_VOL）は変えず、SEを前に出すための仕掛け。
+       sePlay／seFin／seFilePlay が bgmDuck(保持ms) を呼び、保持が切れるまで
+       目標係数を下げ続ける（長いフィニッシュSEでは呼び出し側が長めに保持）。 */
+    var BGM_DUCK_LEVEL = 0.55;
+    var bgmDuckTarget = 1;
+    var bgmDuckCur = 1;
+    var bgmDuckTimer = null;
+    function bgmDuck(holdMs){
+      if (HEADLESS) return;
+      bgmDuckTarget = BGM_DUCK_LEVEL;
+      if (bgmDuckTimer) clearTimeout(bgmDuckTimer);
+      bgmDuckTimer = setTimeout(function(){ bgmDuckTarget = 1; bgmDuckTimer = null; }, holdMs || 340);
+      if (!bgmFadeTimer) bgmFadeTimer = setInterval(bgmFadeTick, 50);
+    }
     function bgmFadeTick(){
       var active = false;
+      /* ダッキング係数は速めに追従させる（下げる時も戻す時も約0.2秒） */
+      if (Math.abs(bgmDuckCur - bgmDuckTarget) > 0.01){
+        active = true;
+        var dStep = 0.25;
+        bgmDuckCur = bgmDuckTarget > bgmDuckCur
+          ? Math.min(bgmDuckTarget, bgmDuckCur + dStep)
+          : Math.max(bgmDuckTarget, bgmDuckCur - dStep);
+      }
       ['title', 'battle'].forEach(function(scene){
         var tr = bgmTracks[scene];
         if (!tr.el) return;
-        var target = bgmFading[scene] || 0;
+        var base = bgmFading[scene] || 0;
+        var target = base * bgmDuckCur;
         var cur = tr.el.volume;
         if (Math.abs(cur - target) > 0.005){
           active = true;
-          var step = BGM_VOL * (50 / 900); /* 約0.9秒で BGM_VOL ぶん変化 */
+          var step = BGM_VOL * (50 / 900); /* 通常の場面フェードは約0.9秒 */
+          if (bgmDuckCur < 0.99 || bgmDuckTarget < 1) step = BGM_VOL * (50 / 220); /* ダッキング中は速く */
           var next = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
           try { tr.el.volume = next; } catch (e) {}
           cur = next;
         }
-        if (target === 0 && cur <= 0.005 && !tr.el.paused){
+        if (base === 0 && cur <= 0.005 && !tr.el.paused){
           tr.el.pause();
         }
       });
@@ -5653,7 +5710,11 @@
       bgmApply();
     }
     function bgmUnlock(){
-      if (bgmUnlocked) return;
+      /* 解放済みでも bgmApply は毎回呼ぶ：初回タップの play() が読み込み
+         競合などで失敗していた場合に、次のタップ（TAP TO START の
+         click 等）がそのまま再試行の機会になるようにするため。
+         以前は一度解放すると再試行の入口が無く、鳴り出すのは BGM の
+         OFF→ON 操作で bgmApply が再び呼ばれた時だけだった。 */
       bgmUnlocked = true;
       bgmApply();
     }
@@ -5674,6 +5735,11 @@
       bgmApply();
     });
     renderBgmToggle();
+    /* 両トラックの Audio 要素は表示直後に作って読み込みだけ先に進めておく
+       （再生はしないので自動再生制限には触れない）。TAP TO START のタップ
+       時点で読み込み済みにしておくことで、タップ直後の play() が
+       「まだデータが無い」失敗を起こさず、その場で鳴り始める。 */
+    try { bgmMakeEl('title'); bgmMakeEl('battle'); } catch (e) {}
     /* ヒットストップ：ユニット同士の戦闘でダメージが入った瞬間だけ、
        盤面アニメーションを約80ms止める（JS側の進行は止めない） */
     var fxHitstopTimer = null;
