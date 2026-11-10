@@ -2181,6 +2181,89 @@
         #titleSplash.splash-intro .emb-fade,
         #titleSplash.splash-intro .splash-credit{opacity:1;}
       }
+      /* ===== 紙が飛ぶ演出（TAP TO START 後の遷移） =====
+         モック（title-paper-effect-mock.html）で承認済みの振付の本実装。
+         全画面シーン（#paperFx）はクロエの街背景2枚＋飛ぶ紙スプライトを
+         WAAPI で動かすだけの層で、タイミング／イージングはモック準拠。
+         終盤はメニュー（#startOverlay）の .start-box 自体を羊皮紙化して
+         右から滑り込ませ、そのまま通常のタイトルメニューとして使う。
+         z-index は #titleBg(55) より上・#startOverlay(60) より下：
+         スプラッシュ(95)は演出開始と同時に消えるため競合しない。 */
+      #paperFx{position:fixed; inset:0; z-index:58; display:none; overflow:hidden; background:#0b0e1d;}
+      #paperFx.show{display:block;}
+      #paperFxScene{position:absolute; inset:0;}
+      .paperfx-charwrap{
+        position:absolute; left:50%; top:50%; aspect-ratio:1248/1888;
+        width:min(100vw, 66.1dvh); transform:translate(-50%,-50%);
+      }
+      .paperfx-charwrap img.pfx-ch{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
+      #paperFxFree{display:none;}
+      #paperFxSprite{
+        position:absolute; left:39.2%; top:20.4%; width:19.6%; aspect-ratio:244/270;
+        transform:rotate(-2deg); display:none;
+        filter:drop-shadow(0 6px 8px rgba(90,70,30,.35));
+      }
+      #paperFxSprite img{width:100%; height:100%; display:block;}
+      #paperFxWash{position:absolute; inset:0; background:#fffdf4; opacity:0; pointer-events:none;}
+      /* --- 紙メニュー：羊皮紙テクスチャを敷いた .start-box ---
+         テクスチャの実URLは JS（paperFxPreload）が本番パス→assets/ の順に
+         解決して --menu-paper-url へ入れる。未解決でも下地色で紙らしく保つ。
+         ボタン類は従来の金属銘板のまま（紙に留めた銘板として読める）で、
+         紙の上に直接載る文字だけ墨色へ寄せる。☰メニュー内は暗パネルの
+         ままなので、そちらの文字色は元の変数へ戻す。 */
+      #startOverlay.paper-menu .start-box{
+        position:relative; transform:rotate(-.6deg);
+        background-color:#eadfc4;
+        background-image:
+          linear-gradient(180deg, rgba(255,250,230,.20), rgba(122,90,34,.10)),
+          var(--menu-paper-url, none);
+        background-size:cover, cover;
+        background-position:center top, center top;
+        border:2px solid rgba(110,80,26,.8); border-radius:7px;
+        box-shadow:
+          inset 0 0 46px rgba(122,90,34,.22),
+          0 0 0 1px rgba(255,246,214,.35),
+          0 20px 40px rgba(24,16,2,.55);
+        color:#4a3510;
+      }
+      /* ロゴは金のグラデーションのままでは紙の上で白飛ぶため、一段深い
+         金茶へ差し替える（光の走りの第1層と background-position の
+         キーフレーム互換は維持する） */
+      #startOverlay.paper-menu .title-logo-text{
+        background:
+          linear-gradient(100deg, rgba(255,255,255,0) 42%, rgba(255,255,255,.9) 50%, rgba(255,255,255,0) 58%),
+          linear-gradient(180deg,#b08c34 0%,#96762a 28%,#755a18 50%,#5d470f 57%,#86661f 76%,#a37f2e 100%);
+        background-size:260% 100%, 100% 100%;
+        background-position:135% 0, 0 0;
+        background-repeat:no-repeat;
+        -webkit-background-clip:text; background-clip:text;
+      }
+      #startOverlay.paper-menu .title-emblem{filter:drop-shadow(0 1px 2px rgba(90,64,10,.5));}
+      #startOverlay.paper-menu .title-logo-sub{color:#7a5410;}
+      #startOverlay.paper-menu .title-logo-sub::before{background:linear-gradient(90deg,transparent,rgba(122,84,16,.75));}
+      #startOverlay.paper-menu .title-logo-sub::after{background:linear-gradient(90deg,rgba(122,84,16,.75),transparent);}
+      #startOverlay.paper-menu .title-record{color:#8a5f14;}
+      #startOverlay.paper-menu .first-choice-label{color:#6b4d1c;}
+      #startOverlay.paper-menu .seg-note{color:#71592a;}
+      #startOverlay.paper-menu .title-menu .first-choice-label{color:var(--ink-dim);}
+      #startOverlay.paper-menu .title-menu .seg-note{color:var(--ink-faint);}
+      #startOverlay.paper-menu .title-menu .over-sub{color:var(--ink-dim);}
+      #startOverlay.paper-menu .title-menu .start-note{color:var(--ink-faint);}
+      /* 演出中（紙が滑り込んで項目が順に現れるまで）は項目を隠しておく。
+         カスケード開始の拍で JS がこのクラスを外す */
+      #startOverlay.paper-fx-live .start-box > *:not(#menuSeal){opacity:0;}
+      /* 封蝋：紙メニューの右下に押される装飾（モックの .seal と同じ意匠）。
+         紙メニュー化した時だけ現れる */
+      #menuSeal{
+        position:absolute; right:14px; bottom:12px; z-index:3;
+        width:46px; height:46px; border-radius:50%;
+        background:radial-gradient(circle at 35% 30%, #d4584a, #a02c20 70%);
+        color:#ffe9d9; display:none; align-items:center; justify-content:center;
+        font-family:"Shippori Mincho B1",serif; font-size:20px; font-weight:800;
+        box-shadow:inset 0 0 6px rgba(0,0,0,.35), 0 2px 5px rgba(60,20,5,.35);
+        transform:rotate(-8deg); pointer-events:none;
+      }
+      #startOverlay.paper-menu #menuSeal{display:flex;}
       /* ===== 長押しでブラウザメニューが出る問題への対策 =====
          ゲーム内のカード画像・カード要素（手札 .hcard／オンライン手札 .ov-hcard、
          場 .follower／.ov-unit、図鑑 .gcard、詳細シート .detail-art／.detail-card、
@@ -3800,8 +3883,23 @@
       <p class="splash-credit">音楽：魔王魂</p>
     </div>
 
+    <!-- 紙が飛ぶ演出（TAP TO START 後の遷移）：紙を読むクロエ→突風で
+         紙が飛ぶ→ぼかし→紙メニューへ。素材は title/ 配下の外部ファイルを
+         JS（paperFxPreload）が解決して差し込む。制御は JS 側 playPaperFx。 -->
+    <div id="paperFx" aria-hidden="true">
+      <div id="paperFxScene">
+        <div class="paperfx-charwrap">
+          <img class="pfx-ch" id="paperFxHold" alt="" />
+          <img class="pfx-ch" id="paperFxFree" alt="" />
+          <div id="paperFxSprite"><img id="paperFxSpriteImg" alt="" /></div>
+        </div>
+      </div>
+      <div id="paperFxWash"></div>
+    </div>
+
     <div class="overlay" id="startOverlay">
       <div class="start-box">
+        <div id="menuSeal" aria-hidden="true">Ω</div>
         <div class="title-brand">
         <svg class="title-emblem" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
           <defs>
@@ -5325,6 +5423,25 @@
       src.connect(filter); filter.connect(gain); gain.connect(seMasterOut());
       src.start(t0);
     }
+    /* 風切り用：帯域フィルタの中心周波数を滑らせたノイズ（突風／紙の擦れ）。
+       seNoise が固定ローパスなのに対し、こちらは帯域を掃引して「吹く」質感を作る */
+    function seWind(dur, vol, delay, fFrom, fTo){
+      var t0 = seCtx.currentTime + (delay || 0);
+      var len = Math.max(1, Math.floor(seCtx.sampleRate * dur));
+      var buf = seCtx.createBuffer(1, len, seCtx.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      var src = seCtx.createBufferSource(); src.buffer = buf;
+      var filter = seCtx.createBiquadFilter(); filter.type = 'bandpass'; filter.Q.value = 0.9;
+      filter.frequency.setValueAtTime(Math.max(40, fFrom), t0);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(40, fTo), t0 + dur);
+      var gain = seCtx.createGain();
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.08, t0 + dur * 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(filter); filter.connect(gain); gain.connect(seMasterOut());
+      src.start(t0);
+    }
     /* 場面ごとのSE。同じ音の連打は70ms未満の間隔では間引く（全体効果での多重発音防止） */
     function sePlay(name){
       if (HEADLESS || !seEnabled || !seCtx || seCtx.state !== 'running') return;
@@ -5396,6 +5513,27 @@
             seTone(392, 392, 0.16, 'triangle', 0.075);
             seTone(330, 330, 0.16, 'triangle', 0.075, 0.14);
             seTone(262, 196, 0.36, 'triangle', 0.075, 0.28);
+            break;
+          case 'gust': /* 紙が飛ぶ演出：突風の一吹き（帯域を掃引する風切り＋収束） */
+            seWind(0.55, 0.15, 0, 480, 2500);
+            seWind(0.42, 0.07, 0.06, 900, 320);
+            break;
+          case 'paperFly': /* 紙の飛翔：はためき（短い高域ノイズの連なり＋薄い風） */
+            seWind(1.0, 0.045, 0, 1700, 3100);
+            seNoise(0.05, 0.028, 0.02, 3400);
+            seNoise(0.05, 0.024, 0.19, 2900);
+            seNoise(0.05, 0.026, 0.37, 3600);
+            seNoise(0.05, 0.02, 0.55, 2700);
+            seNoise(0.06, 0.016, 0.74, 3200);
+            break;
+          case 'paperSlide': /* 紙メニューの滑り込み：紙が擦れる音 */
+            seWind(0.5, 0.06, 0, 2500, 1300);
+            seNoise(0.34, 0.035, 0.02, 3900);
+            break;
+          case 'sealStamp': /* 封蝋のスタンプ：低いドン＋紙への当たり */
+            seTone(150, 58, 0.15, 'sine', 0.17);
+            seNoise(0.06, 0.085, 0, 750);
+            seTone(1150, 880, 0.03, 'triangle', 0.02, 0.012);
             break;
         }
       } catch (e) {}
@@ -21505,6 +21643,15 @@
       if (splashIntroTimer){ clearTimeout(splashIntroTimer); splashIntroTimer = null; }
       titleSplashEl.classList.remove('splash-intro');
       var reduce = splashReducedMotion();
+      /* 紙が飛ぶ演出：初回・通常モーション・素材が読める時だけ差し込む。
+         演出側が引き受けたら（再生開始／読み込み待ち）ここで終わる。
+         BGM は演出側でも一切触らない（「新たな大地」が流れ続ける） */
+      if (!reduce && !HEADLESS && !paperFxPlayed && paperFxTryStart()) return;
+      dismissSplashNormal(reduce);
+    }
+    /* 従来の遷移（閃光でメニューへ）。紙演出の素材が読めなかった場合の
+       フォールバックとしても使う */
+    function dismissSplashNormal(reduce){
       if (reduce){
         titleSplashEl.classList.remove('show');
         startOverlay.classList.add('show');
@@ -21529,6 +21676,239 @@
       titleSplashEl.addEventListener('click', dismissTitleSplash);
       titleSplashEl.addEventListener('keydown', function(ev){
         if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); dismissTitleSplash(); }
+      });
+    }
+    /* ============ 紙が飛ぶ演出（TAP TO START 後の遷移） ============
+       モック title-paper-effect-mock.html で承認済みの振付の本実装。
+       流れ：紙を読むクロエ（約1.15秒）→ 突風で画面が小さく揺れ、絵が
+       「手放し後」へ1フレームで差し替わる → 紙だけが裏返りながら上へ
+       飛ぶ（約1.15秒）→ 画面全体がぼけて白む（約0.5秒）→ 羊皮紙化した
+       メニュー（.start-box）が右から滑り込み（行き過ぎて戻る）、項目が
+       順に現れ、最後に封蝋が押される。そのまま紙メニューが通常の
+       タイトルメニューとして機能する（項目・ボタンは DOM のまま）。
+       素材は本番パス（title/…）を一次、assets/title/… を二次として
+       外部読み込みする（盤面アート等と同じ解決方式）。タップで即
+       スキップ可。同一セッションでは初回のみ（対戦からタイトルへ
+       戻っても再生しない）。HEADLESS／prefers-reduced-motion では
+       呼び出し側（dismissTitleSplash）が従来遷移へ落とす。 */
+    var PAPER_FX_FILES = {
+      hold: 'title/chloe-hold.webp',
+      free: 'title/chloe-free.webp',
+      sprite: 'title/parchment.png',
+      paper: 'title/menu-parchment.webp'
+    };
+    var paperFxState = { hold: null, free: null, sprite: null, paper: null };
+    var paperFxPlayed = false;
+    var paperFxPlaying = false;
+    var paperFxTimers = [];
+    var paperFxAnims = [];
+    var paperFxEl = document.getElementById('paperFx');
+    var paperFxScene = document.getElementById('paperFxScene');
+    var paperFxHoldImg = document.getElementById('paperFxHold');
+    var paperFxFreeImg = document.getElementById('paperFxFree');
+    var paperFxSpriteEl = document.getElementById('paperFxSprite');
+    var paperFxSpriteImg = document.getElementById('paperFxSpriteImg');
+    var paperFxWashEl = document.getElementById('paperFxWash');
+    function paperFxResolve(key, file, done){
+      var probe = new Image();
+      probe.onload = function(){ paperFxState[key] = probe.src; if (done) done(true); };
+      probe.onerror = function(){
+        if ((probe.getAttribute('src') || '') === file){ probe.src = 'assets/' + file; return; }
+        paperFxState[key] = false; if (done) done(false);
+      };
+      probe.src = file;
+    }
+    function paperFxPreload(){
+      if (HEADLESS) return;
+      paperFxResolve('hold', PAPER_FX_FILES.hold);
+      paperFxResolve('free', PAPER_FX_FILES.free);
+      paperFxResolve('sprite', PAPER_FX_FILES.sprite);
+      paperFxResolve('paper', PAPER_FX_FILES.paper, function(ok){
+        if (ok) document.documentElement.style.setProperty('--menu-paper-url', 'url("' + paperFxState.paper + '")');
+      });
+    }
+    paperFxPreload();
+    function paperFxLater(ms, fn){
+      var id = setTimeout(fn, ms);
+      paperFxTimers.push(id);
+      return id;
+    }
+    function paperFxAnim(el, frames, opts){
+      if (!el || !el.animate) return null;
+      var a = el.animate(frames, opts);
+      paperFxAnims.push(a);
+      return a;
+    }
+    /* 引き受け判定：素材（持つ絵／離す絵）が揃っていれば即再生、
+       読み込み中なら最大1.2秒だけスプラッシュのまま待つ。読めなければ
+       false を返し、呼び出し側が従来遷移へ落とす */
+    function paperFxTryStart(){
+      if (!paperFxEl) return false;
+      if (paperFxState.hold === false || paperFxState.free === false) return false;
+      if (paperFxState.hold && paperFxState.free){ playPaperFx(); return true; }
+      paperFxLater(1200, function(){
+        if (paperFxState.hold && paperFxState.free) playPaperFx();
+        else dismissSplashNormal(false);
+      });
+      return true;
+    }
+    function playPaperFx(){
+      paperFxPlayed = true;
+      paperFxPlaying = true;
+      /* スプラッシュは閃光遷移なしで即座に消し、シーンへ切り替える */
+      titleSplashEl.classList.remove('show');
+      titleSplashEl.classList.remove('leaving');
+      paperFxHoldImg.src = paperFxState.hold;
+      paperFxFreeImg.src = paperFxState.free;
+      if (paperFxState.sprite) paperFxSpriteImg.src = paperFxState.sprite;
+      paperFxHoldImg.style.display = 'block';
+      paperFxFreeImg.style.display = 'none';
+      paperFxSpriteEl.style.display = 'none';
+      paperFxScene.style.filter = 'none';
+      paperFxWashEl.style.opacity = '0';
+      paperFxEl.style.opacity = '';
+      paperFxEl.classList.add('show');
+      /* 1) 紙を読んでいる間（約1.1秒） */
+      paperFxLater(1150, function(){
+        /* 2) 突風：画面が小さく揺れる */
+        sePlay('gust');
+        paperFxAnim(paperFxScene, [
+          { transform: 'translate(0,0) rotate(0deg)' },
+          { transform: 'translate(-5px,1px) rotate(-.4deg)' },
+          { transform: 'translate(5px,-1px) rotate(.4deg)' },
+          { transform: 'translate(-3px,0) rotate(-.2deg)' },
+          { transform: 'translate(0,0) rotate(0deg)' }
+        ], { duration: 380, easing: 'ease-out' });
+      });
+      paperFxLater(1220, function(){
+        /* 3) 絵を「手放し後」へ1フレームで差し替え、紙だけが飛ぶ */
+        paperFxHoldImg.style.display = 'none';
+        paperFxFreeImg.style.display = 'block';
+        if (paperFxState.sprite){
+          paperFxSpriteEl.style.display = 'block';
+          paperFxAnim(paperFxSpriteEl, [
+            { transform: 'translate(0,0) rotate(-2deg)', opacity: 1 },
+            { transform: 'translate(26px,-70px) rotate(38deg)', opacity: 1, offset: .3 },
+            { transform: 'translate(105px,-250px) rotate(150deg)', opacity: 1, offset: .65 },
+            { transform: 'translate(215px,-560px) rotate(330deg)', opacity: .9 }
+          ], { duration: 1150, easing: 'cubic-bezier(.45,.02,.85,.45)', fill: 'forwards' });
+          paperFxAnim(paperFxSpriteImg, [
+            { transform: 'scaleY(1)' }, { transform: 'scaleY(.28)' }, { transform: 'scaleY(1)' },
+            { transform: 'scaleY(.3)' }, { transform: 'scaleY(1)' }, { transform: 'scaleY(.35)' },
+            { transform: 'scaleY(1)' }
+          ], { duration: 1150, easing: 'ease-in-out' });
+        }
+        sePlay('paperFly');
+      });
+      paperFxLater(2450, function(){
+        /* 4) ぼかし＋薄い白（約0.5秒） */
+        paperFxSpriteEl.style.display = 'none';
+        paperFxAnim(paperFxScene, [
+          { filter: 'blur(0px) brightness(1)' }, { filter: 'blur(13px) brightness(1.07)' }
+        ], { duration: 500, easing: 'ease-out', fill: 'forwards' });
+        paperFxAnim(paperFxWashEl, [
+          { opacity: 0 }, { opacity: .38 }
+        ], { duration: 500, fill: 'forwards' });
+      });
+      paperFxLater(2880, function(){
+        /* 5) 紙メニューが右から滑り込む（シーンは下で薄れて消える） */
+        paperMenuReveal();
+        paperFxAnim(paperFxEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 550, easing: 'ease-out', fill: 'forwards' });
+      });
+      paperFxLater(3440, function(){
+        paperFxEl.classList.remove('show');
+        /* 6) 項目が順にフェードイン */
+        startOverlay.classList.remove('paper-fx-live');
+        var n = paperMenuItemsCascade();
+        paperFxLater(n * 65 + 140, function(){
+          /* 7) 最後に封蝋が押される */
+          paperMenuSealStamp();
+          paperFxLater(260, paperFxFinish);
+        });
+      });
+    }
+    /* 紙メニューの出現：.start-box を羊皮紙化し、右から滑り込ませる
+       （少し行き過ぎて戻る紙の動き）。項目は .paper-fx-live で隠した
+      ままにし、カスケードの拍で順に現す。封蝋はスタンプの拍まで隠す */
+    function paperMenuReveal(){
+      var box = startOverlay.querySelector('.start-box');
+      var seal = document.getElementById('menuSeal');
+      startOverlay.classList.add('paper-menu');
+      startOverlay.classList.add('paper-fx-live');
+      startOverlay.classList.add('show');
+      startOverlay.scrollTop = 0;
+      startOverlay.style.overflowX = 'hidden'; /* 滑り込み中の横はみ出し対策（終了時に戻す） */
+      if (seal) seal.style.opacity = '0';
+      if (box){
+        paperFxAnim(box, [
+          { transform: 'translateX(calc(55vw + 60%)) rotate(9deg)' },
+          { transform: 'translateX(-14px) rotate(-1.6deg)', offset: .78 },
+          { transform: 'translateX(0px) rotate(-.6deg)' }
+        ], { duration: 700, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'backwards' });
+      }
+      sePlay('paperSlide');
+    }
+    function paperMenuItemsCascade(){
+      var box = startOverlay.querySelector('.start-box');
+      if (!box) return 0;
+      var items = [];
+      for (var i = 0; i < box.children.length; i++){
+        var el = box.children[i];
+        if (el.id === 'menuSeal' || el.hidden) continue;
+        if (el.style.display === 'none') continue;
+        items.push(el);
+      }
+      items.forEach(function(el, idx){
+        paperFxAnim(el, [
+          { opacity: 0, transform: 'translateY(7px)' },
+          { opacity: 1, transform: 'translateY(0px)' }
+        ], { duration: 260, delay: idx * 65, easing: 'ease-out', fill: 'backwards' });
+      });
+      return items.length;
+    }
+    function paperMenuSealStamp(){
+      var seal = document.getElementById('menuSeal');
+      if (seal){
+        seal.style.opacity = '';
+        paperFxAnim(seal, [
+          { opacity: 0, transform: 'scale(1.7) rotate(-8deg)' },
+          { opacity: 1, transform: 'scale(1) rotate(-8deg)' }
+        ], { duration: 200, easing: 'ease-in', fill: 'backwards' });
+      }
+      sePlay('sealStamp');
+    }
+    function paperFxFinish(){
+      paperFxPlaying = false;
+      paperFxTimers.forEach(function(id){ clearTimeout(id); });
+      paperFxTimers = [];
+      paperFxAnims = [];
+      startOverlay.style.overflowX = '';
+      startOverlay.classList.remove('paper-fx-live');
+      var seal = document.getElementById('menuSeal');
+      if (seal) seal.style.opacity = '';
+    }
+    /* タップで即スキップ：終端状態（紙メニューの通常表示）へ即断する */
+    function paperFxSkip(){
+      if (!paperFxPlaying) return;
+      paperFxTimers.forEach(function(id){ clearTimeout(id); });
+      paperFxTimers = [];
+      paperFxAnims.forEach(function(a){ try { a.cancel(); } catch (e) {} });
+      paperFxAnims = [];
+      paperFxEl.classList.remove('show');
+      startOverlay.classList.add('paper-menu');
+      startOverlay.classList.add('show');
+      startOverlay.scrollTop = 0;
+      paperFxFinish();
+    }
+    if (paperFxEl){
+      paperFxEl.addEventListener('click', paperFxSkip);
+      /* 滑り込み後は #startOverlay が前面に出るため、そちらのタップでも
+         終端状態へ即断する（ボタンの通常動作は妨げない） */
+      startOverlay.addEventListener('click', function(){
+        if (paperFxPlaying) paperFxSkip();
+      });
+      document.addEventListener('keydown', function(ev){
+        if (paperFxPlaying && (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Escape')) paperFxSkip();
       });
     }
     function showStart(){
