@@ -8232,12 +8232,13 @@
         finPDrawCrackH(N.fissure, G.fxW * 1.9, 7.7);
         N.fissure.rotation = 0; /* 縦飛行の接線は水平 */
       }
-      /* アギト：大顎の寸法と口の位置（中心＝口。顎素材は使わない）。
+      /* アギト：大顎の寸法と口の位置（中心＝縦の裂け目の中心。顎素材は
+         使わない）。裂け目は縦長なので顎全体も縦長（高さ＞幅）に取る。
          退場は「真上」：X は受け側中心のまま固定し、中心が画面上端の
          少し上（小さく溶けた残りが上端へ消える位置）までだけ上げる */
       if (G.id === '53ag'){
         var mawW = Math.round(Math.min(G.vw * 1.06, Math.max(G.fxW * 1.45, 340)));
-        var mawH = Math.round(mawW * 0.80);
+        var mawH = Math.round(mawW * 1.15);
         R.mawW = mawW;
         R.mawH = mawH;
         R.mawStartOff = -(G.cy + mawH * 0.62 + 40);
@@ -9156,22 +9157,25 @@
        不定形の大顎（ユーの手書き指示：左上＝上から開く大顎／下＝
        ガブッと閉じる／右上＝画面上部で小さく溶けていく途中）。
        開閉と形は実機フィードバックで次の形に統一した：
-       ・口は横向きの大顎。支点は上側（画面上部起点）で、上顎と上の
-         牙列は固定されたまま、下顎だけが下へ下がって開く。開き幅は
-         中央で絞らず両端ほど大きく、口角がガバっと開く（旧方式の
-         「縦の裂け目が中央だけ膨らむレンズ形」と「両側対称の開閉」
-         はどちらも廃止）。牙は上下で半拍ずらしてあり、閉じると
-         ワニの歯のように噛み合って横のギザギザの縫い目になる
-       ・輪郭は丸い霧の塊ではなく、口角と顎先の尖ったシャープな顎。
-         縁のぼかしは細く、面は濃く固く保つ。質感は霧・雲ではなく
-         泥：流れは鈍く縦に滲み、塊の濃淡で質感を作り、下顎の下端
-         からは泥の滴が垂れ、開く途中は唇のあいだに泥の糸が伸びる
+       ・口は「縦の裂け目」。画面で言うと顎は左右に開く：左顎と右顎が
+         画面の左右へ分かれて開き、閉じる時は左右から中央へ寄って
+         ガブッと噛み合う。裂け目は真っ黒な喉で、喉の輪郭は縦長
+         （横長にはしない）。上下に開く横向きの口（上顎固定・下顎が
+         下へ開く形）と、楕円の輪＋内周の牙（ワーム型）はどちらも廃止
+       ・開き幅は裂け目の中央だけが膨らむ形にせず、上下の端（顎の
+         付け根側）ほど大きく開き、口角がガバっと開く。牙は左右で
+         半拍ずらしてあり、閉じるとワニの歯のように噛み合って
+         縦のギザギザの縫い目になる
+       ・輪郭は丸い塊ではなく、上下の顎先が尖ったシャープな顎。
+         質感は泥ではなく靄（もや）：面は黒紫の濃い闇を保ちつつ、
+         縁は霧のように滲み、流れテクスチャの流動（ノイズの流れと
+         縁の蠢き）を大幅に強める。牙だけは白く硬い芯のままにする
        ・面は黒紫（黒基調に紫を含む色味）：色ランプは固定し、
          流れるのはノイズだけ
-       ・uOpen で開閉（0＝噛み合った縫い目、1＝下顎が下がり切った
-         大顎）、uMelt で下顎側から泥のように崩れるディゾルブ。
-         退場の縮小・真上への上昇は呼び出し側（メッシュの位置・
-         スケール）が担う
+       ・uOpen で開閉（0＝噛み合った縦の縫い目、1＝左右に開き切った
+         大顎）、uMelt で泥のように崩れるディゾルブ（退場の表現は
+         従来どおり）。退場の縮小・真上への上昇は呼び出し側
+         （メッシュの位置・スケール）が担う
        ・合成は通常ブレンド（暗い面が背景を遮る必要があるため） */
     var FINP_MAW_VS = [
       'attribute vec2 aVertexPosition;',
@@ -9194,81 +9198,80 @@
       '  float ax = abs(c.x);',
       '  float xw = 0.93;',
       '  float xn = clamp(ax / xw, 0.0, 1.0);',
-      /* 泥のノイズ：塊として読めるよう対比を強めた流れノイズ。流れは鈍く、下方向への滲みが主体（霧の柔らかさは出さない） */
-      '  float n1 = texture2D(uTex, vec2(c.x * 0.17 + 0.5 + uFlow * 0.010, c.y * 0.30 + 0.5 - uFlow * 0.030)).a;',
-      '  float n2 = texture2D(uTex, vec2(c.x * 0.31 + 0.5 - uFlow * 0.007, c.y * 0.34 + 0.5 + 0.37 - uFlow * 0.018)).a;',
-      '  float noise = clamp(n1 * 0.60 + n2 * 0.55, 0.0, 1.0);',
-      '  float clot = smoothstep(0.26, 0.80, noise);',
-      '  float wobL = (clot - 0.5) * 0.055 + sin(c.x * 8.0 + uFlow * 0.22) * 0.008;',
-      /* 上顎（固定：uOpen に依存しない。支点は上側＝画面上部起点） */
-      '  float topE = -0.88 + 0.22 * pow(xn, 2.6) + sin(c.x * 15.0 + 1.7) * 0.012 + wobL * 0.8;',
-      '  float lipT = -0.04 - 0.11 * xn * xn + (clot - 0.5) * 0.030;',
-      /* 下顎：開くほど真下へ下がる。開き幅は中央で絞らず両端ほど大きい（口角がガバっと開く） */
-      '  float gapP = 0.70 + 0.45 * pow(clamp(ax / 0.90, 0.0, 1.0), 2.0);',
-      '  float lipB = lipT + 0.028 + uOpen * 0.55 * gapP + (clot - 0.5) * 0.020;',
-      '  float chin = lipB + 0.46 * (1.0 - 0.50 * xn * xn) + (clot - 0.5) * 0.050;',
-      '  if (c.y > chin + 0.34 || ax > xw + 0.10){ gl_FragColor = vec4(0.0); return; }',
-      /* 横の輪郭：上端・口元・顎下で絞り、口角と顎先を尖らせる（丸い塊にしない） */
-      '  float ext = xw - 0.10 * (1.0 - smoothstep(-0.95, -0.58, c.y)) - 0.09 * smoothstep(-0.34, -0.04, c.y) * (1.0 - smoothstep(0.10, 0.42, c.y)) - 0.16 * smoothstep(0.02, 0.60, c.y);',
-      '  float bw = 0.020;',
-      '  float inX = smoothstep(ext + bw, ext - bw, ax);',
-      '  float up = smoothstep(topE - bw, topE + bw, c.y) * (1.0 - smoothstep(lipT - bw, lipT + bw, c.y));',
-      '  float lo = smoothstep(lipB - bw, lipB + bw, c.y) * (1.0 - smoothstep(chin - bw, chin + bw, c.y));',
-      '  float body = inX * max(up, lo);',
-      /* 泥の滴：下顎の下端から垂れる（溶け際は伸びる） */
-      '  float colW = 0.145;',
-      '  float ci = floor((c.x + 1.0) / colW);',
-      '  float cf = fract((c.x + 1.0) / colW);',
-      '  float dh1 = mawHash(ci * 1.37 + 4.2);',
-      '  float dOn = step(0.52, dh1);',
-      '  float dLen = dOn * (0.05 + 0.14 * dh1) * (0.78 + 0.22 * sin(uFlow * 0.7 + ci * 2.1)) + uMelt * dOn * 0.10;',
-      '  float dHW = 0.015 + 0.013 * mawHash(ci * 2.93 + 1.7);',
-      '  float drip = dOn * smoothstep(dHW + 0.010, dHW - 0.010, abs(cf - 0.5) * colW) * smoothstep(chin - 0.01, chin + 0.02, c.y) * (1.0 - smoothstep(chin + dLen - 0.02, chin + dLen + 0.02, c.y)) * smoothstep(xw - 0.02, xw - 0.30, ax);',
-      '  body = clamp(body + drip, 0.0, 1.0);',
-      /* 喉：唇のあいだの真っ黒。口角には泥の張り（web）が残る */
-      '  float web = smoothstep(0.74, 0.90, ax) * step(0.52, clot);',
-      '  float throatM = inX * smoothstep(lipT - bw, lipT + bw, c.y) * (1.0 - smoothstep(lipB - bw, lipB + bw, c.y)) * (1.0 - web);',
-      /* 泥の糸：開く途中に唇のあいだへ伸び、開き切る／閉じると切れる */
-      '  float sColW = 0.21;',
-      '  float sci = floor((c.x + 1.0) / sColW);',
-      '  float scf = fract((c.x + 1.0) / sColW);',
-      '  float sOn = step(0.60, mawHash(sci * 3.17 + 8.4));',
-      '  float strand = sOn * smoothstep(0.020, 0.006, abs(scf - 0.5) * sColW) * step(lipT, c.y) * step(c.y, lipB) * sin(3.14159 * clamp(uOpen, 0.0, 1.0)) * step(0.35, clot);',
+      /* 靄のノイズ：流れテクスチャの流動を大幅に強める。複数層の
+         ノイズを速く流し、縁の蠢き（surge 由来のうねり）も大きく取る。
+         霧・雲の柔らかさではなく、濃い闇が靄として蠢く質感にする */
+      '  float n1 = texture2D(uTex, vec2(c.x * 0.20 + 0.5 + uFlow * 0.060, c.y * 0.16 + 0.5 - uFlow * 0.115)).a;',
+      '  float n2 = texture2D(uTex, vec2(c.x * 0.34 + 0.5 - uFlow * 0.048, c.y * 0.28 + 0.5 + 0.37 - uFlow * 0.175)).a;',
+      '  float n3 = texture2D(uTex, vec2(c.x * 0.58 + 0.5 + uFlow * 0.095, c.y * 0.52 + 0.5 - uFlow * 0.240)).a;',
+      '  float noise = clamp(n1 * 0.50 + n2 * 0.42 + n3 * 0.36, 0.0, 1.0);',
+      '  float clot = smoothstep(0.22, 0.82, noise);',
+      '  float surge = noise - 0.5;',
+      '  float wobE = surge * 0.17 + sin(c.y * 9.0 - uFlow * 2.7) * 0.024 + sin(c.y * 23.0 - uFlow * 4.4) * 0.011;',
+      /* 縦の裂け目：顎は左右に開く。yn は裂け目の縦位置（0＝中央、1＝上下の端） */
+      '  float yw = 0.94;',
+      '  float yn = clamp(abs(c.y) / yw, 0.0, 1.0);',
+      '  float endY = 0.90 + wobE * 0.45;',
+      '  float bw = 0.055;',
+      '  float inY = (1.0 - smoothstep(endY - bw, endY + bw, abs(c.y)));',
+      /* 裂け目の半幅：開くほど左右へ広がる。中央だけで膨らませず、上下の端ほど大きく開く（口角がガバっと開く） */
+      '  float gapP = 0.60 + 0.55 * pow(yn, 1.7);',
+      '  float gap = 0.015 + uOpen * 0.34 * gapP + surge * 0.012 * uOpen;',
+      /* 顎の厚み：縦中央で厚く、上下の端へ向けて絞って顎先を尖らせる（丸い塊にしない） */
+      '  float thick = max(0.46 * (1.0 - 0.55 * pow(yn, 2.2)) + wobE, 0.02);',
+      '  float outerH = gap + thick;',
+      '  if (abs(c.y) > yw + 0.12 || ax > outerH + 0.14){ gl_FragColor = vec4(0.0); return; }',
+      '  float body = smoothstep(gap - bw, gap + bw, ax) * (1.0 - smoothstep(outerH - bw, outerH + bw, ax)) * inY;',
+      /* 靄の滲み：面の内側でも密度が流れで大きく揺れ、縁が蠢いて見える */
+      '  body *= 0.62 + 0.55 * clot;',
+      /* 喉：裂け目の内側の真っ黒。上下の端には靄の張り（web）が残る */
+      '  float web = smoothstep(0.70, 0.90, yn) * step(0.45, clot);',
+      '  float throatM = (1.0 - smoothstep(gap - bw, gap + bw, ax)) * inY * (1.0 - web);',
+      /* 靄の糸：開く途中に左右の唇のあいだへ細い糸が伸び、開き切る／閉じると切れる */
+      '  float sBandW = 0.21;',
+      '  float sbi = floor((c.y + 1.0) / sBandW);',
+      '  float sbf = fract((c.y + 1.0) / sBandW);',
+      '  float sOn = step(0.60, mawHash(sbi * 3.17 + 8.4));',
+      '  float strand = sOn * smoothstep(0.020, 0.006, abs(sbf - 0.5) * sBandW) * (1.0 - smoothstep(gap - 0.01, gap + 0.01, ax)) * sin(3.14159 * clamp(uOpen, 0.0, 1.0)) * step(0.35, clot);',
       '  body = clamp(body + strand * 0.9, 0.0, 1.0);',
       '  throatM *= 1.0 - strand;',
-      /* 牙：上は lipT から下へ、下は lipB から上へ生える白く硬い牙。上下で半拍ずらし、閉じるとワニの歯のように噛み合う */
+      /* 牙：左の唇からは右へ、右の唇からは左へ生える白く硬い牙。
+         左右で半拍（縦に半セグメント）ずらし、閉じるとワニの歯の
+         ように噛み合って縦のギザギザの縫い目になる */
       '  float tooth = 0.0;',
       '  float toothU = 0.0;',
-      '  float segW = 1.70 / 9.0;',
+      '  float segH = 1.70 / 9.0;',
       '  for (int s = 0; s < 2; s++){',
-      '    float isUp = (s == 0) ? 1.0 : 0.0;',
-      '    float root = (s == 0) ? lipT : lipB;',
-      '    float ph = (c.x + 0.85) / segW + ((s == 0) ? 0.0 : 0.5);',
+      '    float isL = (s == 0) ? 1.0 : 0.0;',
+      '    float root = (s == 0) ? -gap : gap;',
+      '    float ph = (c.y + 0.85) / segH + ((s == 0) ? 0.0 : 0.5);',
       '    float seg = floor(ph);',
-      '    float fx = abs(fract(ph) - 0.5) * segW;',
+      '    float fy = abs(fract(ph) - 0.5) * segH;',
       '    float h1 = mawHash(seg * 3.71 + float(s) * 17.31);',
       '    float h2 = mawHash(seg * 7.13 + float(s) * 5.77);',
       '    float h3 = mawHash(seg * 9.37 + float(s) * 3.19);',
-      '    float tLen = mix(0.10 + 0.12 * h1, 0.13 + 0.17 * h1, isUp) * (0.70 + 0.30 * (1.0 - xn));',
+      '    float tLen = (0.14 + 0.16 * h1) * (0.72 + 0.28 * (1.0 - yn));',
       '    float dir = (s == 0) ? 1.0 : -1.0;',
-      '    float tu = (c.y - root) * dir / max(tLen, 0.001);',
+      '    float tu = (c.x - root) * dir / max(tLen, 0.001);',
       '    float lean = (h3 - 0.5) * 0.05 * tu;',
-      '    float hw = segW * (0.20 + 0.11 * h2) * pow(max(1.0 - tu, 0.0), 1.15);',
-      '    float tm = step(0.0, tu) * step(tu, 1.0) * smoothstep(hw + 0.006, hw - 0.006, abs(fx + lean)) * inX;',
+      '    float hw = segH * (0.20 + 0.11 * h2) * pow(max(1.0 - tu, 0.0), 1.15);',
+      '    float tm = step(0.0, tu) * step(tu, 1.0) * smoothstep(hw + 0.006, hw - 0.006, abs(fy + lean)) * inY;',
       '    if (tm > tooth){ tooth = tm; toothU = tu; }',
       '  }',
-      /* 色：黒紫の濃い面。霧状の縁光は排し、塊の濃淡と唇際の鈍い紫だけを残す */
+      /* 色：黒紫の濃い靄。霧状の縁光は排し、流れの速い紫のうねりと
+         唇際の鈍い紫だけを残す */
       '  vec3 col = mix(vec3(0.010, 0.005, 0.024), vec3(0.052, 0.024, 0.115), clot);',
-      '  col = mix(col, vec3(0.085, 0.040, 0.190), smoothstep(0.35, 0.95, c.y - topE) * 0.35);',
+      '  col = mix(col, vec3(0.085, 0.040, 0.190), smoothstep(0.35, 0.95, n3) * 0.35);',
       '  col *= 1.0 - 0.38 * smoothstep(0.62, 0.95, noise);',
-      '  float lipHi = (smoothstep(lipT - 0.060, lipT - 0.010, c.y) * (1.0 - smoothstep(lipT - bw, lipT + bw, c.y)) * up + (1.0 - smoothstep(lipB + 0.010, lipB + 0.060, c.y)) * smoothstep(lipB - bw, lipB + bw, c.y) * lo) * inX;',
+      '  col += vec3(0.30, 0.16, 0.72) * smoothstep(0.58, 0.97, n2) * 0.16;',
+      '  float lipHi = body * (1.0 - smoothstep(gap + 0.01, gap + 0.10, ax));',
       '  col += vec3(0.30, 0.16, 0.72) * clamp(lipHi, 0.0, 1.0) * 0.22;',
       '  col = mix(col, vec3(0.0), throatM * (1.0 - tooth));',
       /* 牙：白く硬い芯。付け根だけ淡紫の影で面へつなぐ */
       '  vec3 toothCol = mix(vec3(0.78, 0.72, 0.93), vec3(0.985, 0.975, 1.0), toothU);',
       '  col = mix(col, toothCol, tooth);',
-      /* 溶け：下顎側から先に崩れる。牙は少し遅れて崩れる */
-      '  float keep = noise * 0.55 + clamp((lipT - c.y) * 0.45 + 0.55, 0.0, 1.0) * 0.50 + tooth * 0.07;',
+      /* 溶け：ノイズの流れに乗って全体が靄のように崩れる。牙は少し遅れて崩れる */
+      '  float keep = noise * 0.72 + (1.0 - yn) * 0.18 + tooth * 0.07;',
       '  float dis = mix(1.0, smoothstep(uMelt * 1.12, uMelt * 1.12 + 0.22, keep + 0.10), step(0.001, uMelt));',
       '  float a = uAlpha * clamp(body + throatM, 0.0, 1.0) * dis;',
       '  gl_FragColor = vec4(col * a, a);',
@@ -9291,57 +9294,52 @@
     }
     /* 大顎の Graphics フォールバック（シェーダが作れない環境用）。
        ローカル座標：中心が原点、W×H が顎全体の寸法、y は下向き。
-       シェーダ版と同じ読み（黒紫の泥の面＋上顎固定・下顎が下へ開く
-       横向きの大顎＋真っ黒な喉＋白い牙）で描く */
+       シェーダ版と同じ読み（黒紫の靄の面＋縦の裂け目＋左右に開く
+       大顎＋真っ黒な喉＋白い牙）で描く */
     function finPDrawMawG(g, W, H, open, melt, tF, alpha){
       g.clear();
       var t = tF * 0.001;
-      var xw = 0.93;
-      function wob(x, seed){ return 0.030 * Math.sin(x * 8 + t * 0.22 + seed) + 0.020 * Math.sin(x * 13.7 - t * 0.30 + seed * 2.0); }
+      var yw = 0.94;
+      function wob(y, seed){ return 0.045 * Math.sin(y * 9 - t * 2.7 + seed) + 0.022 * Math.sin(y * 17.3 - t * 4.1 + seed * 2.0); }
       function X(cx){ return cx * W * 0.5; }
       function Y(cy){ return cy * H * 0.5; }
-      function lipT(x){ var xn = Math.min(1, Math.abs(x) / xw); return -0.04 - 0.11 * xn * xn + wob(x, 1.3) * 0.6; }
-      function lipB(x){ var xn = Math.min(1, Math.abs(x) / 0.90); return lipT(x) + 0.028 + open * 0.55 * (0.70 + 0.45 * xn * xn) + wob(x, 4.1) * 0.4; }
-      function chinAt(x){ var xn = Math.min(1, Math.abs(x) / xw); return lipB(x) + 0.46 * (1 - 0.50 * xn * xn) + wob(x, 7.7) * 0.7; }
-      function topAt(x){ var xn = Math.min(1, Math.abs(x) / xw); return -0.88 + 0.22 * Math.pow(xn, 2.6) + wob(x, 2.9) * 0.8; }
-      var i, x;
-      /* 上顎（固定）：上面→右の口角→唇ラインを戻る輪郭 */
-      var up = [];
-      for (i = 0; i <= 24; i++){ x = -0.86 + 1.72 * i / 24; up.push([X(x), Y(topAt(x))]); }
-      up.push([X(0.87), Y(lipT(0.87))]);
-      for (i = 24; i >= 0; i--){ x = -0.86 + 1.72 * i / 24; up.push([X(x), Y(lipT(x))]); }
-      finPDrawPoly(g, up, 0x0a0516, 0.98 * alpha);
-      /* 下顎：唇ライン→顎下（泥の滴のトゲ入り）→左の口角へ戻る輪郭。
-         open で唇ラインごと下へ下がる（上顎は動かない） */
-      var lo = [];
-      for (i = 0; i <= 24; i++){ x = -0.84 + 1.68 * i / 24; lo.push([X(x), Y(lipB(x))]); }
-      for (i = 24; i >= 0; i--){
-        x = -0.80 + 1.60 * i / 24;
-        lo.push([X(x), Y(chinAt(x))]);
-        var ci = Math.floor((x + 1.0) / 0.145), dh = fxFinRand(ci * 1.37 + 4.2);
-        if (dh > 0.52 && i > 1 && i < 23) lo.push([X(x), Y(chinAt(x) + (0.05 + 0.14 * dh) + melt * 0.10)]);
-      }
-      finPDrawPoly(g, lo, 0x0a0516, 0.98 * alpha);
-      /* 喉：唇のあいだの真っ黒 */
+      function gapAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return 0.015 + open * 0.34 * (0.60 + 0.55 * Math.pow(yn, 1.7)); }
+      function lipL(y){ return -gapAt(y) + wob(y, 1.3) * 0.35; }
+      function lipR(y){ return gapAt(y) + wob(y, 4.1) * 0.35; }
+      function thickAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return Math.max(0.05, 0.46 * (1 - 0.55 * Math.pow(yn, 2.2)) + wob(y, 7.7) * 0.5); }
+      function outL(y){ return lipL(y) - thickAt(y); }
+      function outR(y){ return lipR(y) + thickAt(y); }
+      var i, y;
+      /* 左顎：唇ライン（上端→下端）→外側ラインを戻る輪郭 */
+      var lj = [];
+      for (i = 0; i <= 24; i++){ y = -0.88 + 1.76 * i / 24; lj.push([X(lipL(y)), Y(y)]); }
+      for (i = 24; i >= 0; i--){ y = -0.88 + 1.76 * i / 24; lj.push([X(outL(y)), Y(y)]); }
+      finPDrawPoly(g, lj, 0x0a0516, 0.92 * alpha);
+      /* 右顎：唇ライン（上端→下端）→外側ラインを戻る輪郭 */
+      var rj = [];
+      for (i = 0; i <= 24; i++){ y = -0.88 + 1.76 * i / 24; rj.push([X(lipR(y)), Y(y)]); }
+      for (i = 24; i >= 0; i--){ y = -0.88 + 1.76 * i / 24; rj.push([X(outR(y)), Y(y)]); }
+      finPDrawPoly(g, rj, 0x0a0516, 0.92 * alpha);
+      /* 喉：左右の唇のあいだの真っ黒 */
       var th = [];
-      for (i = 0; i <= 24; i++){ x = -0.84 + 1.68 * i / 24; th.push([X(x), Y(lipT(x))]); }
-      for (i = 24; i >= 0; i--){ x = -0.84 + 1.68 * i / 24; th.push([X(x), Y(lipB(x))]); }
-      finPDrawPoly(g, th, 0x000000, 0.98 * alpha);
-      /* 牙：上は唇から下へ、下は唇から上へ。上下で半拍ずらし、
+      for (i = 0; i <= 24; i++){ y = -0.86 + 1.72 * i / 24; th.push([X(lipL(y)), Y(y)]); }
+      for (i = 24; i >= 0; i--){ y = -0.86 + 1.72 * i / 24; th.push([X(lipR(y)), Y(y)]); }
+      finPDrawPoly(g, th, 0x000000, 0.96 * alpha);
+      /* 牙：左は唇から右へ、右は唇から左へ。左右で半拍ずらし、
          閉じるとワニの歯のように噛み合う */
-      var segN = 9, segW = 1.70 / segN;
+      var segN = 9, segH = 1.70 / segN;
       for (var s2 = 0; s2 < 2; s2++){
         for (var k = 0; k < segN; k++){
-          var cxT = -0.85 + segW * (k + (s2 === 0 ? 0 : 0.5) + 0.5);
-          if (cxT < -0.85 || cxT > 0.85) continue;
+          var cyT = -0.85 + segH * (k + (s2 === 0 ? 0 : 0.5) + 0.5);
+          if (cyT < -0.87 || cyT > 0.87) continue;
           var h1 = fxFinRand(k * 3.71 + s2 * 17.31 + 0.37);
           var h2 = fxFinRand(k * 7.13 + s2 * 5.77 + 0.91);
-          var xn2 = Math.min(1, Math.abs(cxT) / xw);
-          var tLen = (s2 === 0 ? 0.13 + 0.17 * h1 : 0.10 + 0.12 * h1) * (0.70 + 0.30 * (1 - xn2));
-          var rootY = s2 === 0 ? lipT(cxT) : lipB(cxT);
-          var tipY = s2 === 0 ? rootY + tLen : rootY - tLen;
-          var bwT = segW * (0.20 + 0.11 * h2);
-          finPDrawPoly(g, [[X(cxT - bwT), Y(rootY)], [X(cxT + bwT), Y(rootY)], [X(cxT), Y(tipY)]], 0xf4f2ff, 0.95 * alpha);
+          var yn2 = Math.min(1, Math.abs(cyT) / yw);
+          var tLen = (0.14 + 0.16 * h1) * (0.72 + 0.28 * (1 - yn2));
+          var rootX = s2 === 0 ? lipL(cyT) : lipR(cyT);
+          var tipX = s2 === 0 ? rootX + tLen : rootX - tLen;
+          var bwT = segH * (0.20 + 0.11 * h2);
+          finPDrawPoly(g, [[X(rootX), Y(cyT - bwT)], [X(rootX), Y(cyT + bwT)], [X(tipX), Y(cyT)]], 0xf4f2ff, 0.95 * alpha);
         }
       }
     }
@@ -10958,9 +10956,9 @@
         }
       } else if (id === '53ag'){
         /* 黒のアギト：真上へ飛ぶ → 不定形の大顎（闇に歯が生えた口）が
-           真上から降り、上顎を固定したまま下顎が下へガバっと開いて
-           飲み込み、真上へ小さく溶けて消える（スローなし。顎素材は
-           使わない流れテクスチャ方式） */
+           真上から降り、縦の裂け目が左右へガバっと開いて飲み込み、
+           左右から噛み合って閉じ、真上へ小さく溶けて消える
+           （スローなし。顎素材は使わない流れテクスチャ方式） */
         finPOnce(R, 'agUp', tS, 470, function(){
           R.agFx0 = tFs;
           finPSpawnDust(R, G.ax, G.feetY, true, 0xbfb0d4);
@@ -10979,11 +10977,11 @@
         finPOnce(R, 'mawIn', tS, 1120, function(){ R.mawFx0 = tFs; });
         if (R.mawFx0 != null){
           /* 大顎の振付（手書き指示の読み順：左上→下→右上）：
-             1120〜1660 真上の画面外から降りながら、下顎だけが下へ
-             下がって口が開く（支点は上側：上顎は固定。開き幅は両端
-             ほど大きく、口角がガバっと開く）
-             1700（破壊拍） 下顎が跳ね上がってガブッと閉じる
-             （約130ms）＋縦の震え
+             1120〜1660 真上の画面外から降りながら、縦の裂け目が
+             左右へ開く（左顎／右顎が左右へ分かれる。開き幅は裂け目
+             の上下の端ほど大きく、口角がガバっと開く）
+             1700（破壊拍） 左右の顎が中央へ寄ってガブッと閉じる
+             （約130ms）＋横の震え
              〜2140 閉じたまま保持（受け側は口の中へ吸い込まれて消える）
              2140〜2470 真上へだけ上昇し、小さくなりながら泥のように
              溶けて消える（斜め移動はしない。X は受け側中心で固定） */
@@ -10993,13 +10991,13 @@
           var mawScale = 0.55 + 0.45 * me; /* 形になりながら大きくなる */
           var mawOpen = mp;
           var mawMelt = 0;
-          var mawJitY = 0;
+          var mawJitX = 0;
           if (tS >= R.destroyMs){
             var bp = Math.min(1, (tS - R.destroyMs) / 130);
             mawOpen = 1 - bp;
             if (tS < R.destroyMs + 460){
               var bpp = (tS - R.destroyMs) / 460;
-              mawJitY = Math.sin(bpp * Math.PI * 5) * (1 - bpp) * 6;
+              mawJitX = Math.sin(bpp * Math.PI * 5) * (1 - bpp) * 6;
             }
           }
           var mawDone = false;
@@ -11021,7 +11019,7 @@
           if (N.mawMesh && N.mawMat){
             N.mawMesh.visible = !mawDone;
             N.mawG.visible = false;
-            N.mawMesh.position.set(G.cx, mawY + mawJitY);
+            N.mawMesh.position.set(G.cx + mawJitX, mawY);
             N.mawMesh.scale.set(R.mawW * 0.5 * mawScale, R.mawH * 0.5 * mawScale);
             N.mawMat.uniforms.uFlow = tFs / 1000;
             N.mawMat.uniforms.uOpen = mawOpen;
@@ -11030,7 +11028,7 @@
             N.mawMesh.alpha = 1;
           } else {
             N.mawG.visible = !mawDone;
-            N.mawG.position.set(G.cx, mawY + mawJitY);
+            N.mawG.position.set(G.cx + mawJitX, mawY);
             N.mawG.scale.set(mawScale);
             finPDrawMawG(N.mawG, R.mawW, R.mawH, mawOpen, mawMelt, tFs, mawAlpha * (1 - mawMelt * 0.3));
           }
@@ -11382,10 +11380,11 @@
           }
           if (ex >= 1) N.vicC.visible = false;
         } else if (R.breakStyle === 'suck'){
+          /* アギト：縦の裂け目へ横に潰されながら吸い込まれる */
           var su = FINP_EZ.easeIn(finPProg(bl, 0, 520));
-          N.vicC.scale.set(1 - 0.9 * su);
-          N.vicC.position.y = G.cy - 30 * su;
-          N.vicC.rotation = -6 * su * Math.PI / 180;
+          N.vicC.scale.set(1 - 0.94 * su, 1 - 0.20 * su);
+          N.vicC.position.y = G.cy;
+          N.vicC.rotation = -3 * su * Math.PI / 180;
           N.vicC.alpha = 1 - su;
         }
       }
@@ -12770,9 +12769,9 @@
       } else if (id === '53ag'){
         /* 黒のアギト：SDが真上へ飛んで画面外に消え、一拍置いて不定形の
            大顎（闇に歯が生えた口。顎素材は廃止し手続き描画へ作り替え）が
-           真上の画面外から降り、上顎を固定したまま下顎が下へガバっと
-           開いてパネルを飲み込み、真上へ小さく溶けて消える
-           （間・総尺・SEは従来どおり） */
+           真上の画面外から降り、縦の裂け目が左右へガバっと開いて
+           パネルを飲み込み、左右から噛み合って閉じ、真上へ小さく
+           溶けて消える（間・総尺・SEは従来どおり） */
         later(function(){
           var up = feetY + sdH + 90;
           fxFinAnimate(sd, [
@@ -12797,13 +12796,14 @@
             { transform: 'translate(2.5px,-1px)' }, { transform: 'translate(0px,0px)' }
           ], { duration: 300, iterations: 2 });
           /* 大顎は素材絵ではなく Canvas の手続き描画（新方式のシェーダ面と
-             同じ読み：黒紫の泥の面＋上顎固定・下顎が下へ開く横向きの
-             大顎＋真っ黒な喉＋白く硬い牙）。
-             振付：真上の画面外から降りながら下顎が下へ開く（540ms）→
-             破壊拍で下顎が跳ね上がってガブッと閉じる → 真上へだけ上昇し、
-             小さくなりながら泥のように溶けて消える（斜め移動はしない） */
+             同じ読み：黒紫の靄の面＋縦の裂け目＋左右に開く大顎＋
+             真っ黒な喉＋白く硬い牙）。
+             振付：真上の画面外から降りながら裂け目が左右へ開く（540ms）→
+             破壊拍で左右の顎が中央へ寄ってガブッと閉じる → 真上へだけ
+             上昇し、小さくなりながら泥のように溶けて消える
+             （斜め移動はしない） */
           var mawW = Math.round(Math.min(window.innerWidth * 1.06, Math.max(fxW * 1.45, 340)));
-          var mawH = Math.round(mawW * 0.80);
+          var mawH = Math.round(mawW * 1.15);
           var mawCv = sdFinNode('canvas', 'fx-sd-char');
           var MDPR = Math.min(2, window.devicePixelRatio || 1);
           mawCv.width = Math.round(mawW * MDPR); mawCv.height = Math.round(mawH * MDPR);
@@ -12819,63 +12819,58 @@
             mctx.clearRect(0, 0, mawW, mawH);
             mctx.globalAlpha = alpha * (1 - melt * 0.30);
             var cx0 = mawW / 2, cy0 = mawH / 2;
-            var xw = 0.93;
-            function wob(x, seed){ return 0.030 * Math.sin(x * 8 + t * 0.22 + seed) + 0.020 * Math.sin(x * 13.7 - t * 0.30 + seed * 2.0); }
+            var yw = 0.94;
+            function wob(y, seed){ return 0.045 * Math.sin(y * 9 - t * 2.7 + seed) + 0.022 * Math.sin(y * 17.3 - t * 4.1 + seed * 2.0); }
             function X(cx){ return cx0 + cx * mawW * 0.5; }
             function Y(cy){ return cy0 + cy * mawH * 0.5; }
-            function lipT(x){ var xn = Math.min(1, Math.abs(x) / xw); return -0.04 - 0.11 * xn * xn + wob(x, 1.3) * 0.6; }
-            function lipB(x){ var xn = Math.min(1, Math.abs(x) / 0.90); return lipT(x) + 0.028 + open * 0.55 * (0.70 + 0.45 * xn * xn) + wob(x, 4.1) * 0.4; }
-            function chinAt(x){ var xn = Math.min(1, Math.abs(x) / xw); return lipB(x) + 0.46 * (1 - 0.50 * xn * xn) + wob(x, 7.7) * 0.7; }
-            function topAt(x){ var xn = Math.min(1, Math.abs(x) / xw); return -0.88 + 0.22 * Math.pow(xn, 2.6) + wob(x, 2.9) * 0.8; }
+            function gapAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return 0.015 + open * 0.34 * (0.60 + 0.55 * Math.pow(yn, 1.7)); }
+            function lipL(y){ return -gapAt(y) + wob(y, 1.3) * 0.35; }
+            function lipR(y){ return gapAt(y) + wob(y, 4.1) * 0.35; }
+            function thickAt(y){ var yn = Math.min(1, Math.abs(y) / yw); return Math.max(0.05, 0.46 * (1 - 0.55 * Math.pow(yn, 2.2)) + wob(y, 7.7) * 0.5); }
+            function outL(y){ return lipL(y) - thickAt(y); }
+            function outR(y){ return lipR(y) + thickAt(y); }
             function pathFrom(pts){ mctx.beginPath(); mctx.moveTo(pts[0][0], pts[0][1]); for (var j = 1; j < pts.length; j++) mctx.lineTo(pts[j][0], pts[j][1]); mctx.closePath(); }
-            var i, x;
-            var grad = mctx.createLinearGradient(0, Y(-0.95), 0, Y(0.75));
-            grad.addColorStop(0, '#120826'); grad.addColorStop(0.5, '#0a0516'); grad.addColorStop(1, '#05030a');
-            /* 上顎（固定）：上面→右の口角→唇ラインを戻る輪郭 */
-            var up = [];
-            for (i = 0; i <= 24; i++){ x = -0.86 + 1.72 * i / 24; up.push([X(x), Y(topAt(x))]); }
-            up.push([X(0.87), Y(lipT(0.87))]);
-            for (i = 24; i >= 0; i--){ x = -0.86 + 1.72 * i / 24; up.push([X(x), Y(lipT(x))]); }
-            pathFrom(up); mctx.fillStyle = grad; mctx.fill();
-            /* 下顎：唇ライン→顎下（泥の滴のトゲ入り）→左の口角へ戻る輪郭。
-               open で唇ラインごと下へ下がる（上顎は動かない） */
-            var lo = [];
-            for (i = 0; i <= 24; i++){ x = -0.84 + 1.68 * i / 24; lo.push([X(x), Y(lipB(x))]); }
-            for (i = 24; i >= 0; i--){
-              x = -0.80 + 1.60 * i / 24;
-              lo.push([X(x), Y(chinAt(x))]);
-              var ci = Math.floor((x + 1.0) / 0.145), dh = fxFinRand(ci * 1.37 + 4.2);
-              if (dh > 0.52 && i > 1 && i < 23) lo.push([X(x), Y(chinAt(x) + (0.05 + 0.14 * dh) + melt * 0.10)]);
-            }
-            pathFrom(lo); mctx.fillStyle = grad; mctx.fill();
+            var i, y;
+            var grad = mctx.createLinearGradient(X(-0.75), 0, X(0.75), 0);
+            grad.addColorStop(0, '#05030a'); grad.addColorStop(0.5, '#120826'); grad.addColorStop(1, '#05030a');
+            /* 左顎：唇ライン（上端→下端）→外側ラインを戻る輪郭 */
+            var lj = [];
+            for (i = 0; i <= 24; i++){ y = -0.88 + 1.76 * i / 24; lj.push([X(lipL(y)), Y(y)]); }
+            for (i = 24; i >= 0; i--){ y = -0.88 + 1.76 * i / 24; lj.push([X(outL(y)), Y(y)]); }
+            pathFrom(lj); mctx.fillStyle = grad; mctx.fill();
+            /* 右顎：唇ライン（上端→下端）→外側ラインを戻る輪郭 */
+            var rj = [];
+            for (i = 0; i <= 24; i++){ y = -0.88 + 1.76 * i / 24; rj.push([X(lipR(y)), Y(y)]); }
+            for (i = 24; i >= 0; i--){ y = -0.88 + 1.76 * i / 24; rj.push([X(outR(y)), Y(y)]); }
+            pathFrom(rj); mctx.fillStyle = grad; mctx.fill();
             /* 縁の鈍い紫（霧状のグローではなく細い線で輪郭を立てる） */
             mctx.strokeStyle = 'rgba(122,60,255,0.38)'; mctx.lineWidth = 2;
-            pathFrom(up); mctx.stroke();
-            pathFrom(lo); mctx.stroke();
-            /* 喉：唇のあいだの真っ黒 */
+            pathFrom(lj); mctx.stroke();
+            pathFrom(rj); mctx.stroke();
+            /* 喉：左右の唇のあいだの真っ黒 */
             var th = [];
-            for (i = 0; i <= 24; i++){ x = -0.84 + 1.68 * i / 24; th.push([X(x), Y(lipT(x))]); }
-            for (i = 24; i >= 0; i--){ x = -0.84 + 1.68 * i / 24; th.push([X(x), Y(lipB(x))]); }
+            for (i = 0; i <= 24; i++){ y = -0.86 + 1.72 * i / 24; th.push([X(lipL(y)), Y(y)]); }
+            for (i = 24; i >= 0; i--){ y = -0.86 + 1.72 * i / 24; th.push([X(lipR(y)), Y(y)]); }
             pathFrom(th); mctx.fillStyle = '#000000'; mctx.fill();
-            /* 牙：上は唇から下へ、下は唇から上へ。上下で半拍ずらし、
+            /* 牙：左は唇から右へ、右は唇から左へ。左右で半拍ずらし、
                閉じるとワニの歯のように噛み合う */
             mctx.fillStyle = '#f4f2ff';
-            var segN = 9, segW = 1.70 / segN;
-            for (var s = 0; s < 2; s++){
+            var segN = 9, segH = 1.70 / segN;
+            for (var s2 = 0; s2 < 2; s2++){
               for (var k = 0; k < segN; k++){
-                var cxT = -0.85 + segW * (k + (s === 0 ? 0 : 0.5) + 0.5);
-                if (cxT < -0.85 || cxT > 0.85) continue;
-                var h1 = fxFinRand(k * 3.71 + s * 17.31 + 0.37);
-                var h2 = fxFinRand(k * 7.13 + s * 5.77 + 0.91);
-                var xn2 = Math.min(1, Math.abs(cxT) / xw);
-                var tLen = (s === 0 ? 0.13 + 0.17 * h1 : 0.10 + 0.12 * h1) * (0.70 + 0.30 * (1 - xn2));
-                var rootY = s === 0 ? lipT(cxT) : lipB(cxT);
-                var tipY = s === 0 ? rootY + tLen : rootY - tLen;
-                var bwT = segW * (0.20 + 0.11 * h2);
+                var cyT = -0.85 + segH * (k + (s2 === 0 ? 0 : 0.5) + 0.5);
+                if (cyT < -0.87 || cyT > 0.87) continue;
+                var h1 = fxFinRand(k * 3.71 + s2 * 17.31 + 0.37);
+                var h2 = fxFinRand(k * 7.13 + s2 * 5.77 + 0.91);
+                var yn2 = Math.min(1, Math.abs(cyT) / yw);
+                var tLen = (0.14 + 0.16 * h1) * (0.72 + 0.28 * (1 - yn2));
+                var rootX = s2 === 0 ? lipL(cyT) : lipR(cyT);
+                var tipX = s2 === 0 ? rootX + tLen : rootX - tLen;
+                var bwT = segH * (0.20 + 0.11 * h2);
                 mctx.beginPath();
-                mctx.moveTo(X(cxT - bwT), Y(rootY));
-                mctx.lineTo(X(cxT + bwT), Y(rootY));
-                mctx.lineTo(X(cxT), Y(tipY));
+                mctx.moveTo(X(rootX), Y(cyT - bwT));
+                mctx.lineTo(X(rootX), Y(cyT + bwT));
+                mctx.lineTo(X(tipX), Y(cyT));
                 mctx.closePath(); mctx.fill();
               }
             }
@@ -12901,10 +12896,10 @@
             var t = mawVt;
             var p = Math.min(1, t / 540), e = 1 - Math.pow(1 - p, 3);
             var dy = mawStartOff * (1 - e), scale = 0.55 + 0.45 * e, open = p, melt = 0;
-            var jitY = 0;
+            var jitX = 0;
             if (t >= 580){
               open = 1 - Math.min(1, (t - 580) / 130); /* ガブッと閉じる */
-              if (t < 1040){ var bpp = (t - 580) / 460; jitY = Math.sin(bpp * Math.PI * 5) * (1 - bpp) * 6; }
+              if (t < 1040){ var bpp = (t - 580) / 460; jitX = Math.sin(bpp * Math.PI * 5) * (1 - bpp) * 6; }
             }
             if (t >= 1020){
               var jo = Math.min(1, (t - 1020) / 330), je = jo * jo;
@@ -12913,22 +12908,22 @@
               melt = je;                          /* 泥のように溶ける */
               open = 0.05 * (1 - je);
             }
-            mawCv.style.transform = 'translate(-50%,-50%) translateY(' + Math.round(dy + jitY) + 'px) scale(' + scale.toFixed(3) + ')';
+            mawCv.style.transform = 'translate(-50%,-50%) translate(' + Math.round(jitX) + 'px,' + Math.round(dy) + 'px) scale(' + scale.toFixed(3) + ')';
             mawCv.style.opacity = String(Math.min(1, p / 0.12));
             drawMaw(open, melt, t, 1);
             if (t < 1400) requestAnimationFrame(mawFrame);
             else mawCv.style.opacity = '0';
           }
           requestAnimationFrame(mawFrame);
-          /* 噛み砕く：パネルは口の中へ上向きに吸い込まれて消える */
+          /* 噛み砕く：パネルは縦の裂け目へ横に潰されながら吸い込まれて消える */
           later(function(){
             fxQuake('fx-quake-md', 560);
             pixiBurst(pcx, pcy, { count: 30, colors: [0x8a5cff, 0xd6bcff, 0x2a1650, 0xffffff], power: 1.7 });
             pixiFinAgitoBiteFx(pcx, pcy, mawW); /* 噛み砕きの拍に紫の縁光＋衝撃粒子を重ねる（拍は従来どおり） */
             fxFinAnimate(cl, [
-              { transform: 'translate(0px,0px) scale(1)', opacity: 1 },
-              { transform: 'translate(2px,-8px) scale(.55) rotate(-3deg)', opacity: 0.9, offset: 0.45 },
-              { transform: 'translate(-2px,-30px) scale(.1) rotate(-6deg)', opacity: 0 }
+              { transform: 'translate(0px,0px) scale(1,1)', opacity: 1 },
+              { transform: 'translate(2px,0px) scale(.5,.92) rotate(-2deg)', opacity: 0.9, offset: 0.45 },
+              { transform: 'translate(-2px,0px) scale(.06,.8) rotate(-4deg)', opacity: 0 }
             ], { duration: 520, easing: 'ease-in', fill: 'forwards' });
           }, 580);
         }, 1120);
@@ -21164,7 +21159,7 @@
       { key:'f48',   cardId:48,     label:'ダーククイーン（048）フィニッシュ', desc:'SDダーククイーンのブラックホールが画面幅を超えて開き、相手SDを引き伸ばしながら呑み込んで一点に収縮する' },
       { key:'f51',   cardId:51,     label:'ティアマト（051）フィニッシュ',     desc:'【スクロール構成】紅蒼のツイスト弾が真下から昇って相手SDを通り抜け、爆発とともに受け側を消し去る' },
       { key:'f52ex', cardId:'52ex', label:'EX-キャリバー（52ex）フィニッシュ', desc:'【スクロール構成】逆三日月斬撃（腹の縁がチラチラ溶ける）が弧を描いて飛び、相手SDを上へ通り抜けて真っ二つに崩す' },
-      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、闇に歯が生えた不定形の大顎が上から降り、上顎を固定したまま下顎が下へガバっと開いて相手SDを飲み込み、真上へ小さく溶けて消える' },
+      { key:'f53ag', cardId:'53ag', label:'黒のアギト（53ag）フィニッシュ',   desc:'SDアギトが真上へ消え、闇に歯が生えた不定形の大顎が上から降り、縦の裂け目が左右へガバっと開いて相手SDを飲み込み、左右から噛み合って閉じ、真上へ小さく溶けて消える' },
       { key:'f54',   cardId:54,     label:'ロンギヌス（054）フィニッシュ',     desc:'専用構成：相手SDは名前帯の予告の後に登場し、静止した瞬間に下から突き上げて着弾、背景ごと吹っ飛ぶ' }
     ];
     var fxFinCheckToken = 0; /* フィニッシュ再生の世代：終了表示の後片付け用 */
