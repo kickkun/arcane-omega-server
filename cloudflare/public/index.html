@@ -529,6 +529,8 @@
       #cpuSourceSeg .seg-btn{flex:none; padding:10px 4px;}
       #simSummonerSeg{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
       #simSummonerSeg .seg-btn{flex:none; padding:10px 4px;}
+      #cpuSummonerSeg{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
+      #cpuSummonerSeg .seg-btn{flex:none; padding:10px 4px;}
       #simOverlay{flex-direction:column; align-items:center; justify-content:flex-start; padding:14px; z-index:80; overflow-y:auto; touch-action:pan-y;}
       .sim-box{
         flex:0 0 auto; margin:0 auto; background:var(--panel); border:2px solid var(--gold); border-radius:18px;
@@ -4031,7 +4033,7 @@
           <p class="first-choice-label">召喚士の選択</p>
           <div class="summoner-grid" id="summonerGrid" role="group" aria-label="召喚士の選択"></div>
           <button class="summoner-info" id="summonerInfo" type="button" aria-label="選択中の召喚士の詳細を見る"><span class="summoner-info-text" id="summonerInfoText"></span><span class="summoner-info-more">詳細 ›</span></button>
-          <p class="seg-note" id="summonerSaveNote">選んだ召喚士は保存されます。CPUは対戦ごとに5人からランダムで1人を選びます。</p>
+          <p class="seg-note" id="summonerSaveNote">選んだ召喚士は保存されます。CPUの召喚士は下の「対戦相手の召喚士」でランダム／固定を選べます。</p>
         </div>
         <div class="first-choice cpu-only-block title-rise" id="firstChoiceBlock" style="--rd:.78s;">
           <p class="first-choice-label">手番の選択</p>
@@ -4057,6 +4059,18 @@
           </div>
           <p class="seg-note" id="cpuSourceNote"></p>
           <button class="btn-sub" id="viewOpponentDecksBtn" type="button" style="width:100%; margin-top:5px; padding:6px; font-size:13.5px;">相手デッキの内容を見る</button>
+        </div>
+        <div class="first-choice cpu-only-block title-rise" id="cpuSummonerBlock" style="--rd:.87s;">
+          <p class="first-choice-label">対戦相手の召喚士</p>
+          <div class="seg" id="cpuSummonerSeg" role="group" aria-label="対戦相手の召喚士の選択">
+            <button class="seg-btn" type="button" data-cpu-summoner="random">ランダム</button>
+            <button class="seg-btn" type="button" data-cpu-summoner="chloe">クロエ</button>
+            <button class="seg-btn" type="button" data-cpu-summoner="garen">ガレン</button>
+            <button class="seg-btn" type="button" data-cpu-summoner="bran">ブラン</button>
+            <button class="seg-btn" type="button" data-cpu-summoner="mia">ミア</button>
+            <button class="seg-btn" type="button" data-cpu-summoner="olga">オルガ</button>
+          </div>
+          <p class="seg-note" id="cpuSummonerNote"></p>
         </div>
         <div class="first-choice cpu-only-block" id="simSummonerBlock">
           <p class="first-choice-label">テストプレイの召喚士（保存デッキ側）</p>
@@ -4084,7 +4098,7 @@
         <button class="btn-sub" id="rulesBtnStart" type="button" style="width:100%; margin-top:9px; padding:13px; font-size:15px;">ルール説明</button>
         <p class="sim-progress cpu-only-block" id="simProgress" aria-live="polite"></p>
         <button class="btn-sub cpu-only-block" id="simCancelBtn" type="button" style="width:100%; margin-top:8px; padding:11px; font-size:14px; display:none;">テストプレイを中断する</button>
-        <p class="start-note" id="startNote">対戦相手のデッキは「ランダム（7デッキ）／疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣／カスタム」の9択から選べます。個別のデッキを選ぶと、そのデッキで対戦が始まります。カスタムは、デッキ編成で相手用に組んだ20枚です。「相手デッキの内容を見る」から各デッキの20枚を確認でき、そのまま自分のアクティブなスロットへコピーして編成で微調整できます。自分のデッキは3つのスロットに保存でき、対戦とテストプレイはアクティブなスロットを使います。自分のデッキも相手のデッキも、全カードから同名3枚まで・合計20枚で組めます。テストプレイは、保存デッキ vs CPU7デッキを均等に約1000戦（カスタム選択時はカスタム相手と1000戦）を、先攻／後攻を交互に入れ替えて自動で回し、勝率などを表示します。1000戦は時間がかかるため、実行中は進捗が表示され、「テストプレイを中断する」ボタンでいつでも中断できます（中断時は結果を表示しません）。保存デッキ側の召喚士は上の「テストプレイの召喚士」でランダム／固定を選べ、結果には召喚士×対戦デッキのクロス集計も表示されます。</p>
+        <p class="start-note" id="startNote">対戦相手のデッキは「ランダム（7デッキ）／疾風／巨塔／深淵／聖域／聖槍／黒竜／聖剣／カスタム」の9択から選べます。個別のデッキを選ぶと、そのデッキで対戦が始まります。カスタムは、デッキ編成で相手用に組んだ20枚です。「相手デッキの内容を見る」から各デッキの20枚を確認でき、そのまま自分のアクティブなスロットへコピーして編成で微調整できます。自分のデッキは3つのスロットに保存でき、対戦とテストプレイはアクティブなスロットを使います。自分のデッキも相手のデッキも、全カードから同名3枚まで・合計20枚で組めます。テストプレイは、保存デッキ vs CPU7デッキを均等に約1000戦（カスタム選択時はカスタム相手と1000戦）を、先攻／後攻を交互に入れ替えて自動で回し、勝率などを表示します。1000戦は時間がかかるため、実行中は進捗が表示され、「テストプレイを中断する」ボタンでいつでも中断できます（中断時は結果を表示しません）。保存デッキ側の召喚士は上の「テストプレイの召喚士」でランダム／固定を選べ、結果には召喚士×対戦デッキのクロス集計も表示されます。対戦相手の召喚士は「ランダム／クロエ／ガレン／ブラン／ミア／オルガ」から選べ、通常CPU戦にのみ適用されます（勝ち抜きではランダム、アーケードではステージごとに固定）。</p>
       </div>
     </div>
     <div class="overlay" id="onlineOverlay">
@@ -4426,7 +4440,7 @@
         </ul>
         <h4>召喚士</h4>
         <ul>
-          <li>対戦前に<b>5人の召喚士</b>から1人を選びます（タイトル画面で選択、保存されます）。CPUは対戦ごとにランダムで1人を選びます。</li>
+          <li>対戦前に<b>5人の召喚士</b>から1人を選びます（タイトル画面で選択、保存されます）。CPUの召喚士はタイトル画面の「対戦相手の召喚士」でランダム／固定を選べます（勝ち抜きではランダム、アーケードではステージごとに固定です）。</li>
           <li>能力は<b>その召喚士を使う側のターン</b>を基準に発動します（「自分のターン開始時／終了時」）。</li>
         </ul>
         <ul class="sum-list" id="rulesSummonerList"></ul>
@@ -4858,7 +4872,8 @@
        'shinen'（深淵）／'seiei'（聖域）／'seiyari'（聖槍）／'kokuryu'（黒竜）／'seiken'（聖剣）／
        'custom'（編成した相手デッキ）。
        デフォルトはランダム。選択はこの端末に保存する。旧保存値 'balance' は許可値から
-       外れているため、初期値の 'random' として読み替えられる。CPUの召喚士は常にランダムのまま。 */
+       外れているため、初期値の 'random' として読み替えられる。相手の召喚士は別途
+       「対戦相手の召喚士」（cpuSummonerSel）で通常CPU戦のみランダム／固定を選べる。 */
     var CPU_SOURCE_KEY = 'cardbattle.cpuDeckSource.v1';
     var CPU_SOURCE_VALUES = ['random','shippu','kyotou','shinen','seiei','seiyari','kokuryu','seiken','custom'];
     var CPU_PRESET_BY_SOURCE = { shippu: 0, kyotou: 1, shinen: 2, seiei: 3, seiyari: 4, kokuryu: 5, seiken: 6 };
@@ -4998,6 +5013,19 @@
     } catch (e) {}
     function saveSimSummoner(){
       try { localStorage.setItem(SIM_SUMMONER_KEY, simSummonerId); } catch (e) {}
+    }
+    /* 通常CPU戦の対戦相手（CPU）の召喚士選択。'random'＝従来どおり毎試合ランダム、
+       それ以外は召喚士IDで固定する。適用は通常CPU戦のみで、勝ち抜き／アーケード／
+       テストプレイには影響しない（newGame で通常CPU戦の経路でのみ参照する）。
+       選択はこの端末に保存する。 */
+    var CPU_SUMMONER_KEY = 'cardbattle.cpuSummoner.v1';
+    var cpuSummonerSel = 'random';
+    try {
+      var savedCpuSum = localStorage.getItem(CPU_SUMMONER_KEY);
+      if (savedCpuSum === 'random' || SUMMONER_BY_ID[savedCpuSum]) cpuSummonerSel = savedCpuSum;
+    } catch (e) {}
+    function saveCpuSummonerSel(){
+      try { localStorage.setItem(CPU_SUMMONER_KEY, cpuSummonerSel); } catch (e) {}
     }
     function randomSummonerId(){
       return SUMMONERS[Math.floor(Math.random() * SUMMONERS.length)].id;
@@ -5228,10 +5256,17 @@
         first: firstSide, second: other(firstSide), gameId: ++gameSeq, cpuDeckName: '',
         playedCards: { me: {}, cpu: {} }
       };
-      /* 召喚士の割り当て：対面では自分＝選択中（デフォルトはクロエ）、CPU＝ランダム。
-         テストプレイ（HEADLESS／opts指定）では両陣営ともランダム（opts.summonerMe/Cpuで固定も可）。 */
+      /* 召喚士の割り当て：対面では自分＝選択中（デフォルトはクロエ）。
+         CPU側は、呼び出し側が summonerCpu を明示した場合（アーケード）はそれを使い、
+         cpuDeckDef を明示する経路（勝ち抜き／アーケード／テストプレイ）では従来どおり
+         ランダム。通常CPU戦（開始ボタン／もう一度／最初から等、optsなし）のときだけ
+         タイトル画面の「対戦相手の召喚士」選択（cpuSummonerSel）を参照し、
+         'random' なら毎試合ランダム、それ以外はその召喚士に固定する。
+         テストプレイ（HEADLESS／opts指定）では保存デッキ側もランダム（opts.summonerMeで固定も可）。 */
       S.me.summonerId = opts.summonerMe || (HEADLESS ? randomSummonerId() : playerSummonerId);
-      S.cpu.summonerId = opts.summonerCpu || randomSummonerId();
+      var cpuSummonerPick = opts.summonerCpu || null;
+      if (!cpuSummonerPick && !opts.cpuDeckDef && cpuSummonerSel !== 'random') cpuSummonerPick = cpuSummonerSel;
+      S.cpu.summonerId = cpuSummonerPick || randomSummonerId();
       var cpuDeckDef = opts.cpuDeckDef || resolveCpuDeckDef();
       S.cpuDeckName = cpuDeckDef.name;
       S.me.deck = shuffle((opts.playerDeckIds || playerDeck).slice());
@@ -5854,14 +5889,14 @@
        対戦曲は召喚士ごとのテーマ曲を持ち、毎試合「自分の召喚士のテーマ」と
        「相手の召喚士のテーマ」のどちらか1曲を選んで、その試合中ずっと流す
        （CPU戦・勝ち抜き・アーケード・オンラインの全モード共通）。
-       テーマ未配置の召喚士（mia／olga）と未知のIDは battle 曲（クロエの
-       テーマ「駆け抜ける戦場の嵐」）にフォールバックする。mia／olga の曲が
-       用意できたら、下の表に1行足すだけで有効になる。 */
+       テーマ曲は5人全員の召喚士に配置済みで、未知のIDだけが battle 曲
+       （クロエのテーマ「駆け抜ける戦場の嵐」）にフォールバックする。 */
     var SUMMONER_THEME_BASE = {
       chloe: 'bgm/bgm-battle', /* クロエ＝現行の対戦曲（ファイル名は現行のまま流用） */
       garen: 'bgm/bgm-garen',
-      bran:  'bgm/bgm-bran'
-      /* mia: 'bgm/bgm-mia', olga: 'bgm/bgm-olga' （未配置：配置したらこの行を有効化） */
+      bran:  'bgm/bgm-bran',
+      olga:  'bgm/bgm-olga',
+      mia:   'bgm/bgm-mia'
     };
     /* 現在の試合で選出済みの対戦テーマ（トラックキー）。書き換えるのは
        試合開始時の選出関数（bgmPickBattleThemeLocal／bgmPickBattleThemeOnline）
@@ -5948,7 +5983,7 @@
           return;
         }
         /* Ogg／MP3 とも読めなかった場合：テーマ曲なら battle 曲へ倒して
-           対戦BGMが無音にならないようにする（テーマ未配置・配置漏れ対策）。
+           対戦BGMが無音にならないようにする（読み込み失敗・配置漏れ対策）。
            title／battle 自体が読めない場合は従来どおり無音のまま */
         if (key !== 'title' && key !== 'battle' && bgmBattleTrack === key){
           bgmBattleTrack = 'battle';
@@ -21638,10 +21673,11 @@
        イベントリスナーはそのまま効き続ける。
        主要モードボタン（対戦開始／オンラインへ／勝ち抜き／アーケード／
        デッキ編成）に加え、対戦開始前に必要な「手番の選択」
-       （#firstChoiceBlock）と「相手デッキの選択」（#cpuSourceBlock）は
-       移設せず、対戦開始ボタンの手前で常時表示のまま残す。ただし両選択の
-       補足文（#firstSegNote／#cpuSourceNote）は説明文としてメニュー側へ
-       移す（内容は同じくメニュー内の対戦サマリと重なる）。 */
+       （#firstChoiceBlock）と「相手デッキの選択」（#cpuSourceBlock）と
+       「相手召喚士の選択」（#cpuSummonerBlock）は移設せず、対戦開始ボタンの
+       手前で常時表示のまま残す。ただし各選択の補足文（#firstSegNote／
+       #cpuSourceNote／#cpuSummonerNote）は説明文としてメニュー側へ移す
+       （内容は同じくメニュー内の対戦サマリと重なる）。 */
     var titleMenu = document.getElementById('titleMenu');
     var titleMenuBtn = document.getElementById('titleMenuBtn');
     function closeTitleMenu(){
@@ -21650,7 +21686,7 @@
       titleMenuBtn.setAttribute('aria-expanded', 'false');
     }
     if (titleMenu && titleMenuBtn){
-      ['startDeckInfo','firstSegNote','cpuSourceNote','titleSlotNote','soundChoiceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
+      ['startDeckInfo','firstSegNote','cpuSourceNote','cpuSummonerNote','titleSlotNote','soundChoiceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
         var el = document.getElementById(id);
         if (el) titleMenu.appendChild(el);
       });
@@ -21865,13 +21901,19 @@
       if (cpuDeckSource === 'custom') txt += '対戦相手はカスタムデッキ（相手用に編成した20枚）です。';
       else if (isPresetCpuSource(cpuDeckSource)) txt += '対戦相手は' + presetCpuDeckName(cpuDeckSource) + 'です。';
       else txt += '対戦相手はランダム（' + CPU_DECKS.length + 'デッキ）です。';
+      txt += cpuSummonerSel === 'random' ? '相手の召喚士はランダムです。' : '相手の召喚士は「' + SUMMONER_BY_ID[cpuSummonerSel].name + '」です。';
       document.getElementById('startDeckInfo').textContent = txt;
       var cpuSegBtns = document.querySelectorAll('#cpuSourceSeg .seg-btn');
       cpuSegBtns.forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-cpu-source') === cpuDeckSource); });
       document.getElementById('cpuSourceNote').textContent =
-        cpuDeckSource === 'custom' ? 'カスタム：デッキ編成で「相手のデッキ」として組んだ20枚と対戦します。CPUの召喚士はランダムのままです。'
-        : isPresetCpuSource(cpuDeckSource) ? presetCpuDeckName(cpuDeckSource) + '：CPUは' + presetCpuDeckName(cpuDeckSource) + 'で対戦します。CPUの召喚士はランダムのままです。'
-        : 'ランダム：CPUは「' + CPU_DECKS.map(function(d){ return d.name.replace(/デッキ$/, ''); }).join('」「') + '」の' + CPU_DECKS.length + 'デッキから対戦ごとに1つを選びます。CPUの召喚士はランダムのままです。';
+        cpuDeckSource === 'custom' ? 'カスタム：デッキ編成で「相手のデッキ」として組んだ20枚と対戦します。'
+        : isPresetCpuSource(cpuDeckSource) ? presetCpuDeckName(cpuDeckSource) + '：CPUは' + presetCpuDeckName(cpuDeckSource) + 'で対戦します。'
+        : 'ランダム：CPUは「' + CPU_DECKS.map(function(d){ return d.name.replace(/デッキ$/, ''); }).join('」「') + '」の' + CPU_DECKS.length + 'デッキから対戦ごとに1つを選びます。';
+      var cpuSumSegBtns = document.querySelectorAll('#cpuSummonerSeg .seg-btn');
+      cpuSumSegBtns.forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-cpu-summoner') === cpuSummonerSel); });
+      document.getElementById('cpuSummonerNote').textContent = cpuSummonerSel === 'random'
+        ? 'ランダム：通常CPU戦では、CPUの召喚士は対戦ごとに5人からランダムで選ばれます。'
+        : SUMMONER_BY_ID[cpuSummonerSel].short + '固定：通常CPU戦の相手召喚士は「' + SUMMONER_BY_ID[cpuSummonerSel].name + '」になります。勝ち抜き・アーケード・テストプレイには影響しません。';
       document.getElementById('testPlayCustomBtn').style.display = cpuDeckSource === 'custom' ? '' : 'none';
       var simSegBtns = document.querySelectorAll('#simSummonerSeg .seg-btn');
       simSegBtns.forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-sim-summoner') === simSummonerId); });
@@ -21904,6 +21946,13 @@
       if (!btn) return;
       simSummonerId = btn.getAttribute('data-sim-summoner');
       saveSimSummoner();
+      refreshStartInfo();
+    });
+    document.getElementById('cpuSummonerSeg').addEventListener('click', function(ev){
+      var btn = ev.target.closest('[data-cpu-summoner]');
+      if (!btn) return;
+      cpuSummonerSel = btn.getAttribute('data-cpu-summoner');
+      saveCpuSummonerSel();
       refreshStartInfo();
     });
     /* タイトル登場演出（約1.2秒）：魔法陣の線画→ロゴ落下＋閃光→各ブロックの
