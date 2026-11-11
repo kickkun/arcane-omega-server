@@ -2182,29 +2182,50 @@
         #titleSplash.splash-intro .splash-credit{opacity:1;}
       }
       /* ===== 紙が飛ぶ演出（TAP TO START 後の遷移） =====
-         モック（title-paper-effect-mock.html）で承認済みの振付の本実装。
-         全画面シーン（#paperFx）はクロエの街背景2枚＋飛ぶ紙スプライトを
-         WAAPI で動かすだけの層で、タイミング／イージングはモック準拠。
+         モック（title-paper-effect-mock.html／-random.html）で承認済みの
+         振付の本実装。全画面シーン（#paperFx）はランダム選出された
+         召喚士1人の背景2枚＋飛ぶ紙スプライトを WAAPI で動かす層で、
+         タイミング／イージングはモック準拠。突風の拍では「光の風」
+         （#paperFxWind）が左から右へ流れる。
          終盤はメニュー（#startOverlay）の .start-box 自体を羊皮紙化して
          右から滑り込ませ、そのまま通常のタイトルメニューとして使う。
          z-index は #titleBg(55) より上・#startOverlay(60) より下：
          スプラッシュ(95)は演出開始と同時に消えるため競合しない。 */
       #paperFx{position:fixed; inset:0; z-index:58; display:none; overflow:hidden; background:#0b0e1d;}
       #paperFx.show{display:block;}
-      #paperFxScene{position:absolute; inset:0;}
+      #paperFxScene{position:absolute; inset:0; z-index:0;}
+      /* 表示枠のアスペクト比と紙スプライトの位置・大きさは選出キャラ
+         ごとに JS（playPaperFx）が実測値で上書きする。CSS 側の既定値は
+         クロエのもの（アスペクト比 1184/1984、紙 33.92%/25.46%/21.76%） */
       .paperfx-charwrap{
-        position:absolute; left:50%; top:50%; aspect-ratio:1248/1888;
+        position:absolute; left:50%; top:50%; aspect-ratio:1184/1984;
         width:min(100vw, 66.1dvh); transform:translate(-50%,-50%);
       }
       .paperfx-charwrap img.pfx-ch{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
       #paperFxFree{display:none;}
       #paperFxSprite{
-        position:absolute; left:39.2%; top:20.4%; width:19.6%; aspect-ratio:244/270;
+        position:absolute; left:33.92%; top:25.46%; width:21.76%; aspect-ratio:258/241;
         transform:rotate(-2deg); display:none;
         filter:drop-shadow(0 6px 8px rgba(90,70,30,.35));
       }
       #paperFxSprite img{width:100%; height:100%; display:block;}
-      #paperFxWash{position:absolute; inset:0; background:#fffdf4; opacity:0; pointer-events:none;}
+      /* --- 光の風レイヤー：キャラ絵（scene）より上・洗い流し（wash）
+         より下。第一選択はこの中に置く専用 Pixi キャンバス、不可時は
+         .pfx-streak／.pfx-mote の DOM 要素＋WAAPI で同じ見た目を流す
+         （モック title-paper-effect-mock-random.html の windBurst 準拠） --- */
+      #paperFxWind{position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none; display:none;}
+      #paperFxWind canvas{position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;}
+      .pfx-streak{
+        position:absolute; left:0; height:3px; border-radius:2px; opacity:0;
+        background:linear-gradient(90deg, rgba(255,225,160,0), rgba(255,236,196,.85) 30%, #fffbe9 50%, rgba(255,225,160,0));
+        mix-blend-mode:screen; will-change:transform,opacity;
+      }
+      .pfx-mote{
+        position:absolute; left:0; border-radius:50%; opacity:0;
+        background:radial-gradient(circle, rgba(255,255,242,.95), rgba(255,222,150,.35) 45%, rgba(255,220,150,0) 70%);
+        mix-blend-mode:screen; will-change:transform,opacity;
+      }
+      #paperFxWash{position:absolute; inset:0; z-index:2; background:#fffdf4; opacity:0; pointer-events:none;}
       /* --- 紙メニュー：羊皮紙テクスチャを敷いた .start-box ---
          テクスチャの実URLは JS（paperFxPreload）が本番パス→assets/ の順に
          解決して --menu-paper-url へ入れる。未解決でも下地色で紙らしく保つ。
@@ -3883,9 +3904,11 @@
       <p class="splash-credit">音楽：魔王魂</p>
     </div>
 
-    <!-- 紙が飛ぶ演出（TAP TO START 後の遷移）：紙を読むクロエ→突風で
-         紙が飛ぶ→ぼかし→紙メニューへ。素材は title/ 配下の外部ファイルを
-         JS（paperFxPreload）が解決して差し込む。制御は JS 側 playPaperFx。 -->
+    <!-- 紙が飛ぶ演出（TAP TO START 後の遷移）：紙を読む召喚士（5人から
+         ランダム選出）→突風＋光の風で紙が飛ぶ→ぼかし→紙メニューへ。
+         素材は title/ 配下の外部ファイルを選出キャラ分だけ
+         JS（paperFxPreload）が解決して差し込む。制御は JS 側 playPaperFx。
+         #paperFxWind は光の風専用レイヤー（専用 Pixi キャンバスを置く） -->
     <div id="paperFx" aria-hidden="true">
       <div id="paperFxScene">
         <div class="paperfx-charwrap">
@@ -3894,6 +3917,7 @@
           <div id="paperFxSprite"><img id="paperFxSpriteImg" alt="" /></div>
         </div>
       </div>
+      <div id="paperFxWind"></div>
       <div id="paperFxWash"></div>
     </div>
 
@@ -21679,24 +21703,37 @@
       });
     }
     /* ============ 紙が飛ぶ演出（TAP TO START 後の遷移） ============
-       モック title-paper-effect-mock.html で承認済みの振付の本実装。
-       流れ：紙を読むクロエ（約1.15秒）→ 突風で画面が小さく揺れ、絵が
-       「手放し後」へ1フレームで差し替わる → 紙だけが裏返りながら上へ
-       飛ぶ（約1.15秒）→ 画面全体がぼけて白む（約0.5秒）→ 羊皮紙化した
-       メニュー（.start-box）が右から滑り込み（行き過ぎて戻る）、項目が
-       順に現れ、最後に封蝋が押される。そのまま紙メニューが通常の
-       タイトルメニューとして機能する（項目・ボタンは DOM のまま）。
-       素材は本番パス（title/…）を一次、assets/title/… を二次として
-       外部読み込みする（盤面アート等と同じ解決方式）。タップで即
-       スキップ可。同一セッションでは初回のみ（対戦からタイトルへ
-       戻っても再生しない）。HEADLESS／prefers-reduced-motion では
-       呼び出し側（dismissTitleSplash）が従来遷移へ落とす。 */
-    var PAPER_FX_FILES = {
-      hold: 'title/chloe-hold.webp',
-      free: 'title/chloe-free.webp',
-      sprite: 'title/parchment.png',
-      paper: 'title/menu-parchment-wide.webp'
-    };
+       モック title-paper-effect-mock.html／-random.html で承認済みの
+       振付の本実装。流れ：紙を読む召喚士（約1.15秒）→ 突風で画面が
+       小さく揺れると同時に「光の風」が左から右へ流れ、約210ms後に
+       絵が「手放し後」へ1フレームで差し替わる → 紙だけが裏返りながら
+       上へ飛ぶ（約1.15秒）→ 画面全体がぼけて白む（約0.5秒）→ 羊皮紙
+       化したメニュー（.start-box）が右から滑り込み（行き過ぎて戻る）、
+       項目が順に現れ、最後に封蝋が押される。そのまま紙メニューが
+       通常のタイトルメニューとして機能する（項目・ボタンは DOM のまま）。
+       登場召喚士は5人（クロエ／ガレン／ブラン／ミア／オルガ）から
+       ランダム選出（連続で同じ人は出さない）。読み込むのは選ばれた
+       1人分だけ。素材は本番パス（title/…）を一次、assets/title/… を
+       二次として外部読み込みする（盤面アート等と同じ解決方式）。
+       タップで即スキップ可。同一セッションでは初回のみ（対戦から
+       タイトルへ戻っても再生しない）。HEADLESS／prefers-reduced-motion
+       では呼び出し側（dismissTitleSplash）が従来遷移へ落とす。 */
+    /* キャラ別素材と実測値：ar＝絵のアスペクト比、spr＝表示枠に対する
+       飛ぶ紙スプライトの位置・大きさ（％）とスプライトのアスペクト比。
+       スプライトは無地の羊皮紙テクスチャそのもので、指・手・背景は
+       一切入っていない。配置は絵の中でキャラが持っている紙の全体の
+       描画領域に合わせ、読書フェーズでは描かれた紙の上に同寸の羊皮紙
+       スプライトが重なって見える（持つ絵の実測による） */
+    var PAPER_FX_CHARS = [
+      { id: 'chloe', hold: 'title/chloe-hold.webp', free: 'title/chloe-free.webp', sprite: 'title/chloe-sprite.png', ar: '1184 / 1984', spr: { left: '31.2%', top: '24.3%', width: '27.2%', ar: '320 / 286' } },
+      { id: 'garen', hold: 'title/garen-hold.webp', free: 'title/garen-free.webp', sprite: 'title/garen-sprite.png', ar: '1200 / 2000', spr: { left: '8.8%', top: '14.8%', width: '24.5%', ar: '320 / 359' } },
+      { id: 'bran',  hold: 'title/bran-hold.webp',  free: 'title/bran-free.webp',  sprite: 'title/bran-sprite.png',  ar: '1200 / 2000', spr: { left: '52.3%', top: '25.3%', width: '26.3%', ar: '320 / 268' } },
+      { id: 'mia',   hold: 'title/mia-hold.webp',   free: 'title/mia-free.webp',   sprite: 'title/mia-sprite.png',   ar: '1200 / 2000', spr: { left: '29.8%', top: '26.3%', width: '23.8%', ar: '320 / 291' } },
+      { id: 'olga',  hold: 'title/olga-hold.webp',  free: 'title/olga-free.webp',  sprite: 'title/olga-sprite.png',  ar: '1200 / 2000', spr: { left: '26.3%', top: '27.3%', width: '28.3%', ar: '320 / 279' } }
+    ];
+    var PAPER_FX_PAPER = 'title/menu-parchment-wide.webp'; /* 紙メニュー用テクスチャ（キャラ共通・従来どおり） */
+    var paperFxLastChar = -1; /* 前回の選出インデックス（セッション内変数のみで記憶し、連続選出を避ける） */
+    var paperFxChar = null;   /* 今回選ばれたキャラ（PAPER_FX_CHARS の要素） */
     var paperFxState = { hold: null, free: null, sprite: null, paper: null };
     var paperFxPlayed = false;
     var paperFxPlaying = false;
@@ -21709,6 +21746,7 @@
     var paperFxSpriteEl = document.getElementById('paperFxSprite');
     var paperFxSpriteImg = document.getElementById('paperFxSpriteImg');
     var paperFxWashEl = document.getElementById('paperFxWash');
+    var paperFxCharWrap = paperFxScene ? paperFxScene.querySelector('.paperfx-charwrap') : null;
     function paperFxResolve(key, file, done){
       var probe = new Image();
       probe.onload = function(){ paperFxState[key] = probe.src; if (done) done(true); };
@@ -21718,12 +21756,25 @@
       };
       probe.src = file;
     }
+    /* 登場召喚士の選出：5人からランダムに1人。ただし前回選ばれた人は
+       除外し、連続で同じ人が出ないようにする（記憶はセッション内変数
+       paperFxLastChar のみ。保存はしない） */
+    function paperFxPickChar(){
+      var idx = Math.floor(Math.random() * PAPER_FX_CHARS.length);
+      if (PAPER_FX_CHARS.length > 1){
+        while (idx === paperFxLastChar) idx = Math.floor(Math.random() * PAPER_FX_CHARS.length);
+      }
+      paperFxLastChar = idx;
+      return PAPER_FX_CHARS[idx];
+    }
     function paperFxPreload(){
       if (HEADLESS) return;
-      paperFxResolve('hold', PAPER_FX_FILES.hold);
-      paperFxResolve('free', PAPER_FX_FILES.free);
-      paperFxResolve('sprite', PAPER_FX_FILES.sprite);
-      paperFxResolve('paper', PAPER_FX_FILES.paper, function(ok){
+      /* プリロードは選ばれた1人分のみ（5人分は読み込まない） */
+      paperFxChar = paperFxPickChar();
+      paperFxResolve('hold', paperFxChar.hold);
+      paperFxResolve('free', paperFxChar.free);
+      paperFxResolve('sprite', paperFxChar.sprite);
+      paperFxResolve('paper', PAPER_FX_PAPER, function(ok){
         if (ok) document.documentElement.style.setProperty('--menu-paper-url', 'url("' + paperFxState.paper + '")');
       });
     }
@@ -21761,6 +21812,17 @@
       paperFxHoldImg.src = paperFxState.hold;
       paperFxFreeImg.src = paperFxState.free;
       if (paperFxState.sprite) paperFxSpriteImg.src = paperFxState.sprite;
+      /* 表示枠のアスペクト比と飛ぶ紙の位置・大きさを選出キャラの実測値へ */
+      if (paperFxChar){
+        if (paperFxCharWrap) paperFxCharWrap.style.aspectRatio = paperFxChar.ar;
+        paperFxSpriteEl.style.left = paperFxChar.spr.left;
+        paperFxSpriteEl.style.top = paperFxChar.spr.top;
+        paperFxSpriteEl.style.width = paperFxChar.spr.width;
+        paperFxSpriteEl.style.aspectRatio = paperFxChar.spr.ar;
+      }
+      /* 光の風の用意（専用 Pixi アプリの生成は突風の拍までに済ませる） */
+      pfxWindFired = false;
+      paperWindPrepare();
       paperFxHoldImg.style.display = 'block';
       paperFxFreeImg.style.display = 'none';
       paperFxSpriteEl.style.display = 'none';
@@ -21770,8 +21832,10 @@
       paperFxEl.classList.add('show');
       /* 1) 紙を読んでいる間（約1.1秒） */
       paperFxLater(1150, function(){
-        /* 2) 突風：画面が小さく揺れる */
+        /* 2) 突風：画面が小さく揺れると同時に「光の風」が流れ始める。
+           紙の差し替えは風の発火から約210ms後（次の拍） */
         sePlay('gust');
+        paperWindBurst();
         paperFxAnim(paperFxScene, [
           { transform: 'translate(0,0) rotate(0deg)' },
           { transform: 'translate(-5px,1px) rotate(-.4deg)' },
@@ -21780,7 +21844,7 @@
           { transform: 'translate(0,0) rotate(0deg)' }
         ], { duration: 380, easing: 'ease-out' });
       });
-      paperFxLater(1220, function(){
+      paperFxLater(1430, function(){
         /* 3) 絵を「手放し後」へ1フレームで差し替え、紙だけが飛ぶ */
         paperFxHoldImg.style.display = 'none';
         paperFxFreeImg.style.display = 'block';
@@ -21800,7 +21864,7 @@
         }
         sePlay('paperFly');
       });
-      paperFxLater(2450, function(){
+      paperFxLater(2660, function(){
         /* 4) ぼかし＋薄い白（約0.5秒） */
         paperFxSpriteEl.style.display = 'none';
         paperFxAnim(paperFxScene, [
@@ -21810,12 +21874,12 @@
           { opacity: 0 }, { opacity: .38 }
         ], { duration: 500, fill: 'forwards' });
       });
-      paperFxLater(2880, function(){
+      paperFxLater(3090, function(){
         /* 5) 紙メニューが右から滑り込む（シーンは下で薄れて消える） */
         paperMenuReveal();
         paperFxAnim(paperFxEl, [{ opacity: 1 }, { opacity: 0 }], { duration: 550, easing: 'ease-out', fill: 'forwards' });
       });
-      paperFxLater(3440, function(){
+      paperFxLater(3650, function(){
         paperFxEl.classList.remove('show');
         /* 6) 項目が順にフェードイン */
         startOverlay.classList.remove('paper-fx-live');
@@ -21826,6 +21890,213 @@
           paperFxLater(260, paperFxFinish);
         });
       });
+    }
+    /* ============ 光の風（突風の拍で流れる光の筋と粒） ============
+       モック title-paper-effect-mock-random.html の windBurst が仕様：
+       画面上部16〜60%の帯を、光の筋9本前後（幅30〜58%・高さ3px程度・
+       上下に数度の傾き）と光の粒16個前後が左から右へ「シュルルッ」と
+       流れる。筋は所要620〜1000ms・遅延0〜260ms、粒は所要750〜1200ms・
+       遅延0〜320ms・横断105〜130vw。
+       実装は PixiJS のテクスチャフロー方式を第一選択とする。ただし
+       既存の共有 Pixi キャンバスは z-index 93 で #titleSplash(95) や
+       #paperFx(58) の全面画面に隠れる設計のため、ここでは #paperFx 内
+       （キャラ絵より上・wash より下の #paperFxWind）に紙演出専用の
+       独立した小さな Pixi アプリを新設し、共有の流れテクスチャ
+       （FxKit.flowTexture）とリボン素材（FxKit.ribbonMaterial／strip／
+       fillStrip）で筋を描く。粒は放射グラデーションの円テクスチャを
+       専用アプリ側で生成してスプライトで流す。
+       専用アプリが使えない環境（PIXI 未読込・生成失敗・HEADLESS・
+       モーション低減・診断の Pixi OFF）では、モックと同じ DOM 方式
+       （.pfx-streak／.pfx-mote＋WAAPI）へフォールバックする。
+       後片付けは paperWindStop に一元化し、通常終了・スキップの双方
+       から呼ぶ（風の要素と専用アプリは残らない）。 */
+    var paperFxWindEl = document.getElementById('paperFxWind');
+    var pfxWindApp = null;     /* 紙演出専用 Pixi アプリ */
+    var pfxWindMoteTex = null; /* 粒用テクスチャ（専用アプリ側で生成） */
+    var pfxWindMode = null;    /* 'pixi' | null（null は DOM 方式） */
+    var pfxWindFired = false;
+    function paperWindPixiOk(){
+      if (typeof window.PIXI === 'undefined' || !PIXI.Application || !PIXI.Mesh || !PIXI.Shader || !PIXI.Container) return false;
+      if (HEADLESS || pixiReducedMotion) return false;
+      if (typeof finDiagIsPixiOff === 'function' && finDiagIsPixiOff()) return false;
+      if (typeof FxKit === 'undefined' || !FxKit.flowTexture || !FxKit.ribbonMaterial || !FxKit.strip || !FxKit.fillStrip) return false;
+      return true;
+    }
+    /* 専用 Pixi アプリの用意：演出開始時（playPaperFx）に呼んでおき、
+       突風の拍までに WebGL コンテキストを温める。作れなければ
+       pfxWindMode は null のまま（＝発火時に DOM 方式へ落ちる） */
+    function paperWindPrepare(){
+      paperWindStop(); /* 前回の残りがあれば先に片付ける（冪等） */
+      pfxWindMode = null;
+      if (!paperFxWindEl || !paperWindPixiOk()) return;
+      try {
+        var w = paperFxEl.clientWidth || window.innerWidth;
+        var h = paperFxEl.clientHeight || window.innerHeight;
+        var app = new PIXI.Application({ backgroundAlpha: 0, antialias: true, autoDensity: true, autoStart: false, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+        app.renderer.resize(w, h);
+        paperFxWindEl.appendChild(app.view);
+        /* 光の粒用：放射グラデーションの円テクスチャ（pixiFx.tex 相当を
+           専用アプリ側で生成する。このテクスチャは自前なので破棄対象） */
+        var cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
+        var g = cv.getContext('2d');
+        var rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        rg.addColorStop(0, 'rgba(255,255,244,1)');
+        rg.addColorStop(0.35, 'rgba(255,232,170,0.55)');
+        rg.addColorStop(1, 'rgba(255,220,150,0)');
+        g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+        pfxWindMoteTex = PIXI.Texture.from(cv);
+        pfxWindApp = app;
+        pfxWindMode = 'pixi';
+      } catch (e) {
+        if (pfxWindApp){ try { pfxWindApp.destroy(true, { children: true, texture: false, baseTexture: false }); } catch (e2) {} pfxWindApp = null; }
+        if (pfxWindMoteTex){ try { pfxWindMoteTex.destroy(true); } catch (e3) {} pfxWindMoteTex = null; }
+        pfxWindMode = null;
+      }
+    }
+    /* 光の風の発火（突風の拍・gust SE と同時）。差し替えの拍（1430ms）
+       より前に流れ始めることが前提。どちらの経路でも見た目の
+       パラメータ（本数・帯域・速度・タイミング）はモック準拠に揃える */
+    function paperWindBurst(){
+      if (pfxWindFired) return;
+      pfxWindFired = true;
+      if (!paperFxWindEl) return;
+      var done = false;
+      if (pfxWindMode === 'pixi' && pfxWindApp){
+        try { paperWindBurstPixi(); done = true; } catch (e) { paperWindStop(); }
+      }
+      if (!done) paperWindBurstDom();
+      /* 流れ切った後の後片付け（最大でも遅延320ms＋所要1200msで終わる。
+         スキップ／終了時は paperFxSkip／paperFxFinish からも呼ばれる） */
+      paperFxLater(2000, paperWindStop);
+    }
+    /* Pixi 経路：筋は FxKit のリボン（流れテクスチャ）を左端から右へ
+       滑らせ、粒は円テクスチャのスプライトを横切らせる */
+    function paperWindBurstPixi(){
+      var app = pfxWindApp;
+      var W = app.screen.width, H = app.screen.height;
+      var layer = new PIXI.Container();
+      app.stage.addChild(layer);
+      var streaks = [], motes = [], i;
+      for (i = 0; i < 9; i++){
+        var st0 = FxKit.strip(20);
+        var mat0 = FxKit.ribbonMaterial({ alpha: 0.95, core: 0.55, dir: 0 });
+        var mesh0 = new PIXI.Mesh(st0.geo, mat0);
+        mesh0.blendMode = PIXI.BLEND_MODES.SCREEN;
+        mesh0.visible = false;
+        layer.addChild(mesh0);
+        streaks.push({ strip: st0, mat: mat0, mesh: mesh0,
+          y: H * (0.16 + Math.random() * 0.44),                 /* 帯域：画面上部16〜60% */
+          len: W * (0.30 + Math.random() * 0.28),               /* 幅30〜58% */
+          tilt: Math.tan((Math.random() * 6 - 3) * Math.PI / 180), /* 上下に数度の傾き */
+          hw: 2.2 + Math.random() * 1.6,                        /* 高さ3px程度（半幅） */
+          delay: Math.random() * 260, dur: 620 + Math.random() * 380 });
+      }
+      for (i = 0; i < 16; i++){
+        var sp0 = new PIXI.Sprite(pfxWindMoteTex);
+        sp0.anchor.set(0.5);
+        sp0.blendMode = PIXI.BLEND_MODES.SCREEN;
+        sp0.visible = false;
+        layer.addChild(sp0);
+        motes.push({ sp: sp0,
+          y: H * (0.16 + Math.random() * 0.44),
+          size: 9 + Math.random() * 7,                            /* 放射グラデーション径（芯は約5px） */
+          dist: W * (1.05 + Math.random() * 0.25),              /* 横断105〜130vw相当 */
+          drift: (Math.random() * 2 - 1) * H * 0.03,
+          ph: Math.random() * Math.PI * 2,
+          delay: Math.random() * 320, dur: 750 + Math.random() * 450 });
+      }
+      paperFxWindEl.style.display = 'block';
+      var t0 = performance.now();
+      app.ticker.add(function(delta){
+        var t = performance.now() - t0;
+        var allDone = t > 100;
+        var s, st, k, e, tailX;
+        for (s = 0; s < streaks.length; s++){
+          st = streaks[s];
+          k = (t - st.delay) / st.dur;
+          if (k < 0){ st.mesh.visible = false; allDone = false; continue; }
+          if (k >= 1){ st.mesh.visible = false; continue; }
+          allDone = false;
+          st.mesh.visible = true;
+          e = 1 - Math.pow(1 - k, 3); /* easeOutCubic：シュルルッと抜ける */
+          tailX = -st.len - W * 0.06 + (W + st.len * 2 + W * 0.12) * e;
+          var samples = FxKit.bezierSamples(
+            { x: tailX, y: st.y },
+            { x: tailX + st.len / 2, y: st.y + st.tilt * st.len / 2 },
+            { x: tailX + st.len, y: st.y + st.tilt * st.len },
+            21, function(u){ return st.hw * (0.25 + 0.75 * Math.sin(Math.PI * u)); });
+          FxKit.fillStrip(st.strip, samples);
+          st.mat.uniforms.uFlow += (delta || 1) * 0.05; /* テクスチャを進行方向へ流す */
+          st.mat.uniforms.uAlpha = 0.95 * Math.pow(Math.sin(Math.PI * Math.min(1, k * 1.15)), 0.8);
+        }
+        for (var m = 0; m < motes.length; m++){
+          var mo = motes[m];
+          var mk = (t - mo.delay) / mo.dur;
+          if (mk < 0){ mo.sp.visible = false; allDone = false; continue; }
+          if (mk >= 1){ mo.sp.visible = false; continue; }
+          allDone = false;
+          mo.sp.visible = true;
+          var me = 1 - Math.pow(1 - mk, 2);
+          mo.sp.position.set(-10 + mo.dist * me, mo.y + mo.drift * mk + Math.sin(mo.ph + mk * 5) * 4);
+          var ms = mo.size * (0.7 + 0.5 * Math.sin(Math.PI * mk)) / 64;
+          mo.sp.scale.set(ms);
+          mo.sp.alpha = 0.9 * Math.sin(Math.PI * mk);
+        }
+        if (allDone){ /* 全要素が流れ切ったらアプリごと片付ける（ティッカー外で破棄） */
+          setTimeout(paperWindStop, 0);
+        }
+      });
+      app.start();
+    }
+    /* DOM フォールバック経路：モックと同じ .pfx-streak／.pfx-mote＋WAAPI */
+    function paperWindBurstDom(){
+      paperFxWindEl.style.display = 'block';
+      var i, el, tilt, wPct;
+      for (i = 0; i < 9; i++){
+        el = document.createElement('div');
+        el.className = 'pfx-streak';
+        wPct = 30 + Math.random() * 28;
+        el.style.width = wPct + '%';
+        el.style.top = (16 + Math.random() * 44) + '%';
+        paperFxWindEl.appendChild(el);
+        tilt = (Math.random() * 6 - 3).toFixed(2);
+        paperFxAnim(el, [
+          { transform: 'translateX(-' + (wPct + 8) + 'vw) rotate(' + tilt + 'deg)', opacity: 0 },
+          { transform: 'translateX(-' + (wPct * 0.35).toFixed(1) + 'vw) rotate(' + tilt + 'deg)', opacity: 1, offset: 0.18 },
+          { transform: 'translateX(104vw) rotate(' + tilt + 'deg)', opacity: 0 }
+        ], { duration: 620 + Math.random() * 380, delay: Math.random() * 260, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'backwards' });
+      }
+      for (i = 0; i < 16; i++){
+        el = document.createElement('div');
+        el.className = 'pfx-mote';
+        var sz = 9 + Math.random() * 7;
+        el.style.width = sz + 'px'; el.style.height = sz + 'px';
+        el.style.top = (16 + Math.random() * 44) + '%';
+        paperFxWindEl.appendChild(el);
+        var dist = 105 + Math.random() * 25;
+        var drift = (Math.random() * 6 - 3).toFixed(1);
+        paperFxAnim(el, [
+          { transform: 'translate(-4vw, 0px)', opacity: 0 },
+          { opacity: 0.95, offset: 0.2 },
+          { transform: 'translate(' + dist.toFixed(1) + 'vw, ' + drift + 'vh)', opacity: 0 }
+        ], { duration: 750 + Math.random() * 450, delay: Math.random() * 320, easing: 'cubic-bezier(.3,.6,.4,1)', fill: 'backwards' });
+      }
+    }
+    /* 光の風の後片付け（冪等）：専用 Pixi アプリは破棄し、DOM 要素は
+       残さず外す。共有の流れテクスチャ（FxKit 側キャッシュ）は
+       texture:false で破棄対象から外す */
+    function paperWindStop(){
+      if (pfxWindApp){
+        try { pfxWindApp.ticker.stop(); } catch (e) {}
+        try { pfxWindApp.destroy(true, { children: true, texture: false, baseTexture: false }); } catch (e2) {}
+        pfxWindApp = null;
+      }
+      if (pfxWindMoteTex){ try { pfxWindMoteTex.destroy(true); } catch (e3) {} pfxWindMoteTex = null; }
+      pfxWindMode = null;
+      if (paperFxWindEl){
+        paperFxWindEl.style.display = 'none';
+        while (paperFxWindEl.firstChild) paperFxWindEl.removeChild(paperFxWindEl.firstChild);
+      }
     }
     /* 紙メニューの出現：.start-box を羊皮紙化し、右から滑り込ませる
        （少し行き過ぎて戻る紙の動き）。項目は .paper-fx-live で隠した
@@ -21879,6 +22150,7 @@
     }
     function paperFxFinish(){
       paperFxPlaying = false;
+      paperWindStop(); /* 光の風の要素と専用 Pixi アプリを残さない */
       paperFxTimers.forEach(function(id){ clearTimeout(id); });
       paperFxTimers = [];
       paperFxAnims = [];
@@ -21890,6 +22162,7 @@
     /* タップで即スキップ：終端状態（紙メニューの通常表示）へ即断する */
     function paperFxSkip(){
       if (!paperFxPlaying) return;
+      paperWindStop(); /* スキップ時は光の風も即座に消す */
       paperFxTimers.forEach(function(id){ clearTimeout(id); });
       paperFxTimers = [];
       paperFxAnims.forEach(function(a){ try { a.cancel(); } catch (e) {} });
