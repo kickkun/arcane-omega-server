@@ -2014,7 +2014,11 @@
         background-repeat:no-repeat;
         -webkit-background-clip:text; background-clip:text;
         -webkit-text-fill-color:transparent; color:transparent;
-        filter:drop-shadow(0 2px 1px rgba(46,32,2,.7)) drop-shadow(0 6px 14px rgba(0,0,0,.55));
+        /* 軽量化（2026-11-12）：以前は titleLogoBreath でこの filter 自体を
+           常時アニメーションしており、画面最大の文字が毎フレーム
+           フィルター再描画されていた。グローは中間状態で固定し、
+           動きは光の走り（background-position）だけに残す */
+        filter:drop-shadow(0 2px 1px rgba(46,32,2,.7)) drop-shadow(0 6px 14px rgba(0,0,0,.55)) drop-shadow(0 0 10px rgba(236,205,126,.30));
       }
       /* --- 英字サブライン（Cinzel）：金の細線で挟む --- */
       .title-logo-sub{
@@ -2955,7 +2959,9 @@
            作る方式で、勝利14個／敗北10個まで・約3秒で消える。フィルタは
            使わない（drop-shadow のグローは粒子の背景グラデーションで
            代替し、フィルレートを消費しない）。 */
-      .title-logo-text{animation:titleLogoBreath 5.4s ease-in-out infinite, titleLogoShine 5.6s ease-in-out infinite;}
+      /* titleLogoBreath（filter の常時アニメーション）は軽量化のため廃止し、
+         上の .title-logo-text 本体の静的 filter にグローを持たせた */
+      .title-logo-text{animation:titleLogoShine 5.6s ease-in-out infinite;}
       /* 待機中のロゴの光の走り：数秒おきに金の文字の上を光の帯が横切る
          （第1層の帯グラデーションの background-position だけを動かす） */
       @keyframes titleLogoShine{
@@ -3808,9 +3814,12 @@
           linear-gradient(155deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 32%, rgba(0,0,0,.16) 76%, rgba(0,0,0,.36) 100%),
           var(--fr-grad);
       }
-      /* 表面の凹凸ノイズ（左上からの光は上のグラデーションが担う） */
+      /* 表面の凹凸ノイズ（左上からの光は上のグラデーションが担う）。
+         軽量化（2026-11-12）：mix-blend-mode はカード全枚が合成グループに
+         なりモバイルGPUの常時負荷になるため外し、薄いグレー粒のまま
+         質感だけ残す（不透明度も少し下げて印象を近づける） */
       .dfull::before{
-        content:''; position:absolute; inset:0; pointer-events:none; opacity:.5; mix-blend-mode:overlay;
+        content:''; position:absolute; inset:0; pointer-events:none; opacity:.32;
         background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
         background-size:140px 140px;
       }
@@ -3877,9 +3886,16 @@
       .hcard .domg::after,.ov-hcard .domg::after,.follower .domg::after{inset:-7px; border-width:1.5px;}
       /* --- 絵の窓：一段掘り下げた位置に絵と陰影を収める --- */
       span.dfull img,span.dfull .shade,span.dfull .coin-face{
-        position:absolute; left:5.5%; right:5.5%; top:19%; bottom:4.5%; width:auto; height:auto;
+        position:absolute; left:5.5%; right:5.5%; top:19%; bottom:4.5%;
       }
-      span.dfull img{object-fit:cover; object-position:top center;}
+      /* img は置換要素なので width/height:auto のままだと left/right・
+         top/bottom で伸縮せず原寸（512×683）で描かれ、窓には左上の
+         一部だけが拡大表示されていた（2026-11-12 実機報告の不具合）。
+         窓の実寸（横 = 100-5.5×2 = 89%／縦 = 100-19-4.5 = 76.5%）を
+         明示し、モック準拠の cover＋上端寄せで収める。.shade と
+         .coin-face は div（非置換）なので auto のまま左右・上下で伸縮する */
+      span.dfull img{width:89%; height:76.5%; object-fit:cover; object-position:top center;}
+      span.dfull .shade,span.dfull .coin-face{width:auto; height:auto;}
       /* --- ステータス宝石（現行の意匠：コスト＝青丸／攻撃＝金菱／体力＝赤） --- */
       .hcard .dfull .cost,.ov-hcard .dfull .ov-b-cost{top:13.8%; left:3px; z-index:3;}
       .gcard .dfull .cost{top:13.8%; left:3px; z-index:3;}
@@ -15125,7 +15141,11 @@
         /* autoDensity:true が必須：キャンバスのCSSサイズを論理サイズ（画面サイズ）に
            設定させる。これが無いとバッファサイズのまま表示され、DPR>1 の端末で
            getBoundingClientRect 由来の座標と描画位置が解像度倍率分ズレる */
-        var app = new PIXI.Application({ backgroundAlpha: 0, antialias: true, autoDensity: true, autoStart: true, resizeTo: window, resolution: Math.min(window.devicePixelRatio || 1, 2) });
+        /* 軽量化（2026-11-12）：解像度キャップは 2→1.5。描くのは半透明の
+           グロー／粒子／オーラ等の柔らかい素材のみで、フィルレート
+           （＝モバイルGPUの常時負荷）が約44%減る。座標は CSS px 基準で
+           変わらない */
+        var app = new PIXI.Application({ backgroundAlpha: 0, antialias: true, autoDensity: true, autoStart: true, resizeTo: window, resolution: Math.min(window.devicePixelRatio || 1, 1.5) });
         app.view.id = 'pixiFxCanvas';
         document.body.appendChild(app.view);
         pixiFx.app = app;
@@ -15141,6 +15161,23 @@
         pixiFx.tex = app.renderer.generateTexture(tg);
         tg.destroy();
         app.ticker.add(pixiTick);
+        /* 軽量化（2026-11-12）：対戦外（タイトル・メニュー等）や全面画面が
+           開いている間は描くものが無いのに、全面透明キャンバスを毎フレーム
+           描き続けていた。ticker ごと止め、400ms 間隔の番犬だけが再開条件
+           （対戦中／再生中の演出あり／遮蔽なし）を判定する。キャンバスの
+           表示も番犬側で遮蔽状態に合わせ、ticker 停止中に全面画面の裏へ
+           残像が出ないようにする。診断の Pixi OFF 中は干渉しない */
+        setInterval(function(){
+          if (!pixiFx.app || pixiFx.app !== app) return;
+          try { if (typeof finDiagIsPixiOff === 'function' && finDiagIsPixiOff()) return; } catch (e) {}
+          var blocked = PIXI_BLOCK_OVERLAYS.some(function(id){ var e = document.getElementById(id); return e && e.classList.contains('show'); });
+          app.view.style.display = blocked ? 'none' : '';
+          var need = !blocked && (document.body.classList.contains('in-battle') ||
+            pixiFx.bursts.length > 0 || pixiFx.rings.length > 0 || pixiFx.anims.length > 0 ||
+            Object.keys(pixiFx.auras).length > 0);
+          if (need && !app.ticker.started) app.ticker.start();
+          else if (!need && app.ticker.started) app.ticker.stop();
+        }, 400);
       } catch (e) {
         pixiFx.enabled = false;
         pixiFx.app = null;
