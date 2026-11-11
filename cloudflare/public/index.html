@@ -1354,6 +1354,28 @@
         position:relative; color:transparent; -webkit-text-fill-color:transparent;
         -webkit-background-clip:text; background-clip:text;
       }
+      /* ===== 神話フィニッシュ決着専用：白背景の保持＋「SPECIAL FINISH」 =====
+         神話フィニッシュで決着した時だけ、フィニッシュの白背景フェーズで
+         「SPECIAL FINISH」を出し、白を消さず保持したまま結果表示へつなぐ。
+         白レイヤーは z-index:59（結果オーバーレイ60の直下、盤面の上）：
+         フィニッシュ自身の白（第3世代 z-index:91／Pixi 93）の下に敷くため、
+         演出側の白がフェード／撤去されても下から同じ白が現れて継ぎ目が無い。
+         ラベルは z-index:99（決めセリフ98の上）だが配置は画面上部（top:15%）で
+         中央寄りの決めセリフ（top:35%）とは重ならない。保持の開始／解除は
+         JS（fxSpecialShow／fxSpecialRelease）が管理し、結果遷移で必ず外れる */
+      #fxSpecialWhite{position:fixed; inset:0; z-index:59; background:#fff; pointer-events:none;}
+      #fxSpecialLabel{
+        position:fixed; left:0; right:0; top:15%; z-index:99; pointer-events:none;
+        text-align:center; padding:0 10px; box-sizing:border-box;
+        font-family:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+        font-weight:800; letter-spacing:.38em; text-indent:.38em; line-height:1.2; white-space:nowrap;
+        font-size:clamp(19px, 5.6vw, 32px); color:#8a6414;
+        text-shadow:0 0 14px rgba(236,205,126,.9), 0 0 34px rgba(236,205,126,.5), 0 1px 2px rgba(120,84,10,.35);
+        animation:fxSpecialIn .34s cubic-bezier(.2,.7,.3,1) both;
+      }
+      @keyframes fxSpecialIn{from{transform:scale(1.7); opacity:0;}60%{transform:scale(.96); opacity:1;}to{transform:scale(1); opacity:1;}}
+      /* 神話決着の結果表示では、オーバーレイの暗幕を抜いて保持した白の上に直接出す */
+      #overOverlay.special-finish{background:transparent;}
       @media (prefers-reduced-motion: reduce){
         .fx-fin-letterbox,.fx-fin-dimlayer,.fx-fin-line{display:none;}
       }
@@ -5950,6 +5972,55 @@
     var fxMythicHiddenPanel = null; /* 演出中に隠した実パネル（復帰用） */
     var fxMythicGen = 0;            /* 世代カウンタ：遅延コールバックの無効化用 */
     function fxFinishLater(fn, ms){ fxFinishTimers.push(setTimeout(fn, ms)); }
+    /* ===== 神話フィニッシュ決着の締め：白背景の保持＋「SPECIAL FINISH」 =====
+       神話フィニッシュで決着した場合だけ、フィニッシュの白背景フェーズで
+       「SPECIAL FINISH」を表示し、白をフェードで消して盤面へ戻さず、保持
+       したまま結果表示へつなぐ（詳細は CSS 側 fxSpecialWhite のコメント）。
+       fxSpecialArmed は fxTriggerFinish が神話決着の時に立て、finishGame が
+       消費して fxSpecialKeep（結果表示側が保持を引き継いだ印）へ移す。
+       オンライン対戦は finishGame を通らないため、フィニッシュ終了タイマー
+       側で保持を解除し、従来どおり盤面へ戻してから操作バーを出す。
+       保持は「結果表示が出ている間だけ」に限定し、もう一度／タイトルへ／
+       勝ち抜き・アーケードの結果画面／対戦リセットの全経路で必ず解除する */
+    var fxSpecialArmed = false;
+    var fxSpecialKeep = false;
+    var fxSpecialHolding = false;
+    var fxSpecialWhiteEl = null;
+    var fxSpecialLabelEl = null;
+    function fxSpecialShow(fade){
+      if (HEADLESS) return;
+      if (!fxSpecialArmed && !fxSpecialKeep) return; /* 演出チェック等の実戦外では出さない */
+      if (fxSpecialHolding) return;
+      fxSpecialHolding = true;
+      try {
+        var w = document.createElement('div');
+        w.id = 'fxSpecialWhite'; w.setAttribute('aria-hidden', 'true');
+        if (fade){ w.style.opacity = '0'; w.style.transition = 'opacity .55s ease'; }
+        document.body.appendChild(w);
+        fxSpecialWhiteEl = w;
+        if (fade){ void w.offsetWidth; w.style.opacity = '1'; }
+        var lb = document.createElement('div');
+        lb.id = 'fxSpecialLabel'; lb.setAttribute('aria-hidden', 'true');
+        lb.textContent = 'SPECIAL FINISH';
+        document.body.appendChild(lb);
+        fxSpecialLabelEl = lb;
+      } catch (e) {}
+    }
+    function fxSpecialRelease(){
+      fxSpecialArmed = false; fxSpecialKeep = false; fxSpecialHolding = false;
+      var w = fxSpecialWhiteEl, lb = fxSpecialLabelEl;
+      fxSpecialWhiteEl = null; fxSpecialLabelEl = null;
+      var ovEl3 = document.getElementById('overOverlay');
+      if (ovEl3) ovEl3.classList.remove('special-finish');
+      [lb, w].forEach(function(el){
+        if (!el) return;
+        try {
+          el.style.transition = 'opacity .22s ease';
+          el.style.opacity = '0';
+          setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 240);
+        } catch (e) { if (el.parentNode) el.parentNode.removeChild(el); }
+      });
+    }
     function fxTriggerFinish(mythic){
       if (HEADLESS) return;
       /* モーション低減時は神話個別演出を出さず、通常フィニッシュへ落とす */
@@ -5957,6 +6028,7 @@
       if (mythic && !(MYTHIC_FINISH_IDS[String(mythic.cardId)] && mythic.panelEl)) mythic = null;
       fxFinishActive = true;
       fxFinishSeq = true;
+      fxSpecialArmed = !!mythic; /* 神話決着なら白背景の保持＋SPECIAL FINISH の対象にする */
       /* SD方式の長尺フィニッシュ（4秒以上）では勝敗表示も演出の長さに合わせて遅らせる。
          従来演出フォールバック時は従来の遅延のまま（アギトも 4800 へ延長済みのため長尺側） */
       var mythDelay = FX_MYTHIC_FINISH_MS;
@@ -5982,6 +6054,11 @@
       if (mythic){
         var mf = mythic;
         fxFinishLater(function(){ mythicFinishDispatch(mf.cardId, mf.panelEl); }, 430);
+        /* 白背景を持たない従来演出フォールバック経路への保険：白フェーズを
+           持つ経路（新方式／第3世代）は決めセリフ表示の拍で fxSpecialShow が
+           先に発火して保持を始めるため、この遅延側は無動作になる。白フェーズ
+           の無い経路では終盤に白へフェードインして保持へつなぐ */
+        fxFinishLater(function(){ fxSpecialShow(true); }, Math.max(0, fxFinishOverDelay - 950));
       }
       /* 余韻：暗転して一拍置き、勝敗表示へつなぐ（神話時は演出の後半にずらす） */
       fxFinishLater(function(){ document.body.classList.add('fx-finish-dim'); }, mythic ? Math.max(850, mythDelay - 700) : 850);
@@ -5990,11 +6067,15 @@
         fxFinishSeq = false;
         fxFinishReg = {};
         mythicFxCleanup();
+        /* オンライン対戦など finishGame が保持を引き継がなかった場合は、
+           フィニッシュ終了のここで保持を解除し、従来どおり盤面へ戻す */
+        if (fxSpecialHolding && !fxSpecialKeep) fxSpecialRelease();
       }, fxFinishOverDelay);
     }
     function fxResetFinish(){
       fxFinishActive = false;
       fxFinishSeq = false;
+      fxSpecialRelease(); /* 白背景の保持が残っていたら必ず解除する（安全網） */
       fxLeaderPopFinish = false;
       fxFinishReg = {};
       fxFinishOverDelay = 1750;
@@ -7747,6 +7828,7 @@
             setTimeout(function(){
               if (gen2 !== fxMythicGen) return;
               var lineEl = fin3ShowWhiteLine(cardId, conf);
+              if (lineEl) fxSpecialShow(); /* 神話決着なら白の保持＋SPECIAL FINISH を開始（実戦外は無動作） */
               if (lineEl){
                 var fadeAt = Math.min(destroyMs + 2000, Math.max(destroyMs + 700, totalMs - 400));
                 setTimeout(function(){
@@ -12681,7 +12763,7 @@
       N.barB.position.y = vh + G.barH * 1.04 * (1 - barK);
       if (R.blown && tS >= total - 150) N.white.alpha *= Math.max(0, 1 - FINP_EZ.easeIn(finPProg(tS, total - 150, 140)));
       /* 決めセリフ（白の虚空の中。現行と同じく破壊拍+140msで出す） */
-      if (!R.lineOn && tS >= R.destroyMs + 140){ R.lineOn = true; R.lineFx0 = tFs; N.lineC.visible = true; }
+      if (!R.lineOn && tS >= R.destroyMs + 140){ R.lineOn = true; R.lineFx0 = tFs; N.lineC.visible = true; fxSpecialShow(); /* 神話決着なら白の保持＋SPECIAL FINISH を開始（実戦外は無動作） */ }
       if (R.lineOn){
         finPKf([finPF(0, 0, 0, 2.7, 0), finPF(0.55, 0, 0, 0.93, 1), finPF(0.78, 0, 0, 1.03, 1), finPF(1, 0, 0, 1, 1)], FINP_EZ.cutin, finPProg(tFs, R.lineFx0, 330), tmp);
         N.lineC.scale.set(tmp.s);
@@ -19250,23 +19332,36 @@
          （神話フィニッシュ時は演出長に合わせて fxFinishOverDelay が延びる） */
       var overDelay = fxFinishActive ? fxFinishOverDelay : 650;
       fxFinishActive = false;
+      /* 神話フィニッシュ決着の時は、白背景の保持を結果表示側が引き継ぐ
+         （fxSpecialKeep）。この場合は白の余韻自体が締めになるため、
+         VICTORY 演出は挟まず結果表示へ直接つなぐ */
+      var specialFinish = fxSpecialArmed;
+      fxSpecialArmed = false;
+      if (specialFinish) fxSpecialKeep = true;
       setTimeout(function(){
         /* 対戦終了直後にタイトルへ戻っていたら、遅れて勝敗モーダルを被せない
-           （被さるとタイトル側のスクロール／タッチを奪う） */
-        if (!S.over) return;
-        if (document.getElementById('startOverlay').classList.contains('show')) return;
-        if (document.getElementById('deckOverlay').classList.contains('show')) return;
+           （被さるとタイトル側のスクロール／タッチを奪う）。神話決着で白を
+           保持していた場合も、結果を出さない以上はここで必ず解除する */
+        if (!S.over){ fxSpecialRelease(); return; }
+        if (document.getElementById('startOverlay').classList.contains('show')){ fxSpecialRelease(); return; }
+        if (document.getElementById('deckOverlay').classList.contains('show')){ fxSpecialRelease(); return; }
         var showResult = function(){
-          /* 勝ち抜きモードのラン中は、通常の勝敗画面ではなく勝ち抜き側の画面を出す */
-          if (typeof streakOnMatchEnd === 'function' && streakOnMatchEnd(win)) return;
+          /* 勝ち抜きモードのラン中は、通常の勝敗画面ではなく勝ち抜き側の画面を出す。
+             神話決着で白を保持していた場合は、その画面が被さるこの時点で保持を
+             解除する（各モードの画面自体は従来どおり） */
+          if (typeof streakOnMatchEnd === 'function' && streakOnMatchEnd(win)){ fxSpecialRelease(); return; }
           /* アーケードモードのラン中も同様に、アーケード側の決着処理へ渡す */
-          if (typeof arcadeOnMatchEnd === 'function' && arcadeOnMatchEnd(win)) return;
-          document.getElementById('overOverlay').classList.add('show');
+          if (typeof arcadeOnMatchEnd === 'function' && arcadeOnMatchEnd(win)){ fxSpecialRelease(); return; }
+          var overOvEl = document.getElementById('overOverlay');
+          /* 神話決着時は暗幕を抜き、保持した白背景の上にそのまま結果を出す */
+          overOvEl.classList.toggle('special-finish', !!specialFinish);
+          overOvEl.classList.add('show');
           spawnResultFx(win, document.querySelector('#overOverlay .over-box'));
         };
         /* 勝利時のみ、結果画面の前に VICTORY 演出（金文字＋金の光と粒子、
-           約1.8秒・タップでスキップ可）を挟む。敗北時は従来どおり即遷移 */
-        if (win) playVictoryIntro(showResult);
+           約1.8秒・タップでスキップ可）を挟む。敗北時は従来どおり即遷移。
+           神話フィニッシュ決着時は白背景が締めの演出になるため挟まない */
+        if (win && !specialFinish) playVictoryIntro(showResult);
         else showResult();
       }, overDelay);
     }
@@ -21390,12 +21485,14 @@
       });
     }
     document.getElementById('againBtn').addEventListener('click', function(){
+      if (typeof fxSpecialRelease === 'function') fxSpecialRelease(); /* 神話決着の白保持を解除してから次へ */
       closeAllOverlays();
       newGame();
     });
     /* 通常対戦の結果画面からタイトルへ戻る（勝ち抜き結果の「タイトルへ」と同じ挙動）。
        このモーダルは勝ち抜き／アーケードのラン中は出ないが、念のためラン状態も畳む */
     document.getElementById('overTitleBtn').addEventListener('click', function(){
+      if (typeof fxSpecialRelease === 'function') fxSpecialRelease(); /* 神話決着の白保持を解除してからタイトルへ */
       if (typeof streak !== 'undefined' && streak && streak.active) streak.active = false;
       if (typeof arcade !== 'undefined' && arcade && arcade.active) arcade.active = false;
       showStart();
