@@ -2396,7 +2396,7 @@
       }
       .fx-hatch-shadow::before{left:31%;}
       .fx-hatch-shadow::after{right:31%;}
-      /* ===== 召喚台（中央ステージの常駐台座） =====
+      /* ===== 召喚台（中央ステージの台座） =====
          第7弾で見た目を作り替え：従来の「カードの下に置く円形の台」は廃し、
          召喚されるカードの背面に魔法陣的な円盤（.ped-disc）が来て、その
          円の中心にカード型の四角い枠（.ped-frame）がピタッと収まる構成に
@@ -2404,9 +2404,11 @@
          left／top にセットし translate(-50%,-50%) で中心合わせする。
          position:fixed、z-index:88 は魔法陣（89）より下（カードの背後）。
          神話は .mythic で光柱・金の縁・強いグローを足して豪華にする。
-         常駐台座（.persistent）は普段は控えめな明るさで置かれ、召喚時に
-         .active が付いて従来どおり光り、カードが場へスライドした後は
-         消えずに待機状態へ戻る。出現の小さな動きは JS の WAAPI が担当。
+         台座（.persistent）の常駐表示は廃止済み：盤面にはフィールド
+         アート側の魔法陣（刻印）があるため、台座は召喚の瞬間だけ
+         .active が付いて現れて光り、カードが場へスライドした後は
+         待機状態へ戻らず非表示になる。出現の小さな動きは JS の
+         WAAPI が担当する。
          演出チェック画面では #fxStage 内の .fxcheck-ped が同じ見た目で常駐する。 */
       .fx-pedestal{position:fixed; z-index:88; pointer-events:none; transform:translate(-50%,-50%); aspect-ratio:1/1;}
       .fx-pedestal .ped-pillar{
@@ -2463,24 +2465,22 @@
         border-color:rgba(255,233,168,.85);
         box-shadow:inset 0 0 0 3px rgba(0,0,0,.28), inset 0 0 16px rgba(177,140,255,.35), 0 0 14px rgba(236,205,126,.35);
       }
-      /* 常駐台座の待機／点灯状態：待機時は円盤の明るさを落として淡く点灯
-         させ、背景の隠れを最小限に抑える。召喚時に .active が付くと
-         従来の明るさに戻って光る */
+      /* 台座の待機／点灯状態：常駐表示は廃止したため、実戦の台座は
+         待機中（.active でない時）は visibility で完全に見せない。
+         召喚時に .active が付いた時だけ、従来の明るさで光って見える。
+         明るさの値は点灯アニメーション（暗→明）の従来挙動を保つため
+         そのまま残す。演出チェック内の台座（.fxcheck-ped）は対象外で
+         従来どおり常駐表示する */
       .fx-pedestal.persistent{
         transition:opacity .38s ease, filter .38s ease, width .38s ease, left .38s ease, top .38s ease;
         filter:brightness(.66) saturate(.72);
         opacity:.58;
       }
-      .fx-pedestal.persistent.active{filter:none; opacity:1;}
+      .fx-pedestal.persistent:not(.fxcheck-ped){visibility:hidden;}
+      .fx-pedestal.persistent.active{filter:none; opacity:1; visibility:visible;}
       .fx-pedestal.persistent.ped-hidden{opacity:0 !important; visibility:hidden;}
-      /* 盤面アート適用時：常駐台座の金色の矩形枠（.ped-frame）はアートの
-         魔法陣の上に長方形として浮いて見えるため、待機中は枠を隠して
-         円盤も淡くし、刻印陣に馴染ませる。召喚で点灯（.active）した時
-         だけ従来の見た目に戻る。演出チェック内の台座は対象外 */
-      body.board-art-on .fx-pedestal.persistent:not(.fxcheck-ped):not(.active){opacity:.30; filter:brightness(.85) saturate(.8);}
-      body.board-art-on .fx-pedestal.persistent:not(.fxcheck-ped):not(.active) .ped-frame{display:none;}
-      /* 演出チェック画面内の常駐台座：中央ストリップの真ん中に円盤を置く。
-         実戦の常駐台座（両盤面の間）と同じ位置関係になり、SDフィニッシュの
+      /* 演出チェック画面内の台座：中央ストリップの真ん中に円盤を置く。
+         実戦の台座（両盤面の間）と同じ位置関係になり、SDフィニッシュの
          登場位置（sdFinAnchor がこの台座の矩形を読む）も実戦と揃う。
          円盤はストリップ（高さ128px）に収まる大きさにする */
       .fx-pedestal.fxcheck-ped{
@@ -18141,7 +18141,7 @@
     }
     /* ===== 召喚台（一時表示版：演出チェック画面の再生用） =====
        カードの背面に円盤状の台座を重ねる。魔法陣と同じタイミングで
-       フワッと現れ、指定時間で退場する。実戦の台座は下の常駐版
+       フワッと現れ、指定時間で退場する。実戦の台座は下の召喚時表示版
        （stagePedActivate）が担い、こちらは演出チェック画面と SD
        フィニッシュの登場で使う。引数の feetY は従来どおり「カードの
        足元」の Y で、円盤の中心はそこからカード中心の高さだけ上に置く。
@@ -18183,18 +18183,21 @@
       ped._removeNow = function(){ gone = true; if (ped.parentNode) ped.parentNode.removeChild(ped); };
       return ped;
     }
-    /* ===== 召喚台の常駐化（対戦中は置きっぱなし） =====
-       scope（cpu／ov）ごとに台座を1つだけ生成し、対戦画面が見えている
-       間は中央ステージの定位置に控えめな明るさで置き続ける。位置と幅は
-       盤面の実測から決め、再描画・リサイズ・スクロールに追随させる。
-       召喚時は stageProcess が stagePedActivate で台座を点灯させ
-       （神話は .mythic の光柱付き豪華版）、カードが場へスライドし始める
-       タイミングで stagePedDeactivate が待機状態へ戻す（台は消えない）。
-       表示可否はオーバーレイの開閉を MutationObserver で拾って追随する。
+    /* ===== 召喚台（召喚時のみ表示） =====
+       scope（cpu／ov）ごとに台座を1つだけ生成して使い回すが、常駐表示
+       は廃止した（盤面にはフィールドアート側の魔法陣の刻印がある）。
+       台座が見えるのは召喚演出中だけ：stageProcess が stagePedActivate
+       で点灯させ（神話は .mythic の光柱付き豪華版）、カードが場へ
+       スライドし始めるタイミングで stagePedDeactivate が消灯して
+       非表示に戻す（待機状態には戻らない）。
+       さらに、対戦画面が実際に見えていない間（タイトル／紙演出／
+       各種オーバーレイ表示中）は、召喚演出中であっても台座を一切
+       出さない。表示可否はオーバーレイの開閉を MutationObserver で
+       拾って追随する。
        HEADLESS（テストプレイ）では生成も表示もしない。 */
     var stagePeds = { cpu: null, ov: null };
     var stagePedObserverReady = false;
-    var STAGE_PED_HIDE_OVERLAYS = ['startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay','arcadeOverlay','arcadeTalkOverlay','arcadeClearOverlay','arcadeLoseOverlay'];
+    var STAGE_PED_HIDE_OVERLAYS = ['titleSplash','paperFx','startOverlay','deckOverlay','simOverlay','galleryOverlay','rulesOverlay','opponentDeckOverlay','overOverlay','fxOverlay','streakOverlay','streakNextOverlay','streakResultOverlay','arcadeOverlay','arcadeTalkOverlay','arcadeClearOverlay','arcadeLoseOverlay'];
     function stagePedEnsure(scope){
       if (HEADLESS) return null;
       var ped = stagePeds[scope];
@@ -18207,7 +18210,7 @@
       stagePeds[scope] = ped;
       return ped;
     }
-    /* 台座の基準寸法：円盤の中心（＝ステージカードの中心）と待機時の幅。
+    /* 台座の基準寸法：円盤の中心（＝ステージカードの中心）と基準の幅。
        あわせて、SDフィニッシュの登場位置が参照する「ステージカードの
        足元」の Y（_anchorFeetY）もここで決める。
        オンラインのユニットは実物があればその実測、無ければ標準サイズで代用 */
@@ -18240,10 +18243,20 @@
         ped.style.setProperty('--pfw', '53%');
       }
     }
-    /* 対戦画面が見えている時だけ台座を出す。タイトル・結果・各種モーダル
-       表示中は隠す（カード詳細シートは台座より前面に出るため対象外） */
+    /* 台座を出してよいのは「対戦画面が実際に表示されている」時だけ。
+       タイトル（#titleSplash）・紙が飛ぶ演出（#paperFx）・結果・各種
+       モーダル表示中は出さない。S.me の有無だけでは判定しない
+       （タイトル表示中でも前回の対戦の S.me が残り得るため、隠し対象
+       オーバーレイの .show を必ず先に見る）。
+       （カード詳細シートは台座より前面に出るため対象外） */
     function stagePedScopeVisible(scope){
       if (HEADLESS) return false;
+      /* 隠し対象オーバーレイ（タイトル／紙演出／メニュー／各種モーダル）が
+         1つでも出ていれば、どちらの対戦でも台座は出さない */
+      for (var i = 0; i < STAGE_PED_HIDE_OVERLAYS.length; i++){
+        var o = document.getElementById(STAGE_PED_HIDE_OVERLAYS[i]);
+        if (o && o.classList.contains('show')) return false;
+      }
       var onlineShown = document.getElementById('onlineOverlay').classList.contains('show');
       if (scope === 'ov'){
         if (!onlineShown) return false;
@@ -18251,23 +18264,23 @@
         return !!(g && g.style.display !== 'none');
       }
       if (onlineShown) return false;
-      for (var i = 0; i < STAGE_PED_HIDE_OVERLAYS.length; i++){
-        var o = document.getElementById(STAGE_PED_HIDE_OVERLAYS[i]);
-        if (o && o.classList.contains('show')) return false;
-      }
       return (typeof S !== 'undefined' && !!S && !!S.me);
     }
+    /* 台座の表示ガード：常駐表示はしない。台座を生成するのは召喚時の
+       stagePedActivate だけとし、ここでは「召喚演出中（_active）かつ
+       対戦画面が実際に見えている」時だけ表示を許し、それ以外は必ず
+       隠す。オーバーレイが演出の途中で開いた場合も、Observer 経由の
+       この同期で即座に隠れる */
     function stagePedSync(){
       if (HEADLESS) return;
       stagePedInitObserver();
       ['cpu','ov'].forEach(function(scope){
-        if (!stagePedScopeVisible(scope)){
-          var p0 = stagePeds[scope];
-          if (p0) p0.classList.add('ped-hidden');
+        var ped = stagePeds[scope];
+        if (!ped) return;
+        if (!ped._active || !stagePedScopeVisible(scope)){
+          ped.classList.add('ped-hidden');
           return;
         }
-        var ped = stagePedEnsure(scope);
-        if (!ped) return;
         stagePedLayout(scope);
         ped.classList.remove('ped-hidden');
       });
@@ -18283,12 +18296,16 @@
       var ovGameEl = document.getElementById('ovGame');
       if (ovGameEl) obs.observe(ovGameEl, { attributes: true, attributeFilter: ['style'] });
     }
-    /* 召喚時の点灯：常駐台座の円盤をステージカードの背面中心に合わせて
+    /* 召喚時の点灯：台座の円盤をステージカードの背面中心に合わせて
        光らせる（神話は円盤も拡大する）。従来の一時台座と同じ
        _dismiss／_removeNow を持たせてあり、呼び出し側の後始末は
-       「要素を消す」ではなく「待機状態へ戻す」動作になる。
+       「要素を消す」ではなく「消灯して非表示に戻す」動作になる。
+       対戦画面が実際に見えていない時（タイトル／紙演出／オーバーレイ
+       表示中）は点灯させず null を返す（stageProcess 側は ped が
+       null でもそのまま進む）。
        引数は円盤中心（cx, cy）とステージカードの幅 w・高さ h */
     function stagePedActivate(scope, cx, cy, w, h, mythic){
+      if (!stagePedScopeVisible(scope)) return null;
       var ped = stagePedEnsure(scope);
       if (!ped) return null;
       ped._active = true; ped._cx = cx; ped._cy = cy;
@@ -18313,13 +18330,16 @@
       ped._removeNow = function(){ stagePedDeactivate(scope); };
       return ped;
     }
+    /* 消灯：待機状態へは戻さず、そのまま非表示にする（常駐表示は廃止）。
+       ped-hidden を明示的に付け、以降は stagePedSync のガードでも
+       二重に隠れる */
     function stagePedDeactivate(scope){
       var ped = stagePeds[scope];
       if (!ped) return;
       ped._active = false; ped._cx = null; ped._cy = null; ped._activeAnchor = null;
       ped.classList.remove('active');
       ped.classList.remove('mythic');
-      stagePedLayout(scope);
+      ped.classList.add('ped-hidden');
       stagePedSync();
     }
     window.addEventListener('resize', function(){ stagePedSync(); });
@@ -18439,8 +18459,8 @@
       clone.style.height = h + 'px';
       clone.style.visibility = 'visible';
       document.body.appendChild(clone);
-      /* 召喚台：常駐台座の円盤をカードの背面中心に合わせて点灯させる
-         （スライド開始時に待機状態へ戻し、台自体は消えない） */
+      /* 召喚台：台座の円盤をカードの背面中心に合わせて点灯させる
+         （スライド開始時に消灯して非表示に戻す。常駐表示はしない） */
       var ped = stagePedActivate(item.scope, center.x, center.y, w, h, item.mythic);
       /* Pixi召喚エフェクトはステージ出現のタイミングで発火させる */
       stageSummonFx(item.cardId, clone, item.mythic);
@@ -18456,7 +18476,7 @@
       if (String(item.cardId) === '46') dwell = Math.max(dwell, 2030);
       if (String(item.cardId) === '52ex') dwell = Math.max(dwell, 600);
       setTimeout(function(){
-        if (ped) ped._dismiss(360); /* 台は消えず、待機状態（控えめな明るさ）へ戻る */
+        if (ped) ped._dismiss(360); /* 台座は消灯して非表示に戻る（待機表示はしない） */
         var el2 = stageFindEl(item.key);
         if (!el2){ if (clone.parentNode) clone.parentNode.removeChild(clone); if (ped) ped._removeNow(); done(); return; }
         el2.style.visibility = 'hidden';
@@ -18868,7 +18888,7 @@
       fxSpawnSweep('cpu', function(key){ return document.querySelector('[data-fol="' + key + '"]'); });
       stageRehide('cpu'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
       hatchRehide('cpu'); /* 孵化演出中の実要素も同様に隠し直す */
-      stagePedSync(); /* 召喚台（常駐）：対戦中は中央ステージに表示し続け、位置を盤面に合わせる */
+      stagePedSync(); /* 召喚台：召喚演出中以外は台座を出さない表示ガード（位置も追随させる） */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxCpuPrev = fxSnapshotCpu();
       fxCpuPrevCid = fxCpuCidMap();
@@ -24563,7 +24583,7 @@
       });
       stageRehide('ov'); /* ステージ演出中の実要素は隠し直す（作り直しで visibility が消えるため） */
       hatchRehide('ov'); /* 孵化演出中の実要素も同様に隠し直す */
-      stagePedSync(); /* 召喚台（常駐）：オンライン対戦でも中央ステージに表示し続け、位置を盤面に合わせる */
+      stagePedSync(); /* 召喚台：オンライン対戦でも召喚演出中以外は台座を出さない表示ガード */
       pixiSyncAuras(); /* PixiJS：常駐オーラの同期（場を離れたユニットは消える） */
       fxOvPrev = fxOvSnapshot(v);
     }
