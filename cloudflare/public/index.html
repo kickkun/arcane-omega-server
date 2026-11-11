@@ -347,6 +347,26 @@
         background:radial-gradient(circle, rgba(255,224,138,.55) 0%, rgba(255,196,74,.20) 42%, rgba(255,196,74,0) 68%);
       }
       .sig-pt{position:absolute; border-radius:50%; pointer-events:none; background:radial-gradient(circle,#fff6da 0%,#eccd7e 55%,rgba(236,205,126,0) 100%); box-shadow:0 0 7px rgba(236,205,126,.75);}
+      /* ===== 対戦開始演出・第3便：丸アイコン→召喚士パネルへの飛行・変形 =====
+         BATTLE START の文字が消えるタイミングで、中央の丸アイコンが上下の
+         召喚士パネルへ飛び、着地で丸→アーチ型へ変形してパネル化する。
+         実パネル側は .sig-veil（肖像＋バー類を隠す）→ .sig-veil2（肖像だけ
+         見せ、名前バー／ランプ類は着地後に遅れて出す）の2段で受け、
+         着地のクロスフェードとバー出現は JS（WAAPI）で繋ぐ。クラスは
+         パネルの器（#cpuLeader／#myLeader／.ov-player）側に付くため、
+         演出中の再描画（innerHTML 差し替え）でも隠し状態が保たれる。
+         スキップ・中断時は finishBattleIntro が両クラスを即時外し、
+         パネルは完成形で表示される */
+      #fieldWrap .leader.sig-veil .plate-frame,
+      #fieldWrap .leader.sig-veil .leader-info{opacity:0;}
+      #fieldWrap .leader.sig-veil2 .plate-ribbon,
+      #fieldWrap .leader.sig-veil2 .pp-lamps,
+      #fieldWrap .leader.sig-veil2 .hpbar,
+      #fieldWrap .leader.sig-veil2 .leader-info{opacity:0;}
+      .ov-player.sig-veil > *{opacity:0;}
+      .ov-player.sig-veil2 > *:not(.ov-summoner-avatar){opacity:0;}
+      /* 飛行中の丸アイコン：オーバーレイ直下へ移し、座標は JS が固定配置で制御 */
+      .sig-face.sig-flyer{position:fixed; margin:0; z-index:6;}
       .section{margin-top:22px;}
       .section h2{font-family:"Shippori Mincho B1",serif; font-size:19px; font-weight:800; letter-spacing:.06em; margin:0 0 4px; border-bottom:2px solid var(--gold); padding-bottom:7px;}
       .section .sec-sub{font-size:12.5px; color:var(--ink-dim); margin:0 0 12px; line-height:1.6;}
@@ -3727,6 +3747,399 @@
         .fx-sd-aura-box{display:none;}
         .fx-fin3-circle{animation:none;}
       }
+      /* ===== カード見た目刷新・第1便：配置案A＋枠D案（上帯フリーズ）＋厚み＋カード裏 =====
+         仕様（ユー承認済み・モック準拠）：
+         ・配置案A（390×844基準）：手札ゾーンを広げ、手札カードは
+           70×111（D案全長 W×1.587）、場の列は92、場カードはドック時
+           56幅×74（W×1.307）、召喚士プレートの絵は64→56、ログ帯36→32。
+           デッキ束は召喚士ライン右端のまま46幅＋3枚重ね＋残数バッジ。
+         ・枠D案：八角形シルエットの内側レイヤー .dfull が「全長のカード
+           本体」を担う。上部16.5%が彫刻帯（.dband：Ω浮き彫り＋二重
+           リング＋ビーズ＋放射刻み＋月桂＋はめ込み宝石）。絵は帯の下の
+           窓（上19%／下4.5%／左右5.5%）に一段掘り下げて収める。
+           手札・図鑑・詳細・オンライン手札では全長、場では .dfull を
+           帯ぶん上にずらして帯をスロットの外へ沈める（ドック状態）。
+           召喚の中央ステージではクローン側で .dfull が全長に戻り、
+           場へ滑る間に帯が沈むアニメーションを付ける。
+         ・彫り：ノイズ質感（feTurbulence の SVG を overlay 合成）＋
+           左上からの光グラデーション＋溝の二重線（暗線＋下にずらした
+           光の線）で凹凸を出す。常時フィルターは使わない。
+         ・レアリティ色差は強め：通常＝灰／神話＝飽和した金／アギト＝
+           濃紫／EX＝虹。濃い色ほど彫りを深く（--sh-d を上げる）。
+         ・厚み：手札と詳細のカードに drop-shadow の連鎖で紙の断面の
+           層を見せる（レアリティ色の縁）。場のカードには付けない。
+         ・カード裏：八角形・藍紫×金、中央にΩ浮き彫り＋二重リング＋
+           ビーズ、帯位置に小さいΩ。山札の束とオンラインの相手手札裏
+           で共用する。レアリティ差なし。
+         既存の枠リング（::before／::after）は廃止せず、clip-path で
+           新しいシルエットに沿わせて残す。状態表示（出せる青枠など）
+           は本体の box-shadow が従来どおり担う（枠の border は
+           0 にして .dfull の八角形だけを見せる）。 */
+      /* --- レアリティのパレット --- */
+      .hcard,.follower,.gcard,.ov-hcard,.ov-unit,.detail-art{
+        --fr-grad:linear-gradient(158deg,#9b95a4 0%,#6a6478 34%,#453f55 62%,#2f2a3e 84%,#211e2d 100%);
+        --band-grad:linear-gradient(180deg,#aaaab2 0%,#76767e 52%,#4e4e56 100%);
+        --band-fg:#2e2e35;
+        --sh-d:.48; --sh-l:.34;
+      }
+      .hcard.mythic,.follower.mythic,.gcard.mythic,.ov-hcard.mythic,.ov-unit.mythic,.detail-art.mythic{
+        --fr-grad:linear-gradient(158deg,#ffe9a8 0%,#eec95f 30%,#c1912f 58%,#8a5f16 84%,#5e3f0c 100%);
+        --band-grad:linear-gradient(180deg,#ffedb0 0%,#e3b93e 52%,#a87c22 100%);
+        --band-fg:#5e4303;
+        --sh-d:.52; --sh-l:.42;
+      }
+      .hcard.agito,.follower.agito,.gcard.agito,.ov-hcard.agito,.ov-unit.agito,.detail-art.agito{
+        --fr-grad:linear-gradient(158deg,#e3b8ff 0%,#a55eea 30%,#7c3aed 58%,#4c1d95 84%,#2a0a45 100%);
+        --band-grad:linear-gradient(180deg,#8a5fd0 0%,#5b34a3 52%,#3d1a78 100%);
+        --band-fg:#f0e6ff;
+        --sh-d:.68; --sh-l:.30;
+      }
+      .hcard.rainbow,.follower.rainbow,.gcard.rainbow,.ov-hcard.rainbow,.ov-unit.rainbow,.detail-art.rainbow{
+        --fr-grad:linear-gradient(158deg,#ff8a8a 0%,#ffd76a 26%,#9fe870 50%,#6ec3ff 74%,#c39bff 100%);
+        --band-grad:linear-gradient(90deg,#ff9d8a 0%,#ffd76a 30%,#a5e870 52%,#6ec3ff 76%,#c39bff 100%);
+        --band-fg:#2c3350;
+        --sh-d:.65; --sh-l:.34;
+      }
+      /* --- カード本体（全長）：八角形＋彫りの表面 --- */
+      .dfull{
+        position:absolute; inset:0; display:block; overflow:hidden;
+        clip-path:polygon(13% 0,87% 0,100% 9%,100% 91%,87% 100%,13% 100%,0 91%,0 9%);
+        background:
+          linear-gradient(155deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 32%, rgba(0,0,0,.16) 76%, rgba(0,0,0,.36) 100%),
+          var(--fr-grad);
+      }
+      /* 表面の凹凸ノイズ（左上からの光は上のグラデーションが担う） */
+      .dfull::before{
+        content:''; position:absolute; inset:0; pointer-events:none; opacity:.5; mix-blend-mode:overlay;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-size:140px 140px;
+      }
+      /* 溝の二重線（外周の暗線＋光の線）と、帯の下の溝 */
+      .dfull::after{
+        content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+        box-shadow:
+          inset 0 0 0 1.5px rgba(0,0,0,var(--sh-d)),
+          inset 0 0 0 3px rgba(255,255,255,calc(var(--sh-l)*.55)),
+          inset 0 12px 12px -8px rgba(0,0,0,.35);
+        background:linear-gradient(180deg, transparent 17.4%, rgba(0,0,0,var(--sh-d)) 17.4%, rgba(0,0,0,var(--sh-d)) 18.1%, rgba(255,255,255,var(--sh-l)) 18.3%, rgba(255,255,255,var(--sh-l)) 18.9%, transparent 19.1%);
+      }
+      /* --- 彫刻帯：Ω浮き彫り＋二重リング＋月桂＋はめ込み宝石 --- */
+      .dband{
+        position:absolute; left:0; right:0; top:0; height:16.5%; z-index:2;
+        display:flex; align-items:center; justify-content:center;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,0) 46%, rgba(0,0,0,.30) 100%),
+          var(--band-grad);
+        box-shadow:
+          inset 0 1.5px 1px rgba(255,255,255,var(--sh-l)),
+          inset 0 -2px 2.5px rgba(0,0,0,var(--sh-d)),
+          inset 0 -4.5px 0 -2.5px rgba(255,255,255,calc(var(--sh-l)*.7));
+      }
+      /* 左右の月桂の彫り＋帯端の赤い宝石（右側は反転して流用） */
+      .dband::before,.dband::after{
+        content:''; position:absolute; top:50%; width:35%; height:76%; pointer-events:none;
+        background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 20'%3E%3Cdefs%3E%3CradialGradient id='pg' cx='0.35' cy='0.3' r='0.95'%3E%3Cstop offset='0' stop-color='%23ffc4c4'/%3E%3Cstop offset='.55' stop-color='%23d21f3c'/%3E%3Cstop offset='1' stop-color='%236d0a1e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg transform='translate(.7,1)' fill='rgba(255,255,255,.32)'%3E%3Cg transform='translate(15,10) rotate(-24)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3Cg transform='translate(27,10) rotate(20) scale(.86)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3Cg transform='translate(38,10) rotate(-22) scale(.72)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3Cg transform='translate(48,10) rotate(18) scale(.58)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3C/g%3E%3Cg fill='rgba(0,0,0,.52)'%3E%3Cg transform='translate(15,10) rotate(-24)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3Cg transform='translate(27,10) rotate(20) scale(.86)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3Cg transform='translate(38,10) rotate(-22) scale(.72)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3Cg transform='translate(48,10) rotate(18) scale(.58)'%3E%3Cpath d='M0,0 Q5,-7 11,-6 Q6.5,1.4 0,0 Z'/%3E%3C/g%3E%3C/g%3E%3Cpath d='M11,10 L58,10' stroke='rgba(0,0,0,.45)' stroke-width='1'/%3E%3Ccircle cx='6' cy='10' r='3.4' fill='url(%23pg)' stroke='rgba(0,0,0,.5)' stroke-width='.7'/%3E%3Ccircle cx='4.9' cy='8.9' r='1.1' fill='rgba(255,255,255,.9)'/%3E%3C/svg%3E") left center / contain no-repeat;
+      }
+      .dband::before{left:2px; transform:translateY(-50%);}
+      .dband::after{right:2px; transform:translateY(-50%) scaleX(-1);}
+      /* Ωの紋章：浮き彫り（二重リングは影の重ねで彫る） */
+      .domg{
+        position:relative; font-style:normal; line-height:1; padding:.12em .34em; border-radius:50%;
+        font-family:Georgia,'Times New Roman',serif; font-weight:700;
+        color:var(--band-fg);
+        text-shadow:0 1px 0 rgba(255,255,255,.45), 0 -1px 1.5px rgba(0,0,0,.6);
+        box-shadow:
+          0 0 0 1.3px rgba(0,0,0,var(--sh-d)),
+          0 1.5px 0 -.5px rgba(255,255,255,calc(var(--sh-l)*.8)),
+          inset 0 0 0 1.3px rgba(0,0,0,calc(var(--sh-d)*.85)),
+          inset 0 -1.5px 0 -.5px rgba(255,255,255,calc(var(--sh-l)*.7));
+      }
+      .hcard .domg,.ov-hcard .domg{font-size:12.5px;}
+      .follower .domg{font-size:10px;}
+      .ov-unit .domg{font-size:9px;}
+      .gcard .domg{font-size:15px;}
+      .detail-art .domg{font-size:22px;}
+      /* 放射状の刻み＋ビーズの連なり（全長表示の全般に出す。
+         手札・場は帯が細いため、リングの張り出しを小さめに絞る） */
+      .gcard .domg::before,.detail-art .domg::before,
+      .hcard .domg::before,.ov-hcard .domg::before,.follower .domg::before{
+        content:''; position:absolute; inset:-6px; border-radius:50%; pointer-events:none;
+        background:repeating-conic-gradient(from 0deg, rgba(0,0,0,var(--sh-d)) 0deg 2.5deg, transparent 2.5deg 18deg);
+        -webkit-mask:radial-gradient(closest-side, transparent 79%, #000 80%, #000 93%, transparent 94%);
+        mask:radial-gradient(closest-side, transparent 79%, #000 80%, #000 93%, transparent 94%);
+      }
+      .hcard .domg::before,.ov-hcard .domg::before,.follower .domg::before{inset:-4.5px;}
+      .gcard .domg::after,.detail-art .domg::after,
+      .hcard .domg::after,.ov-hcard .domg::after,.follower .domg::after{
+        content:''; position:absolute; inset:-9.5px; border-radius:50%; pointer-events:none;
+        border:1.8px dotted rgba(0,0,0,var(--sh-d));
+      }
+      .hcard .domg::after,.ov-hcard .domg::after,.follower .domg::after{inset:-7px; border-width:1.5px;}
+      /* --- 絵の窓：一段掘り下げた位置に絵と陰影を収める --- */
+      span.dfull img,span.dfull .shade,span.dfull .coin-face{
+        position:absolute; left:5.5%; right:5.5%; top:19%; bottom:4.5%; width:auto; height:auto;
+      }
+      span.dfull img{object-fit:cover; object-position:top center;}
+      /* --- ステータス宝石（現行の意匠：コスト＝青丸／攻撃＝金菱／体力＝赤） --- */
+      .hcard .dfull .cost,.ov-hcard .dfull .ov-b-cost{top:13.8%; left:3px; z-index:3;}
+      .gcard .dfull .cost{top:13.8%; left:3px; z-index:3;}
+      .detail-art .dfull .cost{top:13.8%; left:5px; z-index:3;}
+      .hcard .dfull .badge-atk{left:2px; bottom:2px; width:20px; height:20px; font-size:11.5px; z-index:3;}
+      .hcard .dfull .badge-hp{right:2px; bottom:2px; width:20px; height:20px; font-size:11.5px; z-index:3;}
+      .gcard .dfull .badge-atk,.ov-hcard .dfull .ov-b-atk{left:2px; bottom:2px; z-index:3;}
+      .gcard .dfull .badge-hp,.ov-hcard .dfull .ov-b-hp{right:2px; bottom:2px; z-index:3;}
+      .ov-hcard .dfull .ov-b-cost,.ov-hcard .dfull .ov-b-atk,.ov-hcard .dfull .ov-b-hp{position:absolute; min-width:20px; height:20px; font-size:11.5px;}
+      .ov-hcard .dfull .ov-b-spell{
+        position:absolute; right:3px; top:19.5%; z-index:3;
+        font-size:9px; font-weight:900; line-height:1; color:#fff;
+        background:#7d5fc0; padding:3px 5px; border-radius:4px;
+      }
+      /* タグ類は帯の下へ逃がす */
+      .hcard .spell-tag,.hcard .mythic-tag{top:19.5%;}
+      .gcard .spell-tag,.gcard .mythic-tag{top:19.5%;}
+      .detail-art .mythic-tag{top:19.5%; right:6px;}
+      .hcard .kw-tags-hand{top:20.5%;}
+      .gcard .kw-tags-hand{top:18.6%;}
+      .follower .dfull .kw-tags{top:18.6%; left:4px; right:4px;}
+      /* --- 枠の border は畳み、.dfull の八角形だけを見せる --- */
+      .follower.follower,.hcard.hcard,.gcard.gcard,.ov-unit.ov-unit,.ov-hcard.ov-hcard,.detail-art.detail-art{
+        border-width:0; border-radius:7px;
+      }
+      .detail-art{background:transparent;}
+      /* 既存の枠リング（::before／::after）はシルエットに沿わせて残す。
+         場（ドック時）はスロット座標の八角形（下の角だけ切り落とし）、
+         全長表示は全長の八角形で切り抜く */
+      .follower:not(.fx-spawn-mythic):not(.fx-stage-card)::before,
+      .ov-unit:not(.fx-spawn-mythic):not(.fx-stage-card)::before,
+      .follower::after,.ov-unit::after{
+        clip-path:polygon(0 0,100% 0,100% 89%,87% 100%,13% 100%,0 89%);
+      }
+      .fx-stage-card::after{clip-path:polygon(13% 0,87% 0,100% 9%,100% 91%,87% 100%,13% 100%,0 91%,0 9%);}
+      .hcard::before,.gcard::before,.ov-hcard::before,.ov-hcard::after,.detail-art::after{
+        clip-path:polygon(13% 0,87% 0,100% 9%,100% 91%,87% 100%,13% 100%,0 91%,0 9%);
+      }
+      .detail-art::before{content:none;}
+      /* --- 場：ドック状態（帯をスロットの上へ沈める） --- */
+      .follower{--dock-y:-16.85%;}
+      .follower .dfull{inset:auto; top:0; left:0; right:0; height:120.3%; transform:translateY(var(--dock-y));}
+      .ov-unit{--dock-y:-16px;}
+      .ov-unit .dslot{position:relative; display:block; height:62px; overflow:hidden;}
+      .ov-unit .dfull{inset:auto; top:0; left:0; right:0; height:78px; transform:translateY(var(--dock-y));}
+      /* 召喚の中央ステージ：全長で現れ、場へ滑る間に帯が沈む */
+      .fx-stage-card .dfull{animation:dfSink .68s cubic-bezier(.4,.6,.3,1) both;}
+      .fx-stage-card.fx-spawn-mythic .dfull{animation-duration:1s;}
+      @keyframes dfSink{0%,52%{transform:translateY(0);}100%{transform:translateY(var(--dock-y));}}
+      @media (prefers-reduced-motion: reduce){
+        .fx-stage-card .dfull{animation:none;}
+      }
+      /* --- 厚み：紙の断面の層（手札・詳細のみ。縁の色はレアリティ色） --- */
+      .hand .hcard:not(.unplayable){filter:drop-shadow(2px 0 0 #c9c2ae) drop-shadow(2px 0 0 #8a8474) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      .hand .hcard.mythic:not(.unplayable){filter:drop-shadow(2px 0 0 #f0d47a) drop-shadow(2px 0 0 #a87f24) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      .hand .hcard.agito:not(.unplayable){filter:drop-shadow(2px 0 0 #b98af0) drop-shadow(2px 0 0 #5b2a9e) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      .hand .hcard.rainbow:not(.unplayable){filter:drop-shadow(2px 0 0 #ffb3d9) drop-shadow(2px 0 0 #7fb8f0) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      .ov-hand .ov-hcard:not(:disabled){filter:drop-shadow(2px 0 0 #c9c2ae) drop-shadow(2px 0 0 #8a8474) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      /* 出せない手札でも厚みは消さない（グレースケールと層を同じ filter に併記する） */
+      .hand .hcard.unplayable{filter:grayscale(.35) brightness(.86) drop-shadow(2px 0 0 #c9c2ae) drop-shadow(2px 0 0 #8a8474) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      .ov-hand .ov-hcard:disabled{filter:grayscale(.35) brightness(.86) drop-shadow(2px 0 0 #c9c2ae) drop-shadow(2px 0 0 #8a8474) drop-shadow(4px 6px 6px rgba(0,0,0,.45));}
+      .detail-art{filter:drop-shadow(2px 0 0 #c9c2ae) drop-shadow(2px 0 0 #8a8474) drop-shadow(5px 9px 12px rgba(0,0,0,.5));}
+      /* ===== 配置案A（戦闘画面・390×844基準） ===== */
+      /* 召喚士プレートの絵 64→56／ログ帯 36→32 */
+      #fieldWrap .leader .plate-art{height:56px;}
+      .leader-row{min-height:97px;}
+      #fieldWrap .log{height:32px;}
+      /* 場の列 92／場カードはドック時 74 高さで列の中央に置く */
+      #fieldWrap .board{height:92px; flex:0 0 auto; align-items:center;}
+      #fieldWrap .zone-main{justify-content:center;}
+      #fieldWrap .board .follower{height:74px; min-height:74px; flex-basis:56px;}
+      #fieldWrap .board .slot{height:74px; min-height:74px; flex-basis:56px;}
+      @media (min-width:700px){
+        #fieldWrap .board{height:118px;}
+        #fieldWrap .board .follower,#fieldWrap .board .slot{height:96px; min-height:96px; flex-basis:72px;}
+      }
+      /* 手札カード 70×111（全長）。タブ列が無くなった分、上パディングを戻す */
+      .hand .hcard{flex:0 0 70px; width:70px; height:111px; min-height:0;}
+      .hand{padding-top:6px;}
+      .ov-hand{padding-top:6px;}
+      .ov-hcard{width:70px; height:111px;}
+      /* 図鑑カードも全長比率へ */
+      .gcard{aspect-ratio:300/476;}
+      /* カード詳細も全長比率へ */
+      .detail-art{aspect-ratio:300/476;}
+      /* ===== デッキ束：46幅＋裏デザイン（八角形・藍紫×金） ===== */
+      #fieldWrap .leader-row .deck-pile{width:46px;}
+      .deck-pile{flex-basis:46px;}
+      .leader-row .pile-stack,.board-zone .pile-stack{width:42px; height:56px;}
+      @media (max-height:640px){
+        .leader-row .pile-stack,.board-zone .pile-stack{width:36px; height:48px;}
+      }
+      .pile-card,.ov-cardback{
+        clip-path:polygon(14% 0,86% 0,100% 14%,100% 86%,86% 100%,14% 100%,0 86%,0 14%);
+        border:none; border-radius:0;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ctext x='10' y='15' font-size='14' text-anchor='middle' font-family='Georgia' font-weight='bold' fill='%23eccd7e'%3E%CE%A9%3C/text%3E%3C/svg%3E"),
+          radial-gradient(circle at 50% 44%, rgba(96,72,180,.5) 0%, rgba(23,18,51,0) 62%),
+          linear-gradient(165deg,#2e2763 0%,#1a1440 55%,#120c2c 100%);
+        background-size:13px 13px, auto, auto;
+        background-position:top 4px center, center, center;
+        background-repeat:no-repeat;
+        box-shadow:inset 0 0 0 2px rgba(201,169,79,.9), inset 0 0 0 4.5px rgba(14,10,34,.92), inset 0 0 0 6px rgba(201,169,79,.45), inset 0 0 12px rgba(0,0,0,.5);
+      }
+      .ov-cardback{position:relative;}
+      /* 裏面の二重リング＋ビーズ（リングの内側の点線がビーズの連なり） */
+      .pile-card::before,.ov-cardback::before{
+        content:''; position:absolute; left:50%; top:56%; width:23px; height:23px; transform:translate(-50%,-50%);
+        border-radius:50%; border:1.5px solid rgba(236,205,126,.85);
+        box-shadow:0 1px 0 rgba(255,255,255,.14), inset 0 0 0 2.5px rgba(14,10,34,.9), inset 0 0 0 4px rgba(236,205,126,.35), inset 0 1px 1px rgba(0,0,0,.6);
+      }
+      .pile-card::after,.ov-cardback::after{
+        content:'Ω'; position:absolute; left:50%; top:56%; width:auto; height:auto;
+        transform:translate(-50%,-50%) rotate(0deg);
+        border:none; background:none; box-shadow:none;
+        font-family:Georgia,'Times New Roman',serif; font-weight:700; font-size:14px; color:#eccd7e;
+        text-shadow:0 1px 0 rgba(255,255,255,.25), 0 -1px 1px rgba(0,0,0,.7), 0 0 5px rgba(236,205,126,.5);
+      }
+      /* ===== 第2便：ドロー飛行／キーワードFX化／魔力ランプ＋ライフ拡大 =====
+         ・ドロー飛行は DOM＋WAAPI の transform のみ（約0.62秒）。実カードは
+           着地まで透明にし、着地で金のグロー＋「引いた！」タグを約1.5秒残す。
+         ・場のキーワード文字チップは廃止し、.kw-aura（常駐・CSS代替）と
+           Pixi オーラ、.kw-fx（発動時の一度きり）で読ませる。
+         ・魔力ランプは召喚士プレートのアーチ沿いに10個。ライフ盾は拡大。 */
+      /* --- 魔力ランプ（アーチ沿い） --- */
+      .pp-lamps{position:absolute; inset:0; pointer-events:none; z-index:5;}
+      .pp-lamp{
+        position:absolute; width:11px; height:11px; border-radius:50%;
+        transform:translate(-50%,-50%);
+        border:1.5px solid #8a6d2f;
+        background:radial-gradient(circle at 35% 30%, #3a3f52, #171a26 70%);
+      }
+      .pp-lamps.small .pp-lamp{width:9px; height:9px;}
+      .pp-lamp.cap{background:radial-gradient(circle at 35% 30%, #565d75, #232838 70%); border-color:#c9a94e;}
+      .pp-lamp.lit{
+        background:radial-gradient(circle at 35% 30%, #cfeaff, #3f8fe0 55%, #14509e);
+        border-color:#ffe9a8; box-shadow:0 0 8px 2px rgba(90,170,255,.7);
+      }
+      .pp-lamp.bonus{
+        background:radial-gradient(circle at 35% 30%, #ffd9fb, #b45fe0 55%, #5e1e9e);
+        border-color:#ffe9a8; box-shadow:0 0 8px 2px rgba(200,110,255,.75);
+      }
+      /* オンラインのパネル内では横並びの小ランプにする */
+      .ov-lamps{display:inline-flex; align-items:center; gap:2px; vertical-align:middle;}
+      .ov-lamps .pp-lamp{position:static; transform:none; width:8px; height:8px; flex:0 0 auto;}
+      /* --- ライフ盾の拡大（自分＞相手。リボンの通常フローには影響させない） --- */
+      #fieldWrap .leader .hp-num{width:32px; height:38px; font-size:19px;}
+      #fieldWrap .leader.enemy .hp-num{width:28px; height:33px; font-size:16px;}
+      #fieldWrap .leader .plate-ribbon{padding-right:32px;}
+      #fieldWrap .leader.enemy .plate-ribbon{padding-right:29px;}
+      /* --- キーワード常駐オーラ（CSS代替。Pixi が無くても判別できる輪郭） --- */
+      .kw-aura{position:absolute; inset:0; pointer-events:none; z-index:3; border-radius:9px;}
+      .kw-aura.guard{
+        background:radial-gradient(ellipse at 50% 42%, rgba(140,195,255,.16) 0%, rgba(140,195,255,.05) 70%);
+        box-shadow:inset 0 0 0 2.5px rgba(168,216,255,.95), inset 0 0 13px rgba(110,175,255,.55);
+      }
+      .kw-aura.armor{
+        box-shadow:inset 0 0 0 2px rgba(216,229,242,.85),
+          inset 0 7px 8px -5px rgba(255,255,255,.55),
+          inset 0 -7px 8px -5px rgba(140,160,185,.6),
+          inset 7px 0 8px -6px rgba(190,205,225,.4), inset -7px 0 8px -6px rgba(190,205,225,.4);
+      }
+      .kw-aura.counter{
+        box-shadow:inset 0 0 0 2px rgba(255,112,52,.8), inset 0 0 10px rgba(255,84,30,.35);
+      }
+      .kw-aura.counter::before{
+        content:''; position:absolute; inset:0; padding:3px; pointer-events:none;
+        background:repeating-conic-gradient(rgba(255,120,55,.85) 0deg 5deg, transparent 5deg 16deg);
+        -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite:xor; mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        mask-composite:exclude; opacity:.55;
+      }
+      .kw-aura.rush{
+        box-shadow:inset 0 0 9px rgba(120,225,255,.28);
+      }
+      .kw-aura.rush::before{
+        content:''; position:absolute; left:-3px; right:-3px; top:24%; height:52%;
+        border-radius:50%; transform:rotate(-5deg); pointer-events:none;
+        border:2px solid transparent;
+        border-top-color:rgba(196,242,255,.75); border-bottom-color:rgba(160,225,255,.5);
+      }
+      .kw-aura.rush::after{
+        content:''; position:absolute; left:-1px; right:-1px; top:38%; height:30%;
+        border-radius:50%; transform:rotate(-5deg); pointer-events:none;
+        border:1.5px solid transparent; border-top-color:rgba(196,242,255,.45);
+      }
+      /* オンラインの場ユニットにも同じ読み替えを効かせる（単一要素のため
+         box-shadow は競合する。Pixi オーラが主で CSS は代替なので、ゲーム上
+         最も重要な鉄壁が最後に勝つ順で定義する） */
+      .ov-unit.kw-rush{box-shadow:inset 0 0 9px rgba(120,225,255,.35), inset 0 0 0 1.5px rgba(170,230,255,.5);}
+      .ov-unit.kw-armor{box-shadow:inset 0 0 0 2px rgba(216,229,242,.85), inset 0 7px 8px -5px rgba(255,255,255,.55), inset 0 -7px 8px -5px rgba(140,160,185,.6);}
+      .ov-unit.kw-counter{box-shadow:inset 0 0 0 2px rgba(255,112,52,.8), inset 0 0 10px rgba(255,84,30,.35);}
+      .ov-unit.kw-guard{box-shadow:inset 0 0 0 2.5px rgba(168,216,255,.95), inset 0 0 13px rgba(110,175,255,.55);}
+      /* --- キーワード発動時の一度きり演出（.kw-fx 層） --- */
+      .kw-fx{position:absolute; inset:0; pointer-events:none; z-index:4; border-radius:9px;}
+      .kw-fx.flash-armor{animation:kwFlashArmor .5s ease-out;}
+      @keyframes kwFlashArmor{
+        0%{box-shadow:inset 0 0 0 3px rgba(240,248,255,1), inset 0 0 18px rgba(210,228,245,.95); background:rgba(225,238,250,.4);}
+        100%{box-shadow:inset 0 0 0 0 rgba(240,248,255,0), inset 0 0 0 rgba(210,228,245,0); background:rgba(225,238,250,0);}
+      }
+      .kw-fx.flash-counter{animation:kwFlashCounter .5s ease-out;}
+      @keyframes kwFlashCounter{
+        0%{box-shadow:inset 0 0 0 3.5px rgba(255,96,32,.98), 0 0 15px rgba(255,90,30,.75); transform:scale(1.05);}
+        100%{box-shadow:inset 0 0 0 0 rgba(255,96,32,0), 0 0 0 rgba(255,90,30,0); transform:scale(1);}
+      }
+      /* ブランの鉄壁付与：膜がユニット全体へ広がる（約0.45秒） */
+      .kw-fx.membrane{animation:kwMembrane .45s ease-out;}
+      .kw-fx.membrane::before{
+        content:''; position:absolute; inset:0; border-radius:9px;
+        background:radial-gradient(ellipse at 50% 45%, rgba(190,226,255,.4) 0%, rgba(140,195,255,.22) 62%, rgba(140,195,255,.05) 100%);
+        box-shadow:inset 0 0 0 2.5px rgba(190,226,255,.95), inset 0 0 16px rgba(120,180,255,.6);
+        animation:kwMembraneIn .45s ease-out; transform-origin:50% 50%;
+      }
+      @keyframes kwMembrane{
+        0%{opacity:0;} 25%{opacity:1;} 100%{opacity:0;}
+      }
+      @keyframes kwMembraneIn{
+        0%{transform:scale(.55); opacity:0;} 55%{transform:scale(1.04); opacity:1;} 100%{transform:scale(1); opacity:1;}
+      }
+      /* --- ドロー飛行 --- */
+      .draw-fly{
+        position:fixed; z-index:120; pointer-events:none; perspective:700px;
+        --fr-grad:linear-gradient(158deg,#9b95a4 0%,#6a6478 34%,#453f55 62%,#2f2a3e 84%,#211e2d 100%);
+        --band-grad:linear-gradient(180deg,#aaaab2 0%,#76767e 52%,#4e4e56 100%);
+        --band-fg:#2e2e35; --sh-d:.48; --sh-l:.34;
+        filter:drop-shadow(0 7px 9px rgba(0,0,0,.5));
+      }
+      .draw-fly.mythic{
+        --fr-grad:linear-gradient(158deg,#ffe9a8 0%,#eec95f 30%,#c1912f 58%,#8a5f16 84%,#5e3f0c 100%);
+        --band-grad:linear-gradient(180deg,#ffedb0 0%,#e3b93e 52%,#a87c22 100%);
+        --band-fg:#5e4303; --sh-d:.52; --sh-l:.42;
+      }
+      .draw-fly.agito{
+        --fr-grad:linear-gradient(158deg,#e3b8ff 0%,#a55eea 30%,#7c3aed 58%,#4c1d95 84%,#2a0a45 100%);
+        --band-grad:linear-gradient(180deg,#8a5fd0 0%,#5b34a3 52%,#3d1a78 100%);
+        --band-fg:#f0e6ff; --sh-d:.68; --sh-l:.30;
+      }
+      .draw-fly.rainbow{
+        --fr-grad:linear-gradient(158deg,#ff8a8a 0%,#ffd76a 26%,#9fe870 50%,#6ec3ff 74%,#c39bff 100%);
+        --band-grad:linear-gradient(90deg,#ff9d8a 0%,#ffd76a 30%,#a5e870 52%,#6ec3ff 76%,#c39bff 100%);
+        --band-fg:#2c3350; --sh-d:.65; --sh-l:.34;
+      }
+      .draw-fly-inner{position:relative; width:100%; height:100%; transform-style:preserve-3d; transform:rotateY(180deg);}
+      .draw-fly-face{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;}
+      .draw-fly-face.back{transform:rotateY(180deg);}
+      .draw-fly-face.back .pile-card{position:absolute; inset:0;}
+      .draw-fly-face.front .dfull{font-size:12.5px;}
+      .draw-fly-face.front .domg{font-size:12.5px;}
+      .hcard.just-drawn{animation:drawnGlow 1.5s ease-out;}
+      @keyframes drawnGlow{
+        0%{filter:drop-shadow(0 0 0 rgba(255,215,106,0));}
+        25%{filter:drop-shadow(0 0 14px rgba(255,215,106,.95));}
+        100%{filter:drop-shadow(0 0 0 rgba(255,215,106,0));}
+      }
+      .drawn-tag{
+        position:fixed; padding:2px 10px; border-radius:999px; background:#ffd76a; color:#241a00;
+        font-size:11px; font-weight:bold; transform:translate(-50%,0); z-index:130; pointer-events:none;
+        animation:tagFade 1.5s ease-out forwards;
+      }
+      @keyframes tagFade{ 0%{opacity:0;} 15%{opacity:1;} 75%{opacity:1;} 100%{opacity:0;} }
     </style>
   </head>
   <body>
@@ -3829,7 +4242,7 @@
     <div class="overlay" id="detailOverlay">
       <div class="sheet" role="dialog" aria-modal="true" aria-label="カード詳細">
         <div class="detail-card">
-          <div class="detail-art" id="dArt"><img id="dImg" alt="" /><div class="coin-face" id="dCoin" style="display:none;"><i>魔力+1</i></div><span class="cost" id="dCost"></span><span class="mythic-tag" id="dMythic" style="display:none; top:6px; right:6px;">神話</span></div>
+          <div class="detail-art" id="dArt"><span class="dfull"><span class="dband"><i class="domg">Ω</i></span><img id="dImg" alt="" /><div class="coin-face" id="dCoin" style="display:none;"><i>魔力+1</i></div><span class="cost" id="dCost"></span></span><span class="mythic-tag" id="dMythic" style="display:none;">神話</span></div>
           <div class="detail-info">
             <div class="detail-id" id="dId"></div>
             <div class="detail-name" id="dName"></div>
@@ -5233,6 +5646,7 @@
       opts = opts || {};
       uidSeq = 1;
       fxCpuPrev = null; fxCpuPrevCid = null; fxLungeQueue = []; fxHitQueue = []; /* 演出の差分ベースラインを張り直す */
+      drawFxPending = []; drawFxKnown = {}; kwFxReg = {}; /* 第2便：ドロー飛行とキーワード発動演出の基線も張り直す */
       fxResetFinish(); /* フィニッシュ演出の状態も張り直す */
       /* 先攻の決定：シミュレーション等で明示された場合はそれを使い、
          そうでなければタイトル画面の手番選択（先行／後攻／ランダム）に従う */
@@ -5451,6 +5865,35 @@
       if (!el) return;
       el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake','flash-hit');
       setTimeout(function(){ el.classList.remove('shake','flash-hit'); }, 400);
+    }
+    /* ===== 第2便：キーワード発動時の一度きり演出（登録→再描画で付け直す） =====
+       装甲の金属フラッシュ／反撃の棘フラッシュ／ブラン付与の膜張りを、
+       発生時刻つきで登録しておき、render() のたびに実要素へ付け直す
+       （盤面は再描画で作り直されるため、直接クラスを付けても消えてしまう。
+       animation-delay をマイナスにして経過ぶん進んだ位相から再開する） */
+    var kwFxReg = {};   /* {'me-uid': {type:'armor'|'counter'|'bran', t0}} */
+    var KW_FX_CLS = { armor: 'flash-armor', counter: 'flash-counter', bran: 'membrane' };
+    var KW_FX_DUR = { armor: 500, counter: 500, bran: 450 };
+    function kwFlash(sideKey, uid, type){
+      if (HEADLESS) return;
+      var key = sideKey + '-' + uid;
+      kwFxReg[key] = { type: type, t0: fxNow() };
+      kwFxApplyOne(key);
+    }
+    function kwFxApplyOne(key){
+      var rec = kwFxReg[key];
+      if (!rec) return;
+      var age = fxNow() - rec.t0;
+      if (age > KW_FX_DUR[rec.type] + 250){ delete kwFxReg[key]; return; }
+      var el = document.querySelector('[data-fol="' + key + '"]');
+      if (!el) return;
+      var fx = el.querySelector('.kw-fx');
+      if (!fx) return;
+      fx.className = 'kw-fx ' + KW_FX_CLS[rec.type];
+      fx.style.animationDelay = (-age) + 'ms';
+    }
+    function kwFxSweep(){
+      Object.keys(kwFxReg).forEach(function(key){ kwFxApplyOne(key); });
     }
     function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
 
@@ -17997,13 +18440,16 @@
       var g = a.guardGfx;
       if (!g) return;
       g.clear();
-      g.beginFill(0x9fd0ff, 0.14);
-      g.lineStyle(1.5, 0xcfe6ff, 0.55);
+      /* 第2便：場カード56幅でも輪郭が読めるよう膜を濃く・太くする */
+      g.beginFill(0x9fd0ff, 0.20);
+      g.lineStyle(2.5, 0xd8efff, 0.92);
       g.drawRoundedRect(-w / 2, -h / 2, w, h, 8);
       g.endFill();
+      g.lineStyle(1.2, 0x7fb8ff, 0.5);
+      g.drawRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 6);
       /* 中央の盾シルエット（膜の質感付け） */
-      g.beginFill(0xbfe2ff, 0.10);
-      g.lineStyle(1, 0xdff1ff, 0.35);
+      g.beginFill(0xbfe2ff, 0.16);
+      g.lineStyle(1.2, 0xdff1ff, 0.55);
       var sw = Math.min(26, w * 0.34), sh = sw * 1.18;
       g.moveTo(0, -sh / 2);
       g.lineTo(sw / 2, -sh / 2 + sh * 0.18);
@@ -18014,11 +18460,46 @@
       g.closePath();
       g.endFill();
     }
-    function pixiMakeAura(key, hasGuard, hasRush){
+    /* 第2便：装甲の専用オーラ（金属質の縁。常駐は控えめ） */
+    function pixiDrawArmor(a, w, h){
+      var g = a.armorGfx;
+      if (!g) return;
+      g.clear();
+      g.lineStyle(2, 0xd7e3ee, 0.5);
+      g.drawRoundedRect(-w / 2, -h / 2, w, h, 8);
+      /* 上辺の金属の艶（ハイライト）と四隅の留め具 */
+      g.lineStyle(2.4, 0xffffff, 0.65);
+      g.moveTo(-w / 2 + 7, -h / 2 + 1); g.lineTo(w / 2 - 7, -h / 2 + 1);
+      g.lineStyle(2, 0xaebfd2, 0.55);
+      var cx = w / 2 - 3, cy = h / 2 - 3;
+      [[-cx, -cy], [cx, -cy], [-cx, cy], [cx, cy]].forEach(function(p){
+        g.moveTo(p[0] - 2.4, p[1]); g.lineTo(p[0] + 2.4, p[1]);
+        g.moveTo(p[0], p[1] - 2.4); g.lineTo(p[0], p[1] + 2.4);
+      });
+    }
+    /* 第2便：反撃の専用オーラ（棘状の赤橙の縁。常駐は控えめ） */
+    function pixiDrawCounter(a, w, h){
+      var g = a.counterGfx;
+      if (!g) return;
+      g.clear();
+      g.lineStyle(1.6, 0xff8a4d, 0.5);
+      g.drawRoundedRect(-w / 2, -h / 2, w, h, 8);
+      /* 上下の縁に小さな棘（三角形）を等間隔に並べる */
+      g.beginFill(0xff7a33, 0.55);
+      var step = Math.max(11, w / 5);
+      for (var x = -w / 2 + step * 0.5; x < w / 2 - 2; x += step){
+        g.moveTo(x - 3, -h / 2); g.lineTo(x + 3, -h / 2); g.lineTo(x, -h / 2 - 4.5); g.closePath();
+        g.moveTo(x - 3, h / 2); g.lineTo(x + 3, h / 2); g.lineTo(x, h / 2 + 4.5); g.closePath();
+      }
+      g.endFill();
+    }
+    function pixiMakeAura(key, hasGuard, hasRush, hasArmor, hasCounter){
       var cont = new PIXI.Container();
       pixiFx.auraLayer.addChild(cont);
-      var a = { key: key, cont: cont, hasGuard: hasGuard, hasRush: hasRush, guardGfx: null, w: 0, h: 0, phase: Math.random() * 6.28, windTimer: 400 + Math.random() * 900, winds: [], getEl: null };
+      var a = { key: key, cont: cont, hasGuard: hasGuard, hasRush: hasRush, hasArmor: !!hasArmor, hasCounter: !!hasCounter, guardGfx: null, armorGfx: null, counterGfx: null, w: 0, h: 0, phase: Math.random() * 6.28, windTimer: 400 + Math.random() * 900, winds: [], getEl: null };
       if (hasGuard){ a.guardGfx = new PIXI.Graphics(); cont.addChild(a.guardGfx); }
+      if (hasArmor){ a.armorGfx = new PIXI.Graphics(); cont.addChild(a.armorGfx); }
+      if (hasCounter){ a.counterGfx = new PIXI.Graphics(); cont.addChild(a.counterGfx); }
       pixiFx.auras[key] = a;
       return a;
     }
@@ -18033,11 +18514,14 @@
     function pixiSpawnWind(a){
       var gfx = new PIXI.Graphics();
       var w = a.w || 60;
-      var len = w * (0.45 + Math.random() * 0.3);
-      gfx.lineStyle(1.6, 0xeaf7ff, 0.85);
-      gfx.moveTo(-len / 2, 0); gfx.lineTo(len / 2, 0);
-      gfx.lineStyle(1.1, 0xeaf7ff, 0.5);
-      gfx.moveTo(-len * 0.32, 5); gfx.lineTo(len * 0.18, 5);
+      var len = w * (0.5 + Math.random() * 0.3);
+      /* 第2便：直線ではなく弧で描き、本線＋残像（薄い弧2本）で明瞭にする */
+      gfx.lineStyle(2.2, 0xeaf7ff, 0.95);
+      gfx.moveTo(-len / 2, 0); gfx.quadraticCurveTo(0, -len * 0.18, len / 2, 0);
+      gfx.lineStyle(1.4, 0xbfe6ff, 0.5);
+      gfx.moveTo(-len * 0.4, 6); gfx.quadraticCurveTo(0, 6 - len * 0.12, len * 0.32, 6);
+      gfx.lineStyle(1.2, 0xbfe6ff, 0.35);
+      gfx.moveTo(-len * 0.3, -6); gfx.quadraticCurveTo(0, -6 - len * 0.12, len * 0.42, -6);
       a.cont.addChild(gfx);
       a.winds.push({ gfx: gfx, life: 0, max: 620, x: -w / 2 - len / 2, y: (Math.random() - 0.5) * (a.h || 80) * 0.6, speed: (w + len) / 0.62 });
     }
@@ -18046,6 +18530,8 @@
        黒竜の卵でないこと（卵は鉄壁が付与されていても壁として機能しない裁定）。
        オンラインはサーバーの keywords で判定し、egg を含む場合は盾膜を出さない。
        速攻は f.rush ／ keywords の haste で判定し、両方あれば両方出す。
+       第2便で装甲（f.armor／armor）＝金属縁、反撃（f.counter／counter）
+       ＝棘縁の専用オーラも同じ枠組みで同期する。
        場を離れたユニットのオーラはここで消える。 */
     function pixiSyncAuras(){
       if (!pixiFx.enabled) return;
@@ -18060,9 +18546,11 @@
             var kws = u.keywords || [];
             var hg = kws.indexOf('wall') >= 0 && kws.indexOf('egg') < 0;
             var hr = kws.indexOf('haste') >= 0;
-            if (!hg && !hr) return;
+            var ha = kws.indexOf('armor') >= 0;
+            var hc = kws.indexOf('counter') >= 0;
+            if (!hg && !hr && !ha && !hc) return;
             var uid = u.uid;
-            desired['ov|' + side + '|' + uid] = { hasGuard: hg, hasRush: hr, getEl: (function(s2, id2){ return function(){ return fxOvUnitEl(s2, id2); }; })(side, uid) };
+            desired['ov|' + side + '|' + uid] = { hasGuard: hg, hasRush: hr, hasArmor: ha, hasCounter: hc, getEl: (function(s2, id2){ return function(){ return fxOvUnitEl(s2, id2); }; })(side, uid) };
           });
         });
       }
@@ -18072,9 +18560,11 @@
           S[sk].board.forEach(function(f){
             var hg = !!f.guard && !isEggFollower(f);
             var hr = !!f.rush;
-            if (!hg && !hr) return;
+            var ha = !!f.armor;
+            var hc = !!f.counter;
+            if (!hg && !hr && !ha && !hc) return;
             var folKey = sk + '-' + f.uid;
-            desired['cpu|' + folKey] = { hasGuard: hg, hasRush: hr, getEl: (function(k3){ return function(){ return document.querySelector('[data-fol="' + k3 + '"]'); }; })(folKey) };
+            desired['cpu|' + folKey] = { hasGuard: hg, hasRush: hr, hasArmor: ha, hasCounter: hc, getEl: (function(k3){ return function(){ return document.querySelector('[data-fol="' + k3 + '"]'); }; })(folKey) };
           });
         });
       }
@@ -18082,11 +18572,15 @@
       Object.keys(desired).forEach(function(k){
         var d = desired[k];
         var a = pixiFx.auras[k];
-        if (!a){ a = pixiMakeAura(k, d.hasGuard, d.hasRush); }
-        else if (a.hasGuard !== d.hasGuard || a.hasRush !== d.hasRush){
+        if (!a){ a = pixiMakeAura(k, d.hasGuard, d.hasRush, d.hasArmor, d.hasCounter); }
+        else if (a.hasGuard !== d.hasGuard || a.hasRush !== d.hasRush || a.hasArmor !== d.hasArmor || a.hasCounter !== d.hasCounter){
           if (d.hasGuard && !a.guardGfx){ a.guardGfx = new PIXI.Graphics(); a.cont.addChild(a.guardGfx); a.w = 0; a.h = 0; }
           if (!d.hasGuard && a.guardGfx){ a.cont.removeChild(a.guardGfx); a.guardGfx.destroy(); a.guardGfx = null; }
-          a.hasGuard = d.hasGuard; a.hasRush = d.hasRush;
+          if (d.hasArmor && !a.armorGfx){ a.armorGfx = new PIXI.Graphics(); a.cont.addChild(a.armorGfx); a.w = 0; a.h = 0; }
+          if (!d.hasArmor && a.armorGfx){ a.cont.removeChild(a.armorGfx); a.armorGfx.destroy(); a.armorGfx = null; }
+          if (d.hasCounter && !a.counterGfx){ a.counterGfx = new PIXI.Graphics(); a.cont.addChild(a.counterGfx); a.w = 0; a.h = 0; }
+          if (!d.hasCounter && a.counterGfx){ a.cont.removeChild(a.counterGfx); a.counterGfx.destroy(); a.counterGfx = null; }
+          a.hasGuard = d.hasGuard; a.hasRush = d.hasRush; a.hasArmor = d.hasArmor; a.hasCounter = d.hasCounter;
         }
         a.getEl = d.getEl;
       });
@@ -18165,8 +18659,12 @@
         if (Math.abs(r.width - a.w) > 1 || Math.abs(r.height - a.h) > 1){
           a.w = r.width; a.h = r.height;
           if (a.guardGfx) pixiDrawGuard(a, r.width - 2, r.height - 2);
+          if (a.armorGfx) pixiDrawArmor(a, r.width - 2, r.height - 2);
+          if (a.counterGfx) pixiDrawCounter(a, r.width - 2, r.height - 2);
         }
-        if (a.guardGfx) a.guardGfx.alpha = pixiReducedMotion ? 0.75 : 0.6 + 0.35 * Math.sin(now * 0.0022 + a.phase);
+        if (a.guardGfx) a.guardGfx.alpha = pixiReducedMotion ? 0.85 : 0.72 + 0.28 * Math.sin(now * 0.0022 + a.phase);
+        if (a.armorGfx) a.armorGfx.alpha = pixiReducedMotion ? 0.8 : 0.68 + 0.22 * Math.sin(now * 0.0016 + a.phase + 2);
+        if (a.counterGfx) a.counterGfx.alpha = 0.85;
         if (a.hasRush && !pixiReducedMotion){
           a.windTimer -= dt;
           if (a.windTimer <= 0){ pixiSpawnWind(a); a.windTimer = 800 + Math.random() * 1200; }
@@ -19206,8 +19704,135 @@
           if (S.over) return;
         } else {
           drawRaw(side);
+          /* 第2便（表示専用）：実際に引けた時だけ飛行キューへ記録する。
+             ドロー自体のタイミング・結果は一切変えない。初期手札は
+             drawRaw を直接使うため対象外（現行どおり） */
+          if (!HEADLESS){
+            var drawn = side.hand[side.hand.length - 1];
+            drawFxPending.push({ side: sideKey, cardId: (drawn && typeof drawn === 'object') ? drawn.cardId : drawn });
+          }
         }
       }
+    }
+    /* ===== 第2便：ドローモーション（表示専用・軽さ最優先） =====
+       drawCards が積んだキューを render() の最後で消費し、束から手札へ
+       1枚ずつ弧を描いて飛ばす（約0.62秒・transform のみ・操作は止めない）。
+       自分は途中で裏→表に返り、着地で金のグロー＋「引いた！」タグ。
+       相手は裏のまま相手の手札チップへ。HEADLESS／モーション低減／
+       タイトル表示中／オンライン画面では出さない */
+    var drawFxPending = [];   /* {side, cardId} */
+    var drawFxKnown = {};     /* 前回フラッシュ時点の自分の手札 uid 集合 */
+    function syncPileLayers(sideKey){
+      var stack = document.querySelector(sideKey === 'me' ? '.leader-row.me-row .pile-stack' : '.leader-row.enemy-row .pile-stack');
+      if (!stack) return;
+      var n = sideObj(sideKey).deck.length;
+      var layers = n === 0 ? 0 : (n <= 4 ? 1 : (n <= 10 ? 2 : 3));
+      ['c1', 'c2', 'c3'].forEach(function(cls, i){
+        var el = stack.querySelector('.pile-card.' + cls);
+        if (el) el.style.display = i < layers ? '' : 'none';
+      });
+    }
+    function drawFxFlush(){
+      var pend = drawFxPending; drawFxPending = [];
+      var handEl = document.getElementById('hand');
+      var curUids = {};
+      if (handEl) handEl.querySelectorAll('.hcard').forEach(function(el){ curUids[el.getAttribute('data-hand-uid')] = 1; });
+      var known = drawFxKnown; drawFxKnown = curUids;
+      if (!pend.length || HEADLESS || splashReducedMotion()) return;
+      var startEl = document.getElementById('startOverlay');
+      if (startEl && startEl.classList.contains('show')) return;
+      var ovEl2 = document.getElementById('onlineOverlay');
+      if (ovEl2 && ovEl2.classList.contains('show')) return;
+      /* 今回の再描画で新たに現れた自分の手札要素（DOM順） */
+      var newEls = [];
+      if (handEl) handEl.querySelectorAll('.hcard').forEach(function(el){
+        if (!known[el.getAttribute('data-hand-uid')]) newEls.push(el);
+      });
+      var meIdx = 0, cpuIdx = 0;
+      pend.forEach(function(p){
+        if (p.side === 'me'){
+          var target = newEls[meIdx] || null;
+          drawFlyOne('me', p.cardId, target, meIdx * 120);
+          meIdx++;
+        } else {
+          drawFlyOne('cpu', null, null, cpuIdx * 120);
+          cpuIdx++;
+        }
+      });
+    }
+    function drawFlyOne(side, cardId, targetEl, delay){
+      setTimeout(function(){
+        var pile = document.querySelector(side === 'me' ? '.leader-row.me-row .pile-stack' : '.leader-row.enemy-row .pile-stack');
+        if (!pile) return;
+        var pr = pile.getBoundingClientRect();
+        if (!pr.width) return;
+        var tw, th, tx, ty;
+        if (side === 'me' && targetEl && targetEl.isConnected){
+          var tr = targetEl.getBoundingClientRect();
+          if (!tr.width){ targetEl = null; return; }
+          tw = tr.width; th = tr.height; tx = tr.left; ty = tr.top;
+        } else if (side === 'me'){
+          return; /* 着地先の実要素が無い自分のドローは飛ばさない */
+        } else {
+          var chip = document.getElementById('cpuHandCount');
+          var cr = chip ? chip.getBoundingClientRect() : pr;
+          tw = 42; th = 56;
+          tx = cr.left + cr.width / 2 - tw / 2; ty = cr.top - th - 2;
+        }
+        var card = side === 'me' ? CARD_BY_ID[cardId] : null;
+        var fly = document.createElement('div');
+        fly.className = 'draw-fly' + (card && isMythicCard(card) && !isAgitoCard(card) ? ' mythic' : '') + (card && isRainbowCard(card) ? ' rainbow' : '') + (card && isAgitoCard(card) ? ' agito' : '');
+        var front = '';
+        if (card){
+          front = '<span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
+            (card.coin ? '<div class="coin-face"><i>魔力+1</i></div>' : '<img src="' + card.img + '" alt="" />') +
+            '<div class="shade"></div></span>';
+        }
+        fly.innerHTML = '<div class="draw-fly-inner"><div class="draw-fly-face front">' + front + '</div><div class="draw-fly-face back"><span class="pile-card"></span></div></div>';
+        /* 最終サイズで作り、束の中心へ寄せてから scale で束サイズへ縮める */
+        fly.style.left = (pr.left + pr.width / 2 - tw / 2) + 'px';
+        fly.style.top = (pr.top + pr.height / 2 - th / 2) + 'px';
+        fly.style.width = tw + 'px'; fly.style.height = th + 'px';
+        document.body.appendChild(fly);
+        if (targetEl) targetEl.style.opacity = '0';
+        var dx = (tx + tw / 2) - (pr.left + pr.width / 2);
+        var dy = (ty + th / 2) - (pr.top + pr.height / 2);
+        var s0 = Math.max(pr.width / tw, 0.3);
+        var anim = fly.animate([
+          { transform: 'translate(0px,0px) scale(' + s0 + ')' },
+          { transform: 'translate(' + (dx * 0.45) + 'px,' + (dy * 0.5 - 64) + 'px) scale(' + Math.min(1.12, s0 + (1 - s0) * 0.6) + ')', offset: 0.55 },
+          { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(1)' }
+        ], { duration: 620, easing: 'cubic-bezier(.25,.7,.3,1)', fill: 'forwards' });
+        if (side === 'me'){
+          var inner = fly.querySelector('.draw-fly-inner');
+          inner.animate([
+            { transform: 'rotateY(180deg)' }, { transform: 'rotateY(360deg)' }
+          ], { duration: 380, delay: 130, easing: 'ease-in-out', fill: 'forwards' });
+        }
+        var done = false;
+        var finish = function(){
+          if (done) return; done = true;
+          if (fly.parentNode) fly.parentNode.removeChild(fly);
+          if (targetEl && targetEl.isConnected){
+            targetEl.style.opacity = '';
+            targetEl.classList.add('just-drawn');
+            var tag = document.createElement('div');
+            tag.className = 'drawn-tag'; tag.textContent = '引いた！';
+            var r2 = targetEl.getBoundingClientRect();
+            tag.style.left = (r2.left + r2.width / 2) + 'px';
+            tag.style.top = Math.max(0, r2.top - 24) + 'px';
+            document.body.appendChild(tag);
+            setTimeout(function(){
+              targetEl.classList.remove('just-drawn');
+              if (tag.parentNode) tag.parentNode.removeChild(tag);
+            }, 1550);
+          } else if (targetEl){
+            targetEl.style.opacity = '';
+          }
+        };
+        if (anim && anim.finished && anim.finished.then) anim.finished.then(finish);
+        setTimeout(finish, 1500); /* アニメ中断時の安全網（後片付けゼロ残し） */
+      }, delay);
     }
     function damageLeader(sideKey, n, why){
       var side = sideObj(sideKey);
@@ -19249,6 +19874,7 @@
       var actual = n;
       if (f.armor && actual > 0){
         actual = Math.max(0, actual - 1);
+        kwFlash(sideKey, uid, 'armor'); /* 第2便：軽減が起きた瞬間の金属フラッシュ */
         logMsg(f.name + ' の装甲：ダメージを1軽減した（' + n + ' → ' + actual + '）。', 'sys');
       }
       f.hp -= actual;
@@ -19257,6 +19883,7 @@
       if (actual >= 1 && f.counter && src && src.kind === 'unit'){
         var srcF = findFollower(src.side, src.uid);
         if (srcF){
+          kwFlash(sideKey, uid, 'counter'); /* 第2便：反撃発動の棘フラッシュ */
           logMsg(f.name + ' の反撃：' + srcF.name + ' に1ダメージ。', 'dmg');
           damageFollower(src.side, src.uid, 1, { kind:'counter' });
         }
@@ -19271,9 +19898,11 @@
     function applyCounterHit(targetSide, targetUid, ownerF){
       var t = findFollower(targetSide, targetUid);
       if (!t) return;
+      kwFlash(other(targetSide), ownerF.uid, 'counter'); /* 第2便：反撃発動の棘フラッシュ（持ち主側） */
       var dmg = 1;
       if (t.armor && dmg > 0){
         dmg = 0;
+        kwFlash(targetSide, targetUid, 'armor'); /* 第2便：軽減の金属フラッシュ */
         logMsg(t.name + ' の装甲：反撃のダメージを1軽減した（1 → 0）。', 'sys');
       }
       logMsg(ownerF.name + ' の反撃：' + t.name + ' に' + dmg + 'ダメージ。', 'dmg');
@@ -19394,15 +20023,122 @@
     function finishBattleIntro(){
       var st = battleIntroState; if (!st) return;
       battleIntroState = null; battleIntroUntil = 0;
+      sigClearVeils(st); /* 飛行演出のパネル隠しは、終了・スキップ・中断のいずれでも即時解除して完成形に戻す */
       sigCleanup(st);
       if (st.onDone){ var cb = st.onDone; st.onDone = null; cb(); }
     }
+    /* ===== 対戦開始演出・第3便：丸アイコン→パネルへの飛行・変形 =====
+       受け先パネルの特定。CPU戦（通常・勝ち抜き・アーケード）は
+       #cpuLeader／#myLeader の .plate-art（アーチ型肖像）、オンラインは
+       #ovOppPanel／#ovMyPanel の .ov-summoner-avatar（丸アイコン）。
+       オンライン対戦中は #ovGame が表示されていることで判別する。
+       どちらも器は静的 HTML で再描画されないため、演出中の innerHTML
+       差し替えに影響されない。肖像の実要素は着地直前に引き直す */
+    function sigPanelTargets(){
+      try {
+        var ovGame = document.getElementById('ovGame');
+        var online = !!(ovGame && ovGame.style.display !== 'none');
+        var defs = online
+          ? [{ rootId: 'ovOppPanel', artSel: '.ov-summoner-avatar' }, { rootId: 'ovMyPanel', artSel: '.ov-summoner-avatar' }]
+          : [{ rootId: 'cpuLeader', artSel: '.plate-art' }, { rootId: 'myLeader', artSel: '.plate-art' }];
+        var out = [];
+        for (var i = 0; i < defs.length; i++){
+          var root = document.getElementById(defs[i].rootId);
+          var art = root ? root.querySelector(defs[i].artSel) : null;
+          if (!root || !art) return null;
+          var r = art.getBoundingClientRect();
+          if (!r.width || !r.height) return null;
+          out.push({ root: root, artSel: defs[i].artSel, online: online });
+        }
+        return out; /* [相手側, 自分側] */
+      } catch (e) { return null; }
+    }
+    function sigClearVeils(st){
+      if (!st || !st.veils) return;
+      st.veils.forEach(function(root){
+        try { root.classList.remove('sig-veil'); root.classList.remove('sig-veil2'); } catch (e) {}
+      });
+      st.veils = [];
+    }
+    /* 着地後に遅れて出す「名前バー」相当の要素群（名前リボン・魔力ランプ・
+       ライフバー・情報ピル行／オンラインはアイコン以外の情報スパン） */
+    function sigBarEls(t){
+      if (t.online){
+        return Array.prototype.filter.call(t.root.children, function(c){
+          return !(c.classList && c.classList.contains('ov-summoner-avatar'));
+        });
+      }
+      return Array.prototype.slice.call(t.root.querySelectorAll('.plate-ribbon, .pp-lamps, .hpbar, .leader-info'));
+    }
+    /* 変形先の角丸：実パネルの computed な四隅をそのまま使うことで、
+       変形の終わりが実パネルと寸分違わず一致する */
+    function sigTargetRadius(art){
+      try {
+        var cs = window.getComputedStyle(art);
+        function one(v){ return (v || '0px').split(' ')[0]; }
+        return one(cs.borderTopLeftRadius) + ' ' + one(cs.borderTopRightRadius) + ' ' +
+          one(cs.borderBottomRightRadius) + ' ' + one(cs.borderBottomLeftRadius);
+      } catch (e) { return '50%'; }
+    }
+    /* 丸アイコン1つをパネル肖像の位置・大きさ・角丸へ飛ばす。飛行中は
+       時計回りに1回転（上下とも同じ向き）。約0.65秒、transform と
+       位置・大きさ・border-radius のみで軽く保つ */
+    function sigFlyOne(el, face, t){
+      var art = t.root.querySelector(t.artSel); /* 再描画で差し替わっている場合に備え引き直す */
+      if (!art) return false;
+      var fr = face.getBoundingClientRect();
+      var tr = art.getBoundingClientRect();
+      if (!fr.width || !tr.width) return false;
+      var side = face.parentNode;
+      if (side && side.style) side.style.minHeight = side.offsetHeight + 'px'; /* 抜けた分の高さを保ち、文字側のレイアウトを崩さない */
+      el.appendChild(face);
+      face.classList.add('sig-flyer');
+      face.style.left = fr.left + 'px'; face.style.top = fr.top + 'px';
+      face.style.width = fr.width + 'px'; face.style.height = fr.height + 'px';
+      face.style.borderRadius = '50%';
+      var ease = 'cubic-bezier(.3,.75,.25,1)';
+      sigAnimate(face, [
+        { left: fr.left + 'px', top: fr.top + 'px', width: fr.width + 'px', height: fr.height + 'px', borderRadius: '50%' },
+        { left: tr.left + 'px', top: tr.top + 'px', width: tr.width + 'px', height: tr.height + 'px', borderRadius: sigTargetRadius(art) }
+      ], { duration: 650, easing: ease, fill: 'forwards' });
+      sigAnimate(face, [
+        { transform: 'rotate(0deg) scale(1)' },
+        { transform: 'rotate(198deg) scale(1.07)', offset: 0.55 },
+        { transform: 'rotate(360deg) scale(1)' }
+      ], { duration: 650, easing: ease, fill: 'forwards' });
+      return true;
+    }
+    /* 着地：実パネルの肖像を受け渡し（veil→veil2）、丸アイコンは短い
+       クロスフェードで実肖像へ引き継ぐ（パネル側の絵が立ち絵でも自然に
+       繋がる）。名前バー／ランプ類は少し遅れてふわりと出す */
+    function sigLandIntro(st, el, faces, targets){
+      if (battleIntroState !== st) return;
+      targets.forEach(function(t){
+        t.root.classList.remove('sig-veil');
+        t.root.classList.add('sig-veil2');
+        sigBarEls(t).forEach(function(b){
+          sigAnimate(b, [
+            { opacity: 0, transform: 'translateY(5px)' },
+            { opacity: 1, transform: 'translateY(0)' }
+          ], { duration: 280, delay: 60, easing: 'ease-out', fill: 'forwards' });
+        });
+      });
+      faces.forEach(function(f){
+        if (f) sigAnimate(f, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+      });
+      st.timers.push(setTimeout(function(){ if (battleIntroState === st) finishBattleIntro(); }, 330));
+    }
     /* 対戦開始の合図：両召喚士の丸アイコンが上下からスライドインして
-       中央で向き合い、金文字「BATTLE START」が叩きつけられる。尺は
-       約1.45秒（モーション低減時は約0.75秒の静かな表示）。タップでスキップ */
+       中央で向き合い、金文字「BATTLE START」が叩きつけられる。その後
+       （第3便）文字が消えるタイミングで丸アイコンが上下の召喚士パネルへ
+       時計回りに回転しながら飛び、着地でアーチ型へ変形してパネル化する。
+       尺は従来の表示部＋飛行約0.65秒＋着地の受け渡しで約2.0秒
+       （モーション低減時は飛行を省略し約0.75秒の静かな表示）。
+       タップでスキップすると即座にパネル完成形へ移る */
     function playBattleStartIntro(meId, cpuId, onDone){
       if (HEADLESS){ if (onDone) onDone(); return; }
       finishBattleIntro(); /* 連続再生時は前回分を即時片付けてから出す */
+      var st = null;
       try {
         var el = document.createElement('div');
         el.className = 'sig-fx';
@@ -19411,9 +20147,16 @@
           '<div class="sig-mid" style="opacity:0">' + sigWordHtml('BATTLE START', '対戦開始') + '</div>' +
           '<div class="sig-side sig-me">' + sigFaceHtml(meId) + '</div>';
         document.body.appendChild(el);
-        var st = { el: el, timers: [], onDone: onDone || null };
+        st = { el: el, timers: [], onDone: onDone || null, veils: [] };
         battleIntroState = st;
-        var total = sigReduced ? 750 : 1450;
+        /* 飛行の受け先パネル（モーション低減時は特定も隠しもしない）。
+           受け先が無い環境では従来のフェードアウト終了へフォールバック */
+        var targets = sigReduced ? null : sigPanelTargets();
+        if (targets){
+          st.veils = targets.map(function(t){ return t.root; });
+          st.veils.forEach(function(r){ r.classList.add('sig-veil'); });
+        }
+        var total = sigReduced ? 750 : (targets ? 2000 : 1450);
         battleIntroUntil = fxNow() + total;
         el.addEventListener('pointerdown', function(){ finishBattleIntro(); });
         sePlay('battleStart');
@@ -19442,14 +20185,40 @@
               { transform: 'scale(1)', opacity: 1 }
             ], { duration: 300, easing: 'cubic-bezier(.2,.8,.35,1)', fill: 'forwards' });
           }, 430));
-          st.timers.push(setTimeout(function(){
-            if (battleIntroState !== st) return;
-            sigAnimate(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
-          }, total - 210));
+          if (targets){
+            /* 文字と名前が消えるタイミングで暗幕を少し開け、飛行へ移る */
+            st.timers.push(setTimeout(function(){
+              if (battleIntroState !== st) return;
+              sigAnimate(mid, [{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+              Array.prototype.slice.call(el.querySelectorAll('.sig-face-name')).forEach(function(n){
+                sigAnimate(n, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+              });
+              sigAnimate(el.querySelector('.sig-dim'), [{ opacity: 1 }, { opacity: 0.45 }], { duration: 500, easing: 'ease-out', fill: 'forwards' });
+            }, 980));
+            st.timers.push(setTimeout(function(){
+              if (battleIntroState !== st) return;
+              var faces = [cpuSide.querySelector('.sig-face'), meSide.querySelector('.sig-face')];
+              var okCpu = !!(faces[0] && sigFlyOne(el, faces[0], targets[0]));
+              var okMe = !!(faces[1] && sigFlyOne(el, faces[1], targets[1]));
+              if (!okCpu && !okMe){
+                /* 飛行できなかった場合の保険：従来どおりフェードで終える */
+                sigAnimate(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+                st.timers.push(setTimeout(finishBattleIntro, 260));
+                return;
+              }
+              st.timers.push(setTimeout(function(){ sigLandIntro(st, el, faces, targets); }, 660));
+            }, 1010));
+          } else {
+            st.timers.push(setTimeout(function(){
+              if (battleIntroState !== st) return;
+              sigAnimate(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+            }, total - 210));
+          }
         }
         st.timers.push(setTimeout(finishBattleIntro, total));
       } catch (e) {
         battleIntroUntil = 0;
+        if (st) sigClearVeils(st);
         if (onDone) onDone();
       }
     }
@@ -19683,7 +20452,9 @@
       if (!f) return;
       var wasGuard = f.guard;
       f.guard = true; f.branGuard = true;
-      popOn('[data-fol="' + sideKey + '-' + f.uid + '"]', '鉄壁', 'buff');
+      /* 第2便：付与は「膜が張る」専用演出で読ませる（従来のポップ文字は廃止）。
+         黒竜の卵は裁定どおり膜も膜張りも出さない（壁として機能していない間） */
+      if (!isEggFollower(f)) kwFlash(sideKey, f.uid, 'bran');
       logMsg(sideObj(sideKey).label + ' の召喚士能力：' + f.name + ' に鉄壁を付与した' + (wasGuard ? '（もともと鉄壁持ち）' : '') + '。', 'sys');
     }
     function applySummonerTarget(uid){
@@ -20382,8 +21153,8 @@
         /* 装甲：受ける側が装甲持ちなら、その戦闘ダメージも1減る（最低0）。
            攻撃側・防御側の両方に同時適用する。召喚士への攻撃には適用しない。 */
         var armorReduced = false;
-        if (def.armor && defDmg > 0){ defDmg = Math.max(0, defDmg - 1); armorReduced = true; }
-        if (atk.armor && atkDmg > 0){ atkDmg = Math.max(0, atkDmg - 1); armorReduced = true; }
+        if (def.armor && defDmg > 0){ defDmg = Math.max(0, defDmg - 1); armorReduced = true; kwFlash(defSide, def.uid, 'armor'); }
+        if (atk.armor && atkDmg > 0){ atkDmg = Math.max(0, atkDmg - 1); armorReduced = true; kwFlash(atkSide, atk.uid, 'armor'); }
         /* 貫通（黒のアギト）：攻撃側だけが持つキーワード。装甲で軽減された後の
            実ダメージ（defDmg）が、防御側の現在体力（ダメージ適用前の def.hp）を
            超えた分を、戦闘ダメージの解決後に相手の召喚士へ与える。
@@ -20864,15 +21635,37 @@
       render();
       cpuTurn();
     }
+    /* 魔力ランプ（10個）の状態クラス：i<現在値 は点灯（上限超過分は紫）、
+       現在値以上・上限未満は金の輪だけの消費済み、上限以上は暗い未開放 */
+    function ppLampCls(i, pp, maxPp){
+      if (i < pp) return i >= maxPp ? ' bonus' : ' lit';
+      return i < maxPp ? ' cap' : '';
+    }
+    /* アーチ沿いのランプ位置（プレート幅118px・肖像64px高を前提に、中心
+       (59,52) 半径 (55,50) の楕円弧上へ10個。左は％、上はpxで返す） */
+    var PP_LAMP_POS = (function(){
+      var pos = [];
+      for (var i = 0; i < 10; i++){
+        var th = Math.PI - Math.PI * i / 9;
+        pos.push({ l: ((59 + 55 * Math.cos(th)) / 118 * 100).toFixed(1) + '%', t: Math.round(52 - 50 * Math.sin(th)) + 'px' });
+      }
+      return pos;
+    })();
+    function ppLampsHtml(pp, maxPp, small, flow){
+      var html = '';
+      for (var i = 0; i < 10; i++){
+        var st = flow ? '' : ' style="left:' + PP_LAMP_POS[i].l + ';top:' + PP_LAMP_POS[i].t + '"';
+        html += '<span class="pp-lamp' + ppLampCls(i, pp, maxPp) + '"' + st + '></span>';
+      }
+      return '<span class="' + (flow ? 'ov-lamps' : 'pp-lamps' + (small ? ' small' : '')) + '" aria-hidden="true">' + html + '</span>';
+    }
     function leaderHtml(sideKey){
       var side = sideObj(sideKey);
       var isMe = sideKey === 'me';
       var sumDef = SUMMONER_BY_ID[side.summonerId] || SUMMONERS[0];
       var hpPct = Math.max(0, side.hp) / side.maxHp * 100;
-      /* 魔力の宝石ドットは相手側も出す */
-      var ppDots = '';
-      for (var i=0;i<side.maxPp;i++) ppDots += '<span class="pp-dot' + (i < side.pp ? ' on' : '') + '"></span>';
-      if (!side.maxPp) ppDots = '<span style="font-size:11px;">-</span>';
+      /* 魔力はプレートのアーチ沿いのランプ10個で読ませ、文字は補助併記 */
+      var ppLamps = ppLampsHtml(side.pp, side.maxPp, !isMe, false);
       /* 立ち絵プレート：立ち絵が読めたら上半身の絵プレート、読めなければ
          顔アイコン、それも無ければ記号バッジで代替する */
       var plateFace;
@@ -20889,6 +21682,7 @@
            下に置き、プレートの外へはみ出す要素は置かない */
         '<div class="plate-frame">' +
           '<button type="button" class="plate-art" data-summoner-avatar="' + sideKey + '" aria-label="召喚士の能力を見る"><span class="plate-face">' + plateFace + '</span><span class="side-tag">' + (isMe ? 'PLAYER' : 'CPU') + '</span></button>' +
+          ppLamps +
           '<div class="hpbar"><i style="width:' + hpPct + '%"></i></div>' +
           '<div class="plate-ribbon"><span class="leader-name-text">' + escapeHtml(sumDef.short) + '</span>' +
           '<span class="hp-num' + (side.hp <= 5 ? ' crit' : (side.hp <= 10 ? ' warn' : '')) + '">' + Math.max(0, side.hp) + '</span></div>' +
@@ -20896,7 +21690,7 @@
         '</div>' +
         '<div class="leader-info">' +
           (!isMe && S.cpuDeckName ? '<span class="leader-deck">相手デッキ：' + escapeHtml(S.cpuDeckName.replace(/デッキ$/, '')) + '</span>' : '') +
-          '<span class="pp-wrap">' + ppDots + '<span class="pp-text">魔力 ' + side.pp + '/' + side.maxPp + '</span></span>' +
+          '<span class="pp-wrap"><span class="pp-text">魔力 ' + side.pp + '/' + side.maxPp + '</span></span>' +
           (isMe
             ? '<span class="turn-chip">ターン<b>' + S.turn + '</b></span>'
             : '<span class="turn-chip">' + (S.active === 'cpu' ? '行動中' : '待機中') + '<b>CPU</b></span>') +
@@ -21270,31 +22064,37 @@
         var gs = guardsOn('cpu');
         if ((!gs.length || f.guard) && !isProtectedFollower(sideKey, f) && !isEggFollower(f)) classes.push('targetable');
       }
+      /* キーワードの文字チップは廃止（第2便）：鉄壁／装甲／反撃／速攻は
+         .kw-aura の常駐オーラ＋Pixiオーラ＋発動時フラッシュで読ませる。
+         神話は枠とグローが格を担う。ここに残すのはキーワードではない
+         「数値・状態」の表示だけ（残り攻撃回数の目安・弱体の量・卵・
+         トークン名）。卵の間は鉄壁が機能しない裁定どおり盾膜を出さない */
       var tags = '';
-      if (isMythicCard(fCard)) tags += '<span class="kw mythic">神話</span>';
-      if (f.guard) tags += '<span class="kw guard">鉄壁</span>';
-      if (f.armor) tags += '<span class="kw armor">装甲</span>';
-      if (f.counter) tags += '<span class="kw counter">反撃</span>';
       if (f.multiAtk && f.multiAtk > 1) tags += '<span class="kw multi">' + f.multiAtk + '回攻撃</span>';
-      if (f.noAtkDmg) tags += '<span class="kw nodmg">攻撃で無傷</span>';
-      if (isProtectedFollower(sideKey, f)) tags += '<span class="kw shield">🛡守り</span>';
       if (f.atkDebuff) tags += '<span class="kw weaken">攻撃-' + f.atkDebuff + '</span>';
-      if (f.branGuard) tags += '<span class="kw bran">堅壁</span>';
-      if (f.rush) tags += '<span class="kw rush">速攻</span>';
-      if (f.breakthrough) tags += '<span class="kw pierce">突破</span>';
-      if (f.shootdown) tags += '<span class="kw shoot">撃墜</span>';
-      if (f.penetrate) tags += '<span class="kw penetrate">貫通</span>';
       if (isEggFollower(f)) tags += '<span class="kw egg">卵</span>';
       if (f.token) tags += '<span class="kw token">' + escapeHtml(f.name) + '</span>';
+      /* オーラはキーワードごとに別々の層で重ねる（box-shadow が競合して
+         後に定義した1つしか残らない事故を避けるため） */
+      var auraHtml = '';
+      if (f.guard && !isEggFollower(f)) auraHtml += '<span class="kw-aura guard"></span>';
+      if (f.armor) auraHtml += '<span class="kw-aura armor"></span>';
+      if (f.counter) auraHtml += '<span class="kw-aura counter"></span>';
+      if (f.rush) auraHtml += '<span class="kw-aura rush"></span>';
+      auraHtml += '<span class="kw-fx"></span>';
       /* 孵化ボタン：自分のターン中、自分の場の卵にだけ出す */
       var hatchBtn = (isMe && isEggFollower(f) && S.active === 'me' && !S.busy && !S.over && S.mode === 'idle')
         ? '<button class="hatch-btn" type="button" data-hatch="' + f.uid + '">孵化する</button>' : '';
       return '<div class="' + classes.join(' ') + '" data-fol="' + sideKey + '-' + f.uid + '" data-side="' + sideKey + '" data-uid="' + f.uid + '">' +
+        /* D案フレーム：.dfull が全長のカード本体（帯＋絵の窓＋宝石）。
+           場では CSS が .dfull を帯ぶん上にずらしてドック状態にする */
+        '<span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
         '<img src="' + f.img + '" alt="' + escapeHtml(f.name) + '" />' +
         '<div class="shade"></div>' + (tags ? '<div class="kw-tags">' + tags + '</div>' : '') +
-        hatchBtn +
         '<span class="badge-atk">' + f.atk + '</span>' +
-        '<span class="badge-hp' + (f.hp < f.maxHp ? ' hurt' : '') + '">' + f.hp + '</span>' +
+        '<span class="badge-hp' + (f.hp < f.maxHp ? ' hurt' : '') + '">' + f.hp + '</span></span>' +
+        auraHtml +
+        hatchBtn +
       '</div>';
     }
     function boardHtml(sideKey){
@@ -21321,11 +22121,13 @@
       myLeaderEl.classList.toggle('low', S.me.hp <= 6);
       document.getElementById('cpuBoard').innerHTML = boardHtml('cpu');
       document.getElementById('myBoard').innerHTML = boardHtml('me');
+      kwFxSweep(); /* 第2便：装甲／反撃フラッシュ・膜張りを再描画後の実要素へ付け直す */
       document.getElementById('cpuBoardCount').textContent = S.cpu.board.length + ' / 5';
       document.getElementById('myBoardCount').textContent = S.me.board.length + ' / 5';
       /* デッキの束＋バッジ（場の横）の残り枚数と、相手の手札枚数チップ */
       document.getElementById('cpuDeckCount').textContent = S.cpu.deck.length;
       document.getElementById('myDeckCount').textContent = S.me.deck.length;
+      syncPileLayers('cpu'); syncPileLayers('me'); /* 第2便：束の厚み（層の数）を残数へ連動 */
       document.getElementById('cpuHandCount').textContent = '手札 ' + S.cpu.hand.length;
       var handEl = document.getElementById('hand');
       /* 震え対策：手札の枚数・中身（uid＋cardId の並び）が前回描画時と
@@ -21357,12 +22159,12 @@
           var card = CARD_BY_ID[h.cardId];
           var reason = playableReason('me', h);
           var cls = 'hcard ' + (reason ? 'unplayable' : 'playable') + (isMythicCard(card) && !isAgitoCard(card) ? ' mythic' : '') + (isRainbowCard(card) ? ' rainbow' : '') + (isAgitoCard(card) ? ' agito' : '');
-          /* バッジはカード上端のタブ列にまとめる（左からコスト／攻撃力／体力）。
-             .hand-tabs が上端から頭を出すため、扇の重なりでも隠れない */
-          var stats = '<span class="hand-tabs"><span class="cost">' + card.cost + '</span>' +
+          /* D案フレーム：ステータス宝石は .dfull（全長のカード本体）の
+             中に置く。コスト＝青い丸宝石（帯の下端）、攻撃＝金の菱形
+             （左下）、体力＝赤の宝石（右下） */
+          var gems = '<span class="cost">' + card.cost + '</span>' +
             (card.type === 'follower'
-              ? '<span class="badge-atk">' + card.atk + '</span><span class="badge-hp">' + card.hp + '</span>' : '') +
-            '</span>';
+              ? '<span class="badge-atk">' + card.atk + '</span><span class="badge-hp">' + card.hp + '</span>' : '');
           var spellTag = card.type === 'spell' ? '<span class="spell-tag">スペル</span>' : '';
           var mythicTag = isMythicCard(card) ? '<span class="mythic-tag">神話</span>' : '';
           var kwChips = '';
@@ -21382,8 +22184,9 @@
             ? '<div class="coin-face"><i>魔力+1</i></div>'
             : '<img src="' + card.img + '" alt="' + escapeHtml(card.name) + '" />';
           return '<div class="' + cls + '" data-hand-uid="' + h.uid + '">' +
+            '<span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
             art +
-            '<div class="shade"></div>' + stats + spellTag + mythicTag + kwHtml +
+            '<div class="shade"></div>' + gems + '</span>' + spellTag + mythicTag + kwHtml +
             '</div>';
         }).join('');
         render._lastHandSig = handSig;
@@ -21432,6 +22235,7 @@
       renderLog();
       fxApplyCpu(fxPlan);
       flushPops();
+      drawFxFlush(); /* 第2便：この再描画で増えた手札へドロー飛行を出す */
     }
     function renderGallery(){
       /* 一覧はコスト昇順（同コスト内はカードNo.順）に並べる */
@@ -21453,10 +22257,13 @@
           if (card.effect.kind === 'rush') kwChips += '<span class="kw rush">速攻</span>';
         }
         var kwHtml = kwChips ? '<div class="kw-tags-hand">' + kwChips + '</div>' : '';
-        return '<div class="gcard' + (isMythicCard(card) ? ' mythic' : '') + '" data-gallery="' + card.id + '">' +
+        return '<div class="gcard' + (isMythicCard(card) && !isAgitoCard(card) ? ' mythic' : '') + (isRainbowCard(card) ? ' rainbow' : '') + (isAgitoCard(card) ? ' agito' : '') + '" data-gallery="' + card.id + '">' +
+          /* D案フレーム（全長）：帯＋絵の窓＋ステータス宝石は .dfull の中 */
+          '<span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
           '<img src="' + card.img + '" alt="' + escapeHtml(card.name) + '" loading="lazy" decoding="async" />' +
-          '<div class="shade"></div><span class="cost">' + card.cost + '</span>' + spellTag + mythicTag + kwHtml +
-          '<div class="gname">' + escapeHtml(card.name) + '</div>' + stats + '</div>';
+          '<div class="shade"></div><span class="cost">' + card.cost + '</span>' + stats + '</span>' +
+          spellTag + mythicTag + kwHtml +
+          '<div class="gname">' + escapeHtml(card.name) + '</div></div>';
       }).join('');
     }
     /* ===== カード詳細：キーワード説明 =====
@@ -23335,10 +24142,11 @@
       if (card.egg) tags += '<span class="kw egg">卵</span>';
       if (card.penetrate) tags += '<span class="kw penetrate">貫通</span>';
       el.innerHTML =
+        '<span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
         '<img src="' + card.img + '" alt="' + escapeHtml(card.name) + '" />' +
         '<div class="shade"></div>' + (tags ? '<div class="kw-tags">' + tags + '</div>' : '') +
         '<span class="badge-atk">' + card.atk + '</span>' +
-        '<span class="badge-hp">' + card.hp + '</span>';
+        '<span class="badge-hp">' + card.hp + '</span></span>';
       return el;
     }
     function fxCheckCaption(txt){
@@ -24617,14 +25425,21 @@
         targetable = legal.some(function(a){ return a.type === 'attack' && String(a.attackerUid) === String(ov.selAttacker) && String(a.targetUid) === String(u.uid); });
       }
       if (targetable) cls += ' targetable';
-      var kws = (u.keywords || []).map(function(k){ return OV_KW_LABEL[k] || k; }).join('・');
+      /* 第2便：キーワードの文字表記は場から廃止し、オーラ（CSS＋Pixi）で
+         読ませる。情報行に残すのは残り攻撃回数だけ */
+      var kwSet = u.keywords || [];
+      if (kwSet.indexOf('wall') >= 0 && kwSet.indexOf('egg') < 0) cls += ' kw-guard';
+      if (kwSet.indexOf('armor') >= 0) cls += ' kw-armor';
+      if (kwSet.indexOf('counter') >= 0) cls += ' kw-counter';
+      if (kwSet.indexOf('haste') >= 0) cls += ' kw-rush';
       var img = ovUnitImg(u);
       var hpTxt = u.hp + (u.hp < u.maxHp ? '/' + u.maxHp : '');
-      /* カード名の帯は撤去（名前はカード詳細で確認できる）。キーワードと
-         残り攻撃回数はゲーム情報なので、名前なしの小さな情報行として残す */
-      var infoTxt = (kws || '') + (u.attacksLeft > 1 ? (kws ? ' ・ ' : '') + '残攻撃' + u.attacksLeft : '');
+      var infoTxt = u.attacksLeft > 1 ? '残攻撃' + u.attacksLeft : '';
       return '<button type="button" class="' + cls + '" data-ov-unit="' + u.uid + '" data-ov-side="' + side + '">' +
+        /* D案フレーム：.dslot がドックの窓、.dfull が全長のカード本体 */
+        '<span class="dslot"><span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
         (img ? '<img src="' + img + '" alt="" />' : '') +
+        '</span></span>' +
         '<span class="ov-ustats"><span class="ov-b-atk">' + u.atk + '</span><span class="ov-b-hp">' + hpTxt + '</span></span>' +
         (infoTxt ? '<span class="ov-uname">' + escapeHtml(infoTxt) + '</span>' : '') + '</button>';
     }
@@ -24634,7 +25449,7 @@
       return '<button type="button" class="ov-summoner-avatar summoner-avatar" data-ov-summoner="' + (isMe ? 'me' : 'opp') + '" aria-label="召喚士の能力を見る"><span class="summoner-face">' + summonerBadge(p.summoner, true) + '</span></button>' +
         '<span><b>' + escapeHtml(p.name || '(名無し)') + '</b>（' + escapeHtml(s ? s.name : p.summoner) + '）</span>' +
         '<span>ライフ <span class="ov-life' + (p.life <= 5 ? ' crit' : (p.life <= 10 ? ' warn' : '')) + '">' + p.life + '</span></span>' +
-        '<span>魔力 ' + p.mana + '/' + p.manaMax + '</span>' +
+        '<span>' + ppLampsHtml(p.mana || 0, p.manaMax || 0, true, true) + '<span>魔力 ' + p.mana + '/' + p.manaMax + '</span></span>' +
         '<span>' + handTxt + '</span><span class="ov-deck-chip">山札<b>' + p.deckCount + '</b></span>' +
         (p.coin ? '<span>追い上げコイン有</span>' : '');
     }
@@ -24966,16 +25781,16 @@
         var cd = CARD_BY_ID[id];
         if (!cd) return '';
         var playable = legal.some(function(a){ return a.type === 'playCard' && a.handIndex === i; });
-        /* バッジはカード上端のタブ列にまとめる（左からコスト／攻撃力／体力）。
-           .hand-tabs が上端から頭を出すため、扇の重なりでも隠れない */
-        var tabs = '<span class="hand-tabs"><span class="ov-b-cost">' + cd.cost + '</span>' +
+        /* D案フレーム（CPU戦の手札と同構造）：ステータス宝石は
+           .dfull（全長のカード本体）の中に置く */
+        var gems = '<span class="ov-b-cost">' + cd.cost + '</span>' +
           (cd.type === 'follower'
             ? '<span class="ov-b-atk">' + cd.atk + '</span><span class="ov-b-hp">' + cd.hp + '</span>'
-            : '<span class="ov-b-spell">スペル</span>') +
-          '</span>';
+            : '<span class="ov-b-spell">スペル</span>');
         return '<button type="button" class="ov-hcard' + (playable ? ' playable' : '') + (ov.selHand === i ? ' selected' : '') + (cd.mythic && cd.id !== '53ag' ? ' mythic' : '') + (cd.id === '52ex' ? ' rainbow' : '') + (cd.id === '53ag' ? ' agito' : '') + '" data-ov-hand="' + i + '"' + (playable ? '' : ' disabled') + '>' +
+          '<span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
           '<img src="' + cd.img + '" alt="" />' +
-          tabs + '</button>';
+          gems + '</span></button>';
       }).join('');
         renderOvGame._lastHandSig = ovHandSig;
       }
