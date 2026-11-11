@@ -5277,6 +5277,7 @@
         var booting = !!(loEl && !loEl.classList.contains('hide'));
         if (!booting && !document.getElementById('startOverlay').classList.contains('show')){
           playBattleStartIntro(S.me.summonerId, S.cpu.summonerId, null);
+          bgmPickBattleThemeLocal(S.me.summonerId, S.cpu.summonerId); /* 対戦BGM：両召喚士のテーマから毎試合ランダム選出 */
           bgmSetScene('battle'); /* 対戦開始：対戦BGMへ切り替える（全モード共通の入口） */
         }
         /* フィニッシュ新方式の先行構築：対戦開始時点で両召喚士×全神話の
@@ -5830,7 +5831,10 @@
        オン/オフは BGM 単体の設定（localStorage）に加えて SE 設定にも従う
        （SEがOFFの間はBGMも止まる）。HEADLESS（テストプレイ）中は鳴らさない。
        場面の指定は bgmSetScene('title'|'battle')：タイトル表示は showStart、
-       対戦開始は newGame の合図演出とオンラインのマッチ成立が呼ぶ。 */
+       対戦開始は newGame の合図演出とオンラインのマッチ成立が呼ぶ。
+       対戦場面で実際に流れる曲は召喚士テーマ（下記 SUMMONER_THEME_BASE）：
+       試合開始時に両召喚士のテーマから1曲を選出して bgmBattleTrack に
+       固定し、その試合中は場面の再指定が来ても切り替わらない。 */
     var BGM_KEY = 'cardbattle.bgm.v1';
     var bgmEnabled = true;
     try { if (localStorage.getItem(BGM_KEY) === 'off') bgmEnabled = false; } catch (e) {}
@@ -5846,14 +5850,72 @@
       title:  { base: 'bgm/bgm-title',  el: null, mp3Tried: false },
       battle: { base: 'bgm/bgm-battle', el: null, mp3Tried: false }
     };
+    /* ===== 対戦BGMの召喚士テーマ =====
+       対戦曲は召喚士ごとのテーマ曲を持ち、毎試合「自分の召喚士のテーマ」と
+       「相手の召喚士のテーマ」のどちらか1曲を選んで、その試合中ずっと流す
+       （CPU戦・勝ち抜き・アーケード・オンラインの全モード共通）。
+       テーマ未配置の召喚士（mia／olga）と未知のIDは battle 曲（クロエの
+       テーマ「駆け抜ける戦場の嵐」）にフォールバックする。mia／olga の曲が
+       用意できたら、下の表に1行足すだけで有効になる。 */
+    var SUMMONER_THEME_BASE = {
+      chloe: 'bgm/bgm-battle', /* クロエ＝現行の対戦曲（ファイル名は現行のまま流用） */
+      garen: 'bgm/bgm-garen',
+      bran:  'bgm/bgm-bran'
+      /* mia: 'bgm/bgm-mia', olga: 'bgm/bgm-olga' （未配置：配置したらこの行を有効化） */
+    };
+    /* 現在の試合で選出済みの対戦テーマ（トラックキー）。書き換えるのは
+       試合開始時の選出関数（bgmPickBattleThemeLocal／bgmPickBattleThemeOnline）
+       と、テーマ曲が読めなかった時の battle へのフォールバックだけ。
+       bgmSetScene('battle') の再呼び出しでは変わらないので、同じ試合中に
+       テーマ曲が途中で切り替わることはない */
+    var bgmBattleTrack = 'battle';
+    function bgmTrackKeyForSummoner(summonerId){
+      var base = SUMMONER_THEME_BASE[summonerId];
+      if (!base || base === 'bgm/bgm-battle') return 'battle';
+      var key = 'theme-' + summonerId;
+      if (!bgmTracks[key]) bgmTracks[key] = { base: base, el: null, mp3Tried: false };
+      return key;
+    }
+    /* いま実際に鳴らすべきトラックキー：タイトル場面は title、対戦場面は
+       選出済みのテーマ */
+    function bgmActiveTrackKey(){
+      return bgmScene === 'battle' ? bgmBattleTrack : 'title';
+    }
+    /* ローカル対戦（CPU・勝ち抜き・アーケード共通）：両召喚士のテーマから
+       50/50でランダムに1曲選ぶ。両者が同じ召喚士ならそのテーマで確定 */
+    function bgmPickBattleThemeLocal(idA, idB){
+      if (idA && idA === idB){ bgmBattleTrack = bgmTrackKeyForSummoner(idA); return; }
+      bgmBattleTrack = bgmTrackKeyForSummoner(Math.random() < 0.5 ? idA : idB);
+    }
+    /* オンライン対戦：両端末で必ず同じ曲になる決定式で選ぶ（各端末が独立に
+       ランダム抽選すると別々の曲になってしまうため）。
+       view の me／opponent は端末ごとに反転するので、まず自分の seat
+       （m.you）基準で「seat0の召喚士」「seat1の召喚士」に直す（この並びは
+       両端末で一致する）。そこへ、両端末に同じ値が届くサーバー決定の先攻
+       seat（試合開始時点の m.turn＝先攻の seat）を混ぜて 0/1 を作り、その
+       seat の召喚士のテーマを選ぶ。先攻は試合ごとにサーバーが決めるため
+       選出は毎試合ランダムに振れ、結果は両端末で一致する。
+       再接続で view を再受信しても対戦開始の検知を通らないためこの関数は
+       呼ばれず曲は変わらない。リマッチは開始検知を通るので、新しい試合
+       として新しい先攻seatで両端末一致のまま選び直される */
+    function bgmPickBattleThemeOnline(m){
+      var seat0 = (m.you === 0) ? m.me.summoner : m.opponent.summoner;
+      var seat1 = (m.you === 0) ? m.opponent.summoner : m.me.summoner;
+      if (seat0 && seat0 === seat1){ bgmBattleTrack = bgmTrackKeyForSummoner(seat0); return; }
+      var s = String(seat0) + '|' + String(seat1), h = 0;
+      for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      var firstSeat = (typeof m.turn === 'number') ? m.turn : 0;
+      var pickSeat = (h ^ firstSeat) & 1;
+      bgmBattleTrack = bgmTrackKeyForSummoner(pickSeat === 0 ? seat0 : seat1);
+    }
     function bgmSave(){
       try { localStorage.setItem(BGM_KEY, bgmEnabled ? 'on' : 'off'); } catch (e) {}
     }
     function bgmWanted(){
       return bgmEnabled && seEnabled;
     }
-    function bgmMakeEl(scene){
-      var tr = bgmTracks[scene];
+    function bgmMakeEl(key){
+      var tr = bgmTracks[key];
       if (tr.el) return tr.el;
       var el = new Audio();
       el.loop = true;
@@ -5863,31 +5925,38 @@
       var oggOk = false;
       try { oggOk = !!(el.canPlayType && el.canPlayType('audio/ogg; codecs="opus"')); } catch (e) {}
       el.src = tr.base + (oggOk ? '.ogg' : '.mp3');
-      /* 再生可能になった時点で、その場面が「鳴らすべき」状態なのに止まって
+      /* 再生可能になった時点で、そのトラックが「鳴らすべき」状態なのに止まって
          いたら自動で再生を再試行する。初回タップ直後はメディアの読み込みが
          間に合わず play() が失敗することがあり、その失敗を取りこぼすと
          「BGMを一度OFF→ONにするまで鳴らない」症状になるための保険。 */
       el.addEventListener('canplay', function(){
-        if (bgmUnlocked && bgmWanted() && bgmScene === scene && el.paused){
+        if (bgmUnlocked && bgmWanted() && bgmActiveTrackKey() === key && el.paused){
           try { var cp = el.play(); if (cp && cp.catch) cp.catch(function(){}); } catch (e) {}
         }
       });
-      if (oggOk){
+      el.addEventListener('error', function(){
         /* 対応申告でも読み込みに失敗したら MP3 へ切り替える（一度だけ）。
-           切り替え条件は「実際に再生中か」ではなく「鳴らすべき場面か」で
+           切り替え条件は「実際に再生中か」ではなく「鳴らすべきトラックか」で
            判定する（読み込み失敗時は paused のままなので、再生中判定では
            切り替え後に二度と鳴らなくなる） */
-        el.addEventListener('error', function(){
-          if (tr.mp3Tried) return;
+        if (oggOk && !tr.mp3Tried){
           tr.mp3Tried = true;
-          var wanted = bgmUnlocked && bgmWanted() && bgmScene === scene;
+          var wanted = bgmUnlocked && bgmWanted() && bgmActiveTrackKey() === key;
           el.src = tr.base + '.mp3';
           el.load();
           if (wanted){ var p = el.play(); if (p && p.catch) p.catch(function(){}); }
-        });
-      }
+          return;
+        }
+        /* Ogg／MP3 とも読めなかった場合：テーマ曲なら battle 曲へ倒して
+           対戦BGMが無音にならないようにする（テーマ未配置・配置漏れ対策）。
+           title／battle 自体が読めない場合は従来どおり無音のまま */
+        if (key !== 'title' && key !== 'battle' && bgmBattleTrack === key){
+          bgmBattleTrack = 'battle';
+          bgmApply();
+        }
+      });
       tr.el = el;
-      bgmFading[scene] = 0;
+      bgmFading[key] = 0;
       return el;
     }
     var bgmFadeTimer = null;
@@ -5917,7 +5986,7 @@
           ? Math.min(bgmDuckTarget, bgmDuckCur + dStep)
           : Math.max(bgmDuckTarget, bgmDuckCur - dStep);
       }
-      ['title', 'battle'].forEach(function(scene){
+      Object.keys(bgmTracks).forEach(function(scene){
         var tr = bgmTracks[scene];
         if (!tr.el) return;
         var base = bgmFading[scene] || 0;
@@ -5939,16 +6008,16 @@
     }
     function bgmApply(){
       if (HEADLESS) return;
-      var playScene = (bgmUnlocked && bgmWanted()) ? bgmScene : null;
-      ['title', 'battle'].forEach(function(scene){
-        if (scene === playScene){
-          var el = bgmMakeEl(scene);
-          bgmFading[scene] = bgmBaseVol();
+      var playKey = (bgmUnlocked && bgmWanted()) ? bgmActiveTrackKey() : null;
+      Object.keys(bgmTracks).forEach(function(key){
+        if (key === playKey){
+          var el = bgmMakeEl(key);
+          bgmFading[key] = bgmBaseVol();
           if (el.paused){
             try { var p = el.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {}
           }
-        } else if (bgmTracks[scene].el){
-          bgmFading[scene] = 0;
+        } else if (bgmTracks[key].el){
+          bgmFading[key] = 0;
         }
       });
       if (!bgmFadeTimer) bgmFadeTimer = setInterval(bgmFadeTick, 50);
@@ -24452,7 +24521,7 @@
             pickBattleField();
             /* マッチング成立／リマッチ開始：対戦開始の合図演出（BATTLE START） */
             try { playBattleStartIntro(m.me.summoner, m.opponent.summoner, null); } catch (e) {}
-            try { bgmSetScene('battle'); } catch (e) {} /* オンライン対戦も対戦BGMへ */
+            try { bgmPickBattleThemeOnline(m); bgmSetScene('battle'); } catch (e) {} /* オンライン対戦も対戦BGMへ（テーマ選出は両端末一致の決定式） */
             /* フィニッシュ新方式の先行構築（オンラインも実戦は常時新方式） */
             try { finProtoPrebuildBattle(m.me.summoner, m.opponent.summoner); } catch (e) {}
           }
