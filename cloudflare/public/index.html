@@ -515,6 +515,16 @@
         box-shadow:0 2px 0 #7d6220;
       }
       .seg-note{font-size:11.5px; color:var(--ink-faint); line-height:1.6; margin:6px 0 0;}
+      /* サウンドオプションのスライダー行：指で動かしやすい太さのツマミにし、
+         縦方向はメニュー全体のスクロール（pan-y）を残して干渉を避ける */
+      .snd-row{display:flex; align-items:center; gap:10px; margin:2px 0;}
+      .snd-name{flex:0 0 76px; font-size:12.5px; font-weight:700; color:var(--ink-dim); letter-spacing:.04em;}
+      .snd-val{flex:0 0 28px; text-align:right; font-size:13px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums;}
+      .snd-range{flex:1 1 auto; min-width:0; height:34px; margin:0; padding:0; background:transparent; -webkit-appearance:none; appearance:none; accent-color:var(--gold); cursor:pointer; touch-action:pan-y;}
+      .snd-range::-webkit-slider-runnable-track{height:8px; border-radius:4px; background:rgba(150,140,110,.55);}
+      .snd-range::-webkit-slider-thumb{-webkit-appearance:none; appearance:none; width:26px; height:26px; margin-top:-9px; border-radius:50%; background:linear-gradient(180deg,#eccd7e,#c9a24b); border:2px solid #7d6220; box-shadow:0 1px 4px rgba(0,0,0,.4);}
+      .snd-range::-moz-range-track{height:8px; border-radius:4px; background:rgba(150,140,110,.55);}
+      .snd-range::-moz-range-thumb{width:22px; height:22px; border-radius:50%; background:linear-gradient(180deg,#eccd7e,#c9a24b); border:2px solid #7d6220; box-shadow:0 1px 4px rgba(0,0,0,.4);}
       #cpuSourceSeg{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
       #cpuSourceSeg .seg-btn{flex:none; padding:10px 4px;}
       #simSummonerSeg{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
@@ -3988,14 +3998,26 @@
           </div>
           <p class="seg-note" id="modeSegNote">CPUと対戦します。デッキ・召喚士は下で選べます。</p>
         </div>
-        <div class="first-choice" id="seChoiceBlock" style="margin-top:4px;">
-          <p class="first-choice-label">効果音（SE）</p>
-          <button class="btn-sub" id="seToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700;" aria-pressed="true">効果音：ON</button>
-          <p class="seg-note">召喚・攻撃・破壊・回復などの効果音です。設定はこの端末に保存されます。</p>
-        </div>
-        <div class="first-choice" id="bgmChoiceBlock" style="margin-top:4px;">
-          <p class="first-choice-label">BGM</p>
-          <button class="btn-sub" id="bgmToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700;" aria-pressed="true">BGM：ON</button>
+        <div class="first-choice" id="soundChoiceBlock" style="margin-top:4px;">
+          <p class="first-choice-label">サウンド</p>
+          <div class="snd-row">
+            <label class="snd-name" for="volMasterRange">マスター</label>
+            <input class="snd-range" id="volMasterRange" type="range" min="0" max="100" step="1" value="100">
+            <span class="snd-val" id="volMasterVal">100</span>
+          </div>
+          <div class="snd-row">
+            <label class="snd-name" for="volBgmRange">BGM</label>
+            <input class="snd-range" id="volBgmRange" type="range" min="0" max="100" step="1" value="100">
+            <span class="snd-val" id="volBgmVal">100</span>
+          </div>
+          <div class="snd-row">
+            <label class="snd-name" for="volSeRange">効果音（SE）</label>
+            <input class="snd-range" id="volSeRange" type="range" min="0" max="100" step="1" value="100">
+            <span class="snd-val" id="volSeVal">100</span>
+          </div>
+          <button class="btn-sub" id="soundMuteBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700; margin-top:6px;" aria-pressed="false">ミュート：OFF</button>
+          <button class="btn-sub" id="seToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700; margin-top:6px;" aria-pressed="true">効果音：ON</button>
+          <button class="btn-sub" id="bgmToggleBtn" type="button" style="width:100%; padding:11px; font-size:14px; font-weight:700; margin-top:6px;" aria-pressed="true">BGM：ON</button>
           <p class="seg-note">タイトルでは「新たな大地」、対戦中は「駆け抜ける戦場の嵐」が流れます。効果音がOFFの間はBGMも止まります。設定はこの端末に保存されます。</p>
           <p class="seg-note">音楽：<a href="https://maou.audio/category/bgm/bgm-fantasy/" target="_blank" rel="noopener" style="color:var(--gold-bright);">魔王魂</a></p>
         </div>
@@ -5407,6 +5429,40 @@
     var SE_KEY = 'cardbattle.se.v1';
     var seEnabled = true;
     try { if (localStorage.getItem(SE_KEY) === 'off') seEnabled = false; } catch (e) {}
+    /* ===== サウンドオプション（音量3種＋ミュート） =====
+       タイトルメニューの「サウンド」セクションで調整する。実効音量は
+       マスター×個別の積で、BGMはそこへ BGM_VOL 基準とダッキング係数が
+       比率としてさらに乗る。保存は SE／BGM の on/off キー（SE_KEY／
+       BGM_KEY）とは別のキーで行い、値が無い・壊れている場合は既定値
+       （音量100／ミュートOFF）にフォールバックする。 */
+    var VOL_MASTER_KEY = 'cardbattle.vol.master.v1';
+    var VOL_BGM_KEY = 'cardbattle.vol.bgm.v1';
+    var VOL_SE_KEY = 'cardbattle.vol.se.v1';
+    var MUTE_KEY = 'cardbattle.mute.v1';
+    function sndLoadVol(key){
+      try {
+        var v = parseInt(localStorage.getItem(key), 10);
+        if (isFinite(v)) return Math.max(0, Math.min(100, v));
+      } catch (e) {}
+      return 100;
+    }
+    var volMaster = sndLoadVol(VOL_MASTER_KEY);
+    var volBgm = sndLoadVol(VOL_BGM_KEY);
+    var volSe = sndLoadVol(VOL_SE_KEY);
+    var soundMuted = false;
+    try { soundMuted = localStorage.getItem(MUTE_KEY) === 'on'; } catch (e) {}
+    function sndSaveVol(){
+      try {
+        localStorage.setItem(VOL_MASTER_KEY, String(volMaster));
+        localStorage.setItem(VOL_BGM_KEY, String(volBgm));
+        localStorage.setItem(VOL_SE_KEY, String(volSe));
+        localStorage.setItem(MUTE_KEY, soundMuted ? 'on' : 'off');
+      } catch (e) {}
+    }
+    /* 全系統共通の係数（ミュート時は0）と、系統別の実効係数 */
+    function masterVolFactor(){ return soundMuted ? 0 : volMaster / 100; }
+    function seVolFactor(){ return masterVolFactor() * (volSe / 100); }
+    function bgmVolFactor(){ return masterVolFactor() * (volBgm / 100); }
     var seCtx = null;
     var seLastPlay = {};
     function seSave(){
@@ -5436,7 +5492,7 @@
     function seMasterOut(){
       if (!seMaster || seMasterCtx !== seCtx){
         seMaster = seCtx.createGain();
-        seMaster.gain.value = SE_MASTER_VOL;
+        seMaster.gain.value = SE_MASTER_VOL * seVolFactor();
         seMaster.connect(seCtx.destination);
         seMasterCtx = seCtx;
       }
@@ -5609,7 +5665,7 @@
           el.src = src;
           seFileEls[key] = el;
         }
-        el.volume = vol;
+        el.volume = Math.max(0, Math.min(1, vol * seVolFactor()));
         try { el.currentTime = 0; } catch (e) {}
         var pr = el.play();
         if (pr && pr.catch) pr.catch(function(){});
@@ -5779,6 +5835,10 @@
     var bgmEnabled = true;
     try { if (localStorage.getItem(BGM_KEY) === 'off') bgmEnabled = false; } catch (e) {}
     var BGM_VOL = 0.30;
+    /* 実効BGM音量：基準（BGM_VOL）×マスター×BGM個別（ミュート時は0）。
+       ダッキング係数（bgmDuckCur）はこの値へさらに乗る比率として従来
+       どおり働き、クロスフェードの進み方も変えない */
+    function bgmBaseVol(){ return BGM_VOL * bgmVolFactor(); }
     var bgmScene = 'title';
     var bgmUnlocked = false;
     var bgmFading = {}; /* scene -> 目標音量（フェード中の内部状態） */
@@ -5883,7 +5943,7 @@
       ['title', 'battle'].forEach(function(scene){
         if (scene === playScene){
           var el = bgmMakeEl(scene);
-          bgmFading[scene] = BGM_VOL;
+          bgmFading[scene] = bgmBaseVol();
           if (el.paused){
             try { var p = el.play(); if (p && p.catch) p.catch(function(){}); } catch (e) {}
           }
@@ -5923,6 +5983,58 @@
       bgmApply();
     });
     renderBgmToggle();
+    /* ===== サウンドオプションのUI配線 =====
+       スライダーは input のたびに保存と即時反映を行う。BGMは bgmApply で
+       フェード目標（bgmFading）を新しい実効音量へ更新するため、再生中でも
+       その場で音量が追従する。合成SE（sePlay／seFin は全て seMaster 経由）
+       はマスターゲインを直接書き換える。実ファイルSEは次回再生時に
+       seFilePlay が seVolFactor を volume へ乗せる。 */
+    function soundApplyVolumes(){
+      if (seMaster && seCtx){
+        try { seMaster.gain.value = SE_MASTER_VOL * seVolFactor(); } catch (e) {}
+      }
+      bgmApply();
+    }
+    function renderSoundOptions(){
+      var rows = [['volMasterRange','volMasterVal',volMaster],['volBgmRange','volBgmVal',volBgm],['volSeRange','volSeVal',volSe]];
+      rows.forEach(function(r){
+        var inp = document.getElementById(r[0]);
+        var val = document.getElementById(r[1]);
+        if (inp) inp.value = String(r[2]);
+        if (val) val.textContent = String(r[2]);
+      });
+      var mb = document.getElementById('soundMuteBtn');
+      if (mb){
+        mb.textContent = soundMuted ? 'ミュート：ON（全消音）' : 'ミュート：OFF';
+        mb.setAttribute('aria-pressed', soundMuted ? 'true' : 'false');
+      }
+    }
+    function bindVolSlider(id, valId, set){
+      var inp = document.getElementById(id);
+      if (!inp) return;
+      inp.addEventListener('input', function(){
+        var v = parseInt(inp.value, 10);
+        if (!isFinite(v)) v = 100;
+        set(Math.max(0, Math.min(100, v)));
+        var val = document.getElementById(valId);
+        if (val) val.textContent = inp.value;
+        sndSaveVol();
+        soundApplyVolumes();
+      });
+    }
+    bindVolSlider('volMasterRange', 'volMasterVal', function(v){ volMaster = v; });
+    bindVolSlider('volBgmRange', 'volBgmVal', function(v){ volBgm = v; });
+    bindVolSlider('volSeRange', 'volSeVal', function(v){ volSe = v; });
+    var soundMuteBtn = document.getElementById('soundMuteBtn');
+    if (soundMuteBtn){
+      soundMuteBtn.addEventListener('click', function(){
+        soundMuted = !soundMuted;
+        sndSaveVol();
+        renderSoundOptions();
+        soundApplyVolumes();
+      });
+    }
+    renderSoundOptions();
     /* 両トラックの Audio 要素は表示直後に作って読み込みだけ先に進めておく
        （再生はしないので自動再生制限には触れない）。TAP TO START のタップ
        時点で読み込み済みにしておくことで、タップ直後の play() が
@@ -21469,7 +21581,7 @@
       titleMenuBtn.setAttribute('aria-expanded', 'false');
     }
     if (titleMenu && titleMenuBtn){
-      ['startDeckInfo','firstSegNote','cpuSourceNote','titleSlotNote','seChoiceBlock','bgmChoiceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
+      ['startDeckInfo','firstSegNote','cpuSourceNote','titleSlotNote','soundChoiceBlock','simSummonerBlock','testPlayBtn','testPlayCustomBtn','simProgress','simCancelBtn','galleryBtnStart','fxCheckBtnStart','rulesBtnStart','summonerSaveNote','startNote'].forEach(function(id){
         var el = document.getElementById(id);
         if (el) titleMenu.appendChild(el);
       });
