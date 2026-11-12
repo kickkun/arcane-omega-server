@@ -6044,7 +6044,7 @@
     try { if (localStorage.getItem(SE_KEY) === 'off') seEnabled = false; } catch (e) {}
     /* ===== サウンドオプション（音量3種＋ミュート） =====
        タイトルメニューの「サウンド」セクションで調整する。実効音量は
-       マスター×個別の積で、BGMはそこへ BGM_VOL 基準とダッキング係数が
+       マスター×個別の積で、BGMはそこへ BGM_VOL 基準が
        比率としてさらに乗る。保存は SE／BGM の on/off キー（SE_KEY／
        BGM_KEY）とは別のキーで行い、値が無い・壊れている場合は既定値
        （音量100／ミュートOFF）にフォールバックする。 */
@@ -6163,7 +6163,6 @@
       var nowMs = fxNow();
       if (seLastPlay[name] && nowMs - seLastPlay[name] < 70) return;
       seLastPlay[name] = nowMs;
-      try { bgmDuck(340); } catch (e) {} /* SEが鳴る間だけBGMを少し引かせる */
       try {
         switch (name){
           case 'summon': /* 召喚：2音の上昇ブラップ */
@@ -6269,7 +6268,6 @@
       var nowMs = fxNow();
       if (seLastPlay[key] && nowMs - seLastPlay[key] < 70) return;
       seLastPlay[key] = nowMs;
-      try { bgmDuck(480); } catch (e) {} /* ファイルSEもダッキング対象 */
       try {
         var el = seFileEls[key];
         if (!el){
@@ -6310,7 +6308,6 @@
     }
     function seFin(name){
       if (HEADLESS || !seEnabled || !seCtx || seCtx.state !== 'running') return;
-      try { bgmDuck(1300); } catch (e) {} /* 長尺のフィニッシュSEの間は引いたまま保つ */
       try {
         switch (name){
           case 'finStart': /* レターボックスと同期：短い「締まる」音＋低い溜め */
@@ -6452,8 +6449,7 @@
     try { if (localStorage.getItem(BGM_KEY) === 'off') bgmEnabled = false; } catch (e) {}
     var BGM_VOL = 0.30;
     /* 実効BGM音量：基準（BGM_VOL）×マスター×BGM個別（ミュート時は0）。
-       ダッキング係数（bgmDuckCur）はこの値へさらに乗る比率として従来
-       どおり働き、クロスフェードの進み方も変えない */
+       クロスフェードはこの値を目標に約0.9秒で追従する */
     function bgmBaseVol(){ return BGM_VOL * bgmVolFactor(); }
     var bgmScene = 'title';
     var bgmUnlocked = false;
@@ -6572,42 +6568,17 @@
       return el;
     }
     var bgmFadeTimer = null;
-    /* ===== ダッキング =====
-       SEが鳴る瞬間だけBGMを少し（約55%まで）引かせ、SEが終わったら滑らかに
-       戻す。BGM自体の音量設定（BGM_VOL）は変えず、SEを前に出すための仕掛け。
-       sePlay／seFin／seFilePlay が bgmDuck(保持ms) を呼び、保持が切れるまで
-       目標係数を下げ続ける（長いフィニッシュSEでは呼び出し側が長めに保持）。 */
-    var BGM_DUCK_LEVEL = 0.55;
-    var bgmDuckTarget = 1;
-    var bgmDuckCur = 1;
-    var bgmDuckTimer = null;
-    function bgmDuck(holdMs){
-      if (HEADLESS) return;
-      bgmDuckTarget = BGM_DUCK_LEVEL;
-      if (bgmDuckTimer) clearTimeout(bgmDuckTimer);
-      bgmDuckTimer = setTimeout(function(){ bgmDuckTarget = 1; bgmDuckTimer = null; }, holdMs || 340);
-      if (!bgmFadeTimer) bgmFadeTimer = setInterval(bgmFadeTick, 50);
-    }
     function bgmFadeTick(){
       var active = false;
-      /* ダッキング係数は速めに追従させる（下げる時も戻す時も約0.2秒） */
-      if (Math.abs(bgmDuckCur - bgmDuckTarget) > 0.01){
-        active = true;
-        var dStep = 0.25;
-        bgmDuckCur = bgmDuckTarget > bgmDuckCur
-          ? Math.min(bgmDuckTarget, bgmDuckCur + dStep)
-          : Math.max(bgmDuckTarget, bgmDuckCur - dStep);
-      }
       Object.keys(bgmTracks).forEach(function(scene){
         var tr = bgmTracks[scene];
         if (!tr.el) return;
         var base = bgmFading[scene] || 0;
-        var target = base * bgmDuckCur;
+        var target = base;
         var cur = tr.el.volume;
         if (Math.abs(cur - target) > 0.005){
           active = true;
           var step = BGM_VOL * (50 / 900); /* 通常の場面フェードは約0.9秒 */
-          if (bgmDuckCur < 0.99 || bgmDuckTarget < 1) step = BGM_VOL * (50 / 220); /* ダッキング中は速く */
           var next = target > cur ? Math.min(target, cur + step) : Math.max(target, cur - step);
           try { tr.el.volume = next; } catch (e) {}
           cur = next;
