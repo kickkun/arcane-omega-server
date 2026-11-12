@@ -4232,6 +4232,44 @@
       .deck-wrap{flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; padding:0 6px;}
       .deck-head{position:static; flex:0 0 auto;}
       .deck-scroll{flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; padding-bottom:96px;}
+
+      /* ============================================================
+         第5便（2026-11-12）：場カードのキーワードマーク化。
+         常駐オーラ（鉄壁の盾膜／速攻の風／装甲リング／反撃の棘リング）は
+         CSS・Pixi の両方で廃止し、状態は場カード右上の小さなメダル型
+         マーク（.kw-marks）で読む。瞬間演出（.kw-fx の膜張り／装甲の
+         軽減フラッシュ／反撃フラッシュ）は従来どおり残す。
+         ============================================================ */
+      /* --- 常駐オーラの廃止（CSS側）。 .kw-fx の瞬間演出には触れない --- */
+      .kw-aura{display:none !important;}
+      .follower.bran-guarded{box-shadow:none;}
+      .follower.bran-guarded.can-attack{box-shadow:0 0 0 2px #7cc9ff, 0 0 18px rgba(124,201,255,.85);}
+      .ov-unit.kw-guard,.ov-unit.kw-armor,.ov-unit.kw-counter,.ov-unit.kw-rush{box-shadow:none;}
+      .ov-unit.can-attack{box-shadow:0 0 0 2px #7cc9ff, 0 0 18px rgba(124,201,255,.85);}
+      .ov-unit.selected{box-shadow:0 0 0 2px #7fbf6a;}
+      /* 場の状態チップ（残り攻撃回数・弱体・卵など、キーワードではない表示）は
+         右上をマークに譲り、場カードだけ左寄せへ逃がす（手札・図鑑は従来どおり） */
+      .follower .dfull .kw-tags{justify-content:flex-start;}
+      /* --- キーワードマーク：場カード右上に縦積み（場カード76px幅で約19px）。
+             4個以上は少し縮めて積み、右下の体力宝石（下端から21px）に届かせない --- */
+      .kw-marks{position:absolute; top:3px; right:3px; z-index:6; display:flex; flex-direction:column; align-items:center; gap:2px; pointer-events:none;}
+      .kw-mark{position:relative; width:19px; height:19px; flex:0 0 auto; filter:drop-shadow(0 1px 2px rgba(0,0,0,.7)) drop-shadow(0 0 3px rgba(0,0,0,.4));}
+      .kw-mark img{width:100%; height:100%; display:block;}
+      .kw-marks.c4 .kw-mark{width:16px; height:16px;}
+      .kw-marks.c5 .kw-mark{width:14px; height:14px; margin-top:-1px;}
+      .kw-marks.c5 .kw-mark:first-child{margin-top:0;}
+      /* アイコン読み込み失敗時の簡易メダル（キーワード色の円盤＋白い記号グリフ）。
+         img の onerror で .kw-mark に .fb が付き、こちらへ切り替わる */
+      .kw-mark .kw-fb{display:none; width:100%; height:100%; border-radius:50%; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:11px; line-height:1; border:1.5px solid rgba(255,255,255,.9); text-shadow:0 1px 2px rgba(0,0,0,.65); box-shadow:inset 0 1px 2px rgba(255,255,255,.55), inset 0 -2px 3px rgba(0,0,0,.4);}
+      .kw-mark.fb img{display:none;}
+      .kw-mark.fb .kw-fb{display:flex;}
+      .kw-marks.c4 .kw-fb{font-size:10px;}
+      .kw-marks.c5 .kw-fb{font-size:9px;}
+      .kw-fb.guard{background:radial-gradient(circle at 35% 30%,#8ec6ff,#1d5fb8 72%);}
+      .kw-fb.rush{background:radial-gradient(circle at 35% 30%,#7fe8c8,#0d7a5f 72%); letter-spacing:-2.5px; text-indent:-2.5px;}
+      .kw-fb.armor{background:radial-gradient(circle at 35% 30%,#e6edf5,#77879a 72%); border-radius:5px;}
+      .kw-fb.counter{background:radial-gradient(circle at 35% 30%,#ffb03a,#c33d12 72%);}
+      .kw-fb.pierce{background:radial-gradient(circle at 35% 30%,#d3a6ff,#6d28b8 72%);}
     </style>
   </head>
   <body>
@@ -18642,65 +18680,15 @@
       a.cont.addChild(gfx);
       a.winds.push({ gfx: gfx, life: 0, max: 620, x: -w / 2 - len / 2, y: (Math.random() - 0.5) * (a.h || 80) * 0.6, speed: (w + len) / 0.62 });
     }
-    /* 盤面の現在状態とオーラを同期する（render 系から毎回呼ばれる）。
-       鉄壁として機能しているユニットだけ盾膜を出す：CPU戦は f.guard かつ
-       黒竜の卵でないこと（卵は鉄壁が付与されていても壁として機能しない裁定）。
-       オンラインはサーバーの keywords で判定し、egg を含む場合は盾膜を出さない。
-       速攻は f.rush ／ keywords の haste で判定し、両方あれば両方出す。
-       第2便で装甲（f.armor／armor）＝金属縁、反撃（f.counter／counter）
-       ＝棘縁の専用オーラも同じ枠組みで同期する。
-       場を離れたユニットのオーラはここで消える。 */
+    /* 第5便：キーワードの常駐オーラはマーク化に伴い Pixi 側も廃止した。
+       この関数は呼び出し互換のため残し、残っているオーラの掃除だけを行う
+       （新規生成は一切しないため、常駐描画コストはゼロになる）。
+       状態表示は場カード右上のメダル型マーク（kwMarksHtml）が担い、
+       瞬間演出（kwFlash の膜張り／装甲・反撃フラッシュ、攻撃の突進・
+       残像、フィニッシュ演出）は別系統で従来どおり動作する。 */
     function pixiSyncAuras(){
-      if (!pixiFx.enabled) return;
-      var desired = {};
-      var onlineEl = document.getElementById('onlineOverlay');
-      var ovOpen = !!(onlineEl && onlineEl.classList.contains('show'));
-      if (ovOpen && typeof ov !== 'undefined' && ov && ov.view){
-        var v = ov.view;
-        [['me', v.me.field], ['opp', v.opponent.field]].forEach(function(pair){
-          var side = pair[0];
-          (pair[1] || []).forEach(function(u){
-            var kws = u.keywords || [];
-            var hg = kws.indexOf('wall') >= 0 && kws.indexOf('egg') < 0;
-            var hr = kws.indexOf('haste') >= 0;
-            var ha = kws.indexOf('armor') >= 0;
-            var hc = kws.indexOf('counter') >= 0;
-            if (!hg && !hr && !ha && !hc) return;
-            var uid = u.uid;
-            desired['ov|' + side + '|' + uid] = { hasGuard: hg, hasRush: hr, hasArmor: ha, hasCounter: hc, getEl: (function(s2, id2){ return function(){ return fxOvUnitEl(s2, id2); }; })(side, uid) };
-          });
-        });
-      }
-      if (!ovOpen && typeof S !== 'undefined' && S){
-        ['me','cpu'].forEach(function(sk){
-          if (!S[sk] || !S[sk].board) return;
-          S[sk].board.forEach(function(f){
-            var hg = !!f.guard && !isEggFollower(f);
-            var hr = !!f.rush;
-            var ha = !!f.armor;
-            var hc = !!f.counter;
-            if (!hg && !hr && !ha && !hc) return;
-            var folKey = sk + '-' + f.uid;
-            desired['cpu|' + folKey] = { hasGuard: hg, hasRush: hr, hasArmor: ha, hasCounter: hc, getEl: (function(k3){ return function(){ return document.querySelector('[data-fol="' + k3 + '"]'); }; })(folKey) };
-          });
-        });
-      }
-      Object.keys(pixiFx.auras).forEach(function(k){ if (!desired[k]) pixiRemoveAura(k); });
-      Object.keys(desired).forEach(function(k){
-        var d = desired[k];
-        var a = pixiFx.auras[k];
-        if (!a){ a = pixiMakeAura(k, d.hasGuard, d.hasRush, d.hasArmor, d.hasCounter); }
-        else if (a.hasGuard !== d.hasGuard || a.hasRush !== d.hasRush || a.hasArmor !== d.hasArmor || a.hasCounter !== d.hasCounter){
-          if (d.hasGuard && !a.guardGfx){ a.guardGfx = new PIXI.Graphics(); a.cont.addChild(a.guardGfx); a.w = 0; a.h = 0; }
-          if (!d.hasGuard && a.guardGfx){ a.cont.removeChild(a.guardGfx); a.guardGfx.destroy(); a.guardGfx = null; }
-          if (d.hasArmor && !a.armorGfx){ a.armorGfx = new PIXI.Graphics(); a.cont.addChild(a.armorGfx); a.w = 0; a.h = 0; }
-          if (!d.hasArmor && a.armorGfx){ a.cont.removeChild(a.armorGfx); a.armorGfx.destroy(); a.armorGfx = null; }
-          if (d.hasCounter && !a.counterGfx){ a.counterGfx = new PIXI.Graphics(); a.cont.addChild(a.counterGfx); a.w = 0; a.h = 0; }
-          if (!d.hasCounter && a.counterGfx){ a.cont.removeChild(a.counterGfx); a.counterGfx.destroy(); a.counterGfx = null; }
-          a.hasGuard = d.hasGuard; a.hasRush = d.hasRush; a.hasArmor = d.hasArmor; a.hasCounter = d.hasCounter;
-        }
-        a.getEl = d.getEl;
-      });
+      if (!pixiFx || !pixiFx.auras) return;
+      Object.keys(pixiFx.auras).forEach(function(k){ pixiRemoveAura(k); });
     }
     function pixiTick(){
       if (!pixiFx.app) return;
@@ -22172,6 +22160,27 @@
     function isRainbowCard(c){ return !!c && c.id === '52ex'; }
     /* 黒のアギト専用の紫枠（神話の金枠ではなく、濃い紫に光る専用枠） */
     function isAgitoCard(c){ return !!c && c.id === '53ag'; }
+    /* ===== キーワードマーク（第5便） =====
+       場カード右上に縦積みするメダル型アイコン。実画像は本番 fx/ 配下の
+       kw-*.webp（既存 fx アセットと同じ相対パス fx/kw-*.webp）。
+       読み込みに失敗したアイコンは onerror で簡易メダル（キーワード色の
+       円盤＋白い記号グリフ）へ切り替わり、画像が無くても状態が読める。
+       並び順は 鉄壁→貫通→速攻→装甲→反撃 で両画面共通にする */
+    var KW_MARK_DEF = {
+      guard:  { src: 'fx/kw-guard.webp',   label: '鉄壁', glyph: '盾' },
+      pierce: { src: 'fx/kw-pierce.webp',  label: '貫通', glyph: '↓' },
+      rush:   { src: 'fx/kw-rush.webp',    label: '速攻', glyph: '≫' },
+      armor:  { src: 'fx/kw-armor.webp',   label: '装甲', glyph: '⬢' },
+      counter:{ src: 'fx/kw-counter.webp', label: '反撃', glyph: '↩' }
+    };
+    function kwMarksHtml(list){
+      if (!list || !list.length) return '';
+      var inner = list.map(function(k){
+        var d = KW_MARK_DEF[k]; if (!d) return '';
+        return '<span class="kw-mark" role="img" aria-label="' + d.label + '" title="' + d.label + '"><img src="' + d.src + '" alt="" onerror="this.parentNode.classList.add(\'fb\')" /><span class="kw-fb ' + k + '">' + d.glyph + '</span></span>';
+      }).join('');
+      return '<span class="kw-marks c' + Math.min(5, list.length) + '">' + inner + '</span>';
+    }
     function followerHtml(sideKey, f){
       var isMe = sideKey === 'me';
       var classes = ['follower'];
@@ -22199,9 +22208,9 @@
         var gs = guardsOn('cpu');
         if ((!gs.length || f.guard) && !isProtectedFollower(sideKey, f) && !isEggFollower(f)) classes.push('targetable');
       }
-      /* キーワードの文字チップは廃止（第2便）：鉄壁／装甲／反撃／速攻は
-         .kw-aura の常駐オーラ＋Pixiオーラ＋発動時フラッシュで読ませる。
-         神話は枠とグローが格を担う。ここに残すのはキーワードではない
+      /* キーワードの文字チップは廃止（第2便）：鉄壁／装甲／反撃／速攻／貫通は
+         右上のメダル型マーク＋発動時フラッシュで読ませる（第5便で常駐
+         オーラからマークへ切替）。神話は枠とグローが格を担う。ここに残すのはキーワードではない
          「数値・状態」の表示だけ（残り攻撃回数の目安・弱体の量・卵・
          トークン名）。卵の間は鉄壁が機能しない裁定どおり盾膜を出さない */
       var tags = '';
@@ -22209,14 +22218,20 @@
       if (f.atkDebuff) tags += '<span class="kw weaken">攻撃-' + f.atkDebuff + '</span>';
       if (isEggFollower(f)) tags += '<span class="kw egg">卵</span>';
       if (f.token) tags += '<span class="kw token">' + escapeHtml(f.name) + '</span>';
-      /* オーラはキーワードごとに別々の層で重ねる（box-shadow が競合して
-         後に定義した1つしか残らない事故を避けるため） */
-      var auraHtml = '';
-      if (f.guard && !isEggFollower(f)) auraHtml += '<span class="kw-aura guard"></span>';
-      if (f.armor) auraHtml += '<span class="kw-aura armor"></span>';
-      if (f.counter) auraHtml += '<span class="kw-aura counter"></span>';
-      if (f.rush) auraHtml += '<span class="kw-aura rush"></span>';
-      auraHtml += '<span class="kw-fx"></span>';
+      /* 第5便：常駐オーラは廃止し、キーワードは右上のメダル型マークで読む。
+         判定はルール側の実効フラグそのものを使う：鉄壁は f.guard（ブラン
+         付与も f.guard=true になる）かつ卵の間だけ無効／貫通はアギトの
+         f.penetrate／速攻・装甲・反撃は所持・付与・孵化で立つフラグ。
+         アギトの閾値キーワードは孵化時にフラグへ確定するため、マークは
+         そのまま段階どおりに増える。瞬間演出用の .kw-fx 層は残す */
+      var kwList = [];
+      if (f.guard && !isEggFollower(f)) kwList.push('guard');
+      if (f.penetrate) kwList.push('pierce');
+      if (f.rush) kwList.push('rush');
+      if (f.armor) kwList.push('armor');
+      if (f.counter) kwList.push('counter');
+      var marksHtml = kwMarksHtml(kwList);
+      var auraHtml = '<span class="kw-fx"></span>';
       /* 孵化ボタン：自分のターン中、自分の場の卵にだけ出す */
       var hatchBtn = (isMe && isEggFollower(f) && S.active === 'me' && !S.busy && !S.over && S.mode === 'idle')
         ? '<button class="hatch-btn" type="button" data-hatch="' + f.uid + '">孵化する</button>' : '';
@@ -22228,7 +22243,7 @@
         '<div class="shade"></div>' + (tags ? '<div class="kw-tags">' + tags + '</div>' : '') +
         '<span class="badge-atk">' + f.atk + '</span>' +
         '<span class="badge-hp' + (f.hp < f.maxHp ? ' hurt' : '') + '">' + f.hp + '</span></span>' +
-        auraHtml +
+        auraHtml + marksHtml +
         hatchBtn +
       '</div>';
     }
@@ -25717,13 +25732,18 @@
         targetable = legal.some(function(a){ return a.type === 'attack' && String(a.attackerUid) === String(ov.selAttacker) && String(a.targetUid) === String(u.uid); });
       }
       if (targetable) cls += ' targetable';
-      /* 第2便：キーワードの文字表記は場から廃止し、オーラ（CSS＋Pixi）で
-         読ませる。情報行に残すのは残り攻撃回数だけ */
+      /* 第5便：キーワードは常駐オーラではなく右上のメダル型マークで読む。
+         貫通はサーバーの表記ゆれ（penetrate／penetration／trample）と
+         アギト本体（カードID 53ag）の両方から拾う。情報行に残すのは
+         残り攻撃回数だけ */
       var kwSet = u.keywords || [];
-      if (kwSet.indexOf('wall') >= 0 && kwSet.indexOf('egg') < 0) cls += ' kw-guard';
-      if (kwSet.indexOf('armor') >= 0) cls += ' kw-armor';
-      if (kwSet.indexOf('counter') >= 0) cls += ' kw-counter';
-      if (kwSet.indexOf('haste') >= 0) cls += ' kw-rush';
+      var ovKwList = [];
+      if (kwSet.indexOf('wall') >= 0 && kwSet.indexOf('egg') < 0) ovKwList.push('guard');
+      if (kwSet.indexOf('penetrate') >= 0 || kwSet.indexOf('penetration') >= 0 || kwSet.indexOf('trample') >= 0 || String(u.cardId) === '53ag') ovKwList.push('pierce');
+      if (kwSet.indexOf('haste') >= 0) ovKwList.push('rush');
+      if (kwSet.indexOf('armor') >= 0) ovKwList.push('armor');
+      if (kwSet.indexOf('counter') >= 0) ovKwList.push('counter');
+      var ovMarksHtml = kwMarksHtml(ovKwList);
       var img = ovUnitImg(u);
       var hpTxt = u.hp + (u.hp < u.maxHp ? '/' + u.maxHp : '');
       var infoTxt = u.attacksLeft > 1 ? '残攻撃' + u.attacksLeft : '';
@@ -25731,7 +25751,7 @@
         /* D案フレーム：.dslot がドックの窓、.dfull が全長のカード本体 */
         '<span class="dslot"><span class="dfull"><span class="dband"><i class="domg">Ω</i></span>' +
         (img ? '<img src="' + img + '" alt="" />' : '') +
-        '</span></span>' +
+        '</span></span>' + ovMarksHtml +
         '<span class="ov-ustats"><span class="ov-b-atk">' + u.atk + '</span><span class="ov-b-hp">' + hpTxt + '</span></span>' +
         (infoTxt ? '<span class="ov-uname">' + escapeHtml(infoTxt) + '</span>' : '') + '</button>';
     }
